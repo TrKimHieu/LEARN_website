@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import { BRAND } from '@learn/ui';
+import { env } from '@/lib/env';
 import { AuthProvider } from '@/lib/auth-context';
 import { QueryProvider } from '@/lib/query-provider';
 import { MotionProvider } from '@/lib/motion';
@@ -33,11 +34,20 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.siteUrl),
   title: {
     default: BRAND.name,
     template: `%s · ${BRAND.name}`,
   },
   description: BRAND.taglineVi,
+  openGraph: {
+    siteName: BRAND.name,
+    locale: 'vi_VN',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
