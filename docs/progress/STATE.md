@@ -7,7 +7,7 @@
 
 | Hạng mục              | Giá trị                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mốc hiện tại**      | **M0, M1, M5 — Hoàn TẤT** ✅. **M2, M3 core đã chạy thật end-to-end qua browser** ✅. **M4 — Hoàn TẤT** ✅. **M6 — nội dung/component/ADR/ảnh chụp UI/Lighthouse/demo CTA đều xong 2026-09-15** ✅, chỉ còn video demo (ngoài phạm vi công cụ hiện có). **Redesign frontend toàn diện 7/7 giai đoạn — Hoàn TẤT 2026-09-19** ✅ (xem mục riêng bên dưới). **Hạ tầng vibe-code giao diện + đợt cải tiến — 2026-09-19** ✅ (`docs/UI-GUIDE.md`, `/dev/ui`, motion/lucide/confetti). **Đợt hoàn thiện UX + a11y — 2026-09-19** ✅ (audit 18 màn thật bằng axe-core: 0 vi phạm WCAG 2.2 AA, từ 85 vi phạm). **Logo đổi sang nhân vật Circle — 2026-09-19** ✅ (ADR 007; còn chờ xác nhận ranh giới logo/mascot của §13.1). **Đợt nâng cấp giao diện 2026-09-22 (branch `redesign/upgrade-2026-09`) — GĐ 1–6/7 xong, GĐ 7 (đánh bóng/dọn dẹp/chụp lại ảnh portfolio) CHƯA làm** ⚠️ (xem mục riêng bên dưới — bắt buộc đọc trước khi tiếp tục). |
+| **Mốc hiện tại**      | **M0, M1, M5 — Hoàn TẤT** ✅. **M2, M3 core đã chạy thật end-to-end qua browser** ✅. **M4 — Hoàn TẤT** ✅. **M6 — nội dung/component/ADR/ảnh chụp UI/Lighthouse/demo CTA đều xong 2026-09-15** ✅, chỉ còn video demo (ngoài phạm vi công cụ hiện có). **Redesign frontend toàn diện 7/7 giai đoạn — Hoàn TẤT 2026-09-19** ✅ (xem mục riêng bên dưới). **Hạ tầng vibe-code giao diện + đợt cải tiến — 2026-09-19** ✅ (`docs/UI-GUIDE.md`, `/dev/ui`, motion/lucide/confetti). **Đợt hoàn thiện UX + a11y — 2026-09-19** ✅ (audit 18 màn thật bằng axe-core: 0 vi phạm WCAG 2.2 AA, từ 85 vi phạm). **Logo đổi sang nhân vật Circle — 2026-09-19** ✅ (ADR 007; còn chờ xác nhận ranh giới logo/mascot của §13.1). **Đợt nâng cấp giao diện 2026-09-22 (branch `redesign/upgrade-2026-09`) — Hoàn TẤT 7/7 giai đoạn** ✅ (xem mục riêng bên dưới; audit-a11y 18/18 màn 0 vi phạm, ảnh portfolio đã chụp lại trên giao diện mới, chưa merge vào `main`). |
 | **Tần xuất cập nhật** | Mỗi lần xong 1 mục checklist                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **Blocker**           | Không có blocker. **CI đã xanh trở lại 2026-09-19**: 34 lỗi typecheck trong `packages/ai/src/__tests__/` đã sửa (helper `at()` cho `noUncheckedIndexedAccess`), `npm run typecheck` toàn workspace exit 0. Docker Desktop: đã sửa, root cause đầy đủ ở mục "Docker Desktop" bên dưới.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **Git**               | `main` đã có commit. Đợt nâng cấp giao diện 2026-09-22 làm trên branch riêng `redesign/upgrade-2026-09` (6 commit, chưa merge — xem mục riêng bên dưới). `main` đang có việc dở của người khác chưa commit (`packages/ai/src/llm/gemini.ts` + liên quan) — **đừng đụng vào**, không phải của đợt này.                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -1303,10 +1303,11 @@ với một cụm giai đoạn, đọc `git log --oneline` trên branch này đ�
    **Kiểm bằng máy:** `grep -o -- "--font-sans:[^;]*;" apps/web/.next/static/css/*.css` phải có
    `var(--font-be-vietnam-pro)` đứng đầu — đã xác nhận sau build.
 2. **Token + sửa lỗi AA thật.** `.lesson-content a` dùng sky-500 (~1.9:1 trên trắng, trượt AA) → đổi
-   sky-700. Lỗi này **không nằm trong tầm quét của `scripts/audit-a11y.mjs`** (route bài học không có
-   trong `LEARNER_ROUTES`) — kiểm tay, hoặc thêm route bài học vào audit trước khi tin kết quả audit
-   là đủ. Thêm thang bo góc 3 bậc + `--shadow-overlay`, `.focus-ring{,-tight,-dark}` (thay 23 chỗ gõ
-   lại), `scroll-behavior: smooth`, `text-wrap`, `tabular-nums`.
+   sky-700. ~~Lỗi này không nằm trong tầm quét của `audit-a11y.mjs`~~ — **sai, đã tự sửa lại ở GĐ7d**:
+   script CÓ đi theo link thật tới một bài học (`courseHref` → `lessonHref`, xem cuối `main()` trong
+   script), chỉ là lúc viết dòng này chưa chạy thử để biết. Đã chạy `audit-a11y.mjs` ở GĐ7d và xác
+   nhận route bài học sạch. Thêm thang bo góc 3 bậc + `--shadow-overlay`, `.focus-ring{,-tight,-dark}`
+   (thay 23 chỗ gõ lại), `scroll-behavior: smooth`, `text-wrap`, `tabular-nums`.
 3. **Primitive dùng chung (thuần thêm mới).** `InlineError` (states.tsx) thay 11 bản banner lỗi chép
    tay giống hệt nhau — bản cũ không có icon, tức chỉ dựa vào màu để báo lỗi (UI-GUIDE §2 cấm).
    `errorText()`/`errorDetail()` gom vào `lib/api-client.ts`. `RevealOnScroll`/`StaggerOnScroll` cho
@@ -1343,35 +1344,48 @@ với một cụm giai đoạn, đọc `git log --oneline` trên branch này đ�
    gốc repo** (đúng bẫy đã ghi ở mục Gemini phía trên, giờ áp cho cả web app), nên khi deploy thật
    phải set `APP_URL` ở nơi Next.js thực sự đọc được (env của nền tảng deploy, hoặc `apps/web/.env`).
 
-### CHƯA làm — GĐ 7 (bắt buộc trước khi coi đợt này là xong)
+### GĐ 7 — Hoàn TẤT (2026-09-22, cùng ngày, sau khi tiếp tục phiên)
 
-Đọc mục "Giai đoạn 7" trong file kế hoạch để có chi tiết đầy đủ. Tóm tắt:
-
-- **7a — token thang chữ:** chỉ thêm nếu vòng rà soát cho thấy cỡ chữ ad-hoc lặp lại ≥ 2 lần. Chưa
-  rà soát.
-- **7b — dọn code chết/tài liệu cũ:** xoá `useCourseProgress` (`lib/learning-api.ts:132`, 0 call
-  site — đã xác nhận trước khi bắt đầu redesign, chưa xoá), xoá 4 file mồ côi
-  `apps/web/public/mascot/*.svg`, sửa mệnh đề cảnh báo lệch token đã sai trong
-  `packages/ui/src/index.ts:4-8` (giá trị hiện đang khớp `theme.css`, không còn lệch).
-- **7c — CHỤP LẠI ẢNH PORTFOLIO — bắt buộc, làm cuối cùng.** `apps/web/public/screenshots/*.png`
-  (dùng ở trang chủ, section Screenshots) vẫn là ảnh **TRƯỚC** đợt nâng cấp — font hệ thống, UI cũ.
-  Chạy `docker compose -f infra/docker-compose.yml up -d && npm run db:migrate && npm run db:seed &&
-  npm run dev`, rồi `node scripts/capture-screenshots.mjs`. Nếu không làm bước này, trang chủ đang
-  quảng cáo một thiết kế không còn tồn tại.
-- **7d — gate cuối + checklist thủ công:** `rm -rf apps/web/.next && npm run build -w apps/web`,
-  `npm run typecheck -w apps/web`, `npx eslint apps/web/src`,
-  `node scripts/audit-a11y.mjs` (cần full stack — **bắt buộc chạy lại** vì đổi font làm đổi chiều
-  cao dòng/bề rộng chữ, có thể ảnh hưởng tương phản ở nền có pha màu), 3 lệnh `capture-ui.mjs` (1440,
-  390, `--reduced-motion`). Checklist thủ công đầy đủ nằm ở cuối file kế hoạch (mục "Kiểm chứng") —
-  gồm cả việc xác nhận không dòng `--color-*` nào trong khối `[SPEC]` của `theme.css` bị đổi.
+7. **Đánh bóng + dọn dẹp + chụp lại ảnh + gate cuối.**
+   - **7a — token thang chữ:** rà soát tìm ra `text-[11px]`/`text-[10px]` viết tay rời rạc ở 7 chỗ
+     (eyebrow trang chủ, mã kỹ thuật, tên token `/dev/ui`). Gom về token `--text-2xs` (11px), thay
+     hết 7 chỗ, thêm mẫu vào `/dev/ui`.
+   - **7b — dọn code chết/tài liệu cũ:** xoá `useCourseProgress` (0 call site), xoá 4 file mồ côi
+     `apps/web/public/mascot/*.svg`, sửa mệnh đề cảnh báo lệch token đã sai trong
+     `packages/ui/src/index.ts` (giá trị hiện khớp `theme.css`), "Viền 2px" → "Viền 1px" ở `/dev/ui`.
+   - **7c — chụp lại ảnh portfolio.** Bật lại Docker Desktop + `docker compose up -d` + `npm run dev`
+     (đã seed sẵn từ trước, không cần seed lại), chạy `node scripts/capture-screenshots.mjs`.
+     ⚠️ **Sửa luôn một lỗi có thật trong chính script này**: `/admin` không tự có nội dung, chỉ
+     redirect phía client sang `/admin/metrics` — script cũ `goto('/admin')` rồi audit ngay, ra ảnh
+     admin **trắng trơn** (xác nhận bằng cách chạy lại — không phải ngẫu nhiên). Sửa bằng cách
+     `goto('/admin/metrics')` thẳng. Cả 6 ảnh giờ đúng: Be Vietnam Pro, lộ trình hình sin,
+     admin/metrics có đủ số liệu.
+   - **7d — gate cuối.** `npm run build -w apps/web` xanh (22 route) · `npm run typecheck` xanh ·
+     `eslint` xanh · **`node scripts/audit-a11y.mjs` — 18/18 màn, 0 vi phạm** (lần đầu chạy cho cả
+     đợt nâng cấp này). Phát hiện + sửa lúc chạy audit lần đầu (46 phần tử vi phạm serious):
+     - **Nguyên nhân chính, không phải bug UI:** trang chủ có 4 section dùng `RevealOnScroll` —
+       nội dung ở `opacity-60` cho tới khi cuộn tới hoặc lưới an toàn 1s kích hoạt. Script audit chỉ
+       chờ 600ms cố định, không bao giờ cuộn trang, nên chấm phần lớn nội dung trang chủ ở trạng
+       thái "đang chờ hiện". **Đã sửa `scripts/audit-a11y.mjs`**: thêm bước cuộn hết trang (mô
+       phỏng người dùng thật) trước khi audit — 46 phần tử → còn 2.
+     - **2 lỗi tương phản thật** trong `target-users.tsx` (GĐ5, chưa qua audit lúc viết vì stack
+       chưa chạy): badge "Người dùng chính của MVP" dùng `bg-sky-500/10` (alpha qua `oklab()`) khiến
+       axe không giải đúng nền đã hoà trộn — tính tay ra 5.06:1 (đạt AA) nhưng công cụ báo trượt, đổi
+       sang `bg-sky-50` đặc (khớp quy ước `StatusBadge`/`Badge` còn lại trong app); badge "Người dùng
+       phụ" dùng `bg-surface-200 text-ink-500` — `ink-500` trượt AA trên nền pha màu (luật đã có ở
+       UI-GUIDE §10), đổi `ink-700`.
+     - 3 lệnh `capture-ui.mjs` (1440 · 390 · `--reduced-motion`) chạy sạch, không lỗi.
+     - `git diff main -- packages/config/tailwind/theme.css | grep '^[-+].*--color-'` → **rỗng**,
+       xác nhận không dòng màu `[SPEC]` nào bị đổi trong toàn bộ đợt.
 
 ### Việc chưa làm, ngoài phạm vi GĐ 1–7 (không chặn, ghi lại để khỏi quên)
 
-- `docs/UI-GUIDE.md` cần thêm mục cho `InlineError`, `RevealOnScroll`, luật `EmptyState
-  size="compact"` mới (đã ghi luật vào §4c trong lúc làm GĐ4, nhưng §4b "Primitive mở rộng thêm" và
-  §2 (token chữ) chưa cập nhật đủ — kiểm lại khi làm 7a/7b).
-- Chưa merge branch vào `main`. Người yêu cầu đợt này tạm dừng phiên trước khi merge — hỏi lại trước
-  khi merge, đặc biệt vì `main` đang có việc dở của người khác chưa commit.
-- Ảnh chụp `docs/screenshots/ui/root-*.png` sinh ra trong lúc làm GĐ5 (`root-1440.png`,
+- Chưa merge branch vào `main`. Người yêu cầu đợt này tạm dừng phiên trước khi merge lần đầu, rồi
+  yêu cầu tiếp tục làm hết GĐ7 — **vẫn chưa hỏi lại việc merge**, hỏi trước khi merge, đặc biệt vì
+  `main` đang có việc dở của người khác chưa commit.
+- Docker Desktop + 3 container (`learn-postgres`/`learn-redis`/`learn-minio`) đang chạy sau phiên
+  này (khởi động lại để chụp ảnh + chạy audit) — không tự tắt, để nguyên cho phiên sau dùng tiếp nếu
+  cần; tắt tay nếu không cần nữa (`docker compose -f infra/docker-compose.yml down`).
+- Ảnh chụp `docs/screenshots/ui/root-*.png` sinh ra trong lúc làm GĐ5/GĐ7 (`root-1440.png`,
   `root-1440-rm.png`, `root-390.png`) là ảnh **kiểm tra tạm**, không phải ảnh portfolio cuối — không
   copy sang `apps/web/public/`.
