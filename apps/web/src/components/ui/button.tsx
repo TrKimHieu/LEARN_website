@@ -36,7 +36,7 @@ const SIZES: Record<Size, string> = {
 const BASE =
   'inline-flex items-center justify-center rounded-lg font-medium select-none ' +
   'transition-all duration-200 ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ' +
+  'focus-ring ' +
   'disabled:pointer-events-none disabled:opacity-50';
 
 function classes(variant: Variant, size: Size, fullWidth: boolean, className?: string) {

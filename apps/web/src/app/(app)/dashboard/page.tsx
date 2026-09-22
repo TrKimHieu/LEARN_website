@@ -120,13 +120,13 @@ export default function DashboardPage() {
       {/* ------------------------------------------------ tiếp tục học */}
       {inProgress.length > 0 && (
         <Reveal delay={0.12} className="mt-8">
-          <h2 className="mb-3 text-lg font-extrabold text-ink-900">Tiếp tục học</h2>
+          <h2 className="mb-3 text-lg font-bold text-ink-900">Tiếp tục học</h2>
           <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             {inProgress.map((c) => (
               <li key={c.courseId}>
                 <Link
                   href={`/courses/${c.courseId}`}
-                  className="block rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+                  className="block rounded-card focus-ring"
                 >
                   <Card className="h-full transition-shadow hover:shadow-raised">
                     <CardTitle className="line-clamp-2">{c.courseTitle}</CardTitle>
@@ -155,7 +155,7 @@ export default function DashboardPage() {
       {/* ------------------------------------------------ hoạt động */}
       <Reveal delay={0.18} className="mt-8">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-extrabold text-ink-900">Hoạt động gần đây</h2>
+          <h2 className="text-lg font-bold text-ink-900">Hoạt động gần đây</h2>
           <ButtonLink href="/progress" variant="secondary" size="sm">
             Xem tiến trình
           </ButtonLink>
@@ -230,7 +230,7 @@ function StatCard({
         <Icon name={icon} size={22} strokeWidth={2.5} />
       </span>
       <div className="min-w-0">
-        <p className="text-2xl font-extrabold tabular-nums text-ink-900">{value}</p>
+        <p className="text-2xl font-bold tabular-nums text-ink-900">{value}</p>
         <p className="mt-0.5 text-xs font-medium text-ink-500">{label}</p>
       </div>
     </Card>

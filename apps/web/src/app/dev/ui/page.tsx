@@ -68,7 +68,7 @@ const SPEC_TOKENS = [
   ['--color-ink-300', 'ink-300'],
 ] as const;
 
-/** Token bổ sung (ADR 0004) — mở rộng được, không thuộc [SPEC]. */
+/** Token bổ sung (ADR 008) — mở rộng được, không thuộc [SPEC]. */
 const EXTRA_TOKENS = [
   ['--color-sky-50', 'sky-50'],
   ['--color-sky-100', 'sky-100'],
@@ -253,7 +253,7 @@ function Swatch({ varName, label }: { varName: string; label: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-10">
-      <h2 className="mb-3 border-b-2 border-surface-300 pb-1.5 text-sm font-extrabold uppercase tracking-widest text-ink-500">
+      <h2 className="mb-3 border-b-2 border-surface-300 pb-1.5 text-sm font-bold uppercase tracking-widest text-ink-500">
         {title}
       </h2>
       {children}
@@ -315,7 +315,7 @@ export default function UiStyleguidePage() {
         </div>
       </Section>
 
-      <Section title="Màu — bổ sung (ADR 0004)">
+      <Section title="Màu — bổ sung (ADR 008)">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {EXTRA_TOKENS.map(([v, l]) => (
             <Swatch key={v} varName={v} label={l} />
@@ -323,13 +323,146 @@ export default function UiStyleguidePage() {
         </div>
       </Section>
 
-      <Section title="Chữ">
+      {/* Token không phải màu cũng phải có mẫu, nếu không nó thành token mồ côi
+          y hệt một màu không ai nhìn thấy. */}
+      <Section title="Bo góc và độ nổi (ADR 008)">
+        <Card className="space-y-6">
+          <div>
+            <p className="mb-3 text-xs text-ink-500">
+              Bán kính ngoài = bán kính trong + padding (UX-UI-PRINCIPLES §3.4). Điều khiển nằm
+              trong thẻ, thẻ nằm trong panel.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {(
+                [
+                  ['rounded-control', '0.5rem · điều khiển'],
+                  ['rounded-card', '1rem · thẻ'],
+                  ['rounded-panel', '1.5rem · panel'],
+                  ['rounded-pill', 'pill · nhãn'],
+                ] as const
+              ).map(([cls, label]) => (
+                <div key={cls} className="text-center">
+                  <div className={`size-20 border border-surface-300 bg-surface-100 ${cls}`} />
+                  <p className="mt-1.5 font-mono text-[11px] text-ink-500">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-surface-200 pt-5">
+            <p className="mb-3 text-xs text-ink-500">
+              Ba bậc, một hướng nguồn sáng — thẳng từ trên xuống, không lệch ngang
+              (UX-UI-PRINCIPLES §3.5).
+            </p>
+            <div className="flex flex-wrap gap-5">
+              {(
+                [
+                  ['shadow-card', 'thẻ'],
+                  ['shadow-raised', 'nổi tạm thời'],
+                  ['shadow-overlay', 'chiếm quyền'],
+                ] as const
+              ).map(([cls, label]) => (
+                <div key={cls} className="text-center">
+                  <div className={`size-20 rounded-card bg-white ${cls}`} />
+                  <p className="mt-1.5 font-mono text-[11px] text-ink-500">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-surface-200 pt-5">
+            <p className="mb-3 text-xs text-ink-500">
+              Vòng focus — bấm Tab vào ba nút dưới. Nền tối dùng <code>focus-ring-dark</code> vì
+              sky-600 chìm trên navy.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="focus-ring rounded-control border border-surface-300 bg-white px-3 py-2 text-sm"
+              >
+                focus-ring
+              </button>
+              <input
+                aria-label="Mẫu focus-ring-tight"
+                placeholder="focus-ring-tight"
+                className="focus-ring-tight rounded-control border border-surface-300 px-3 py-2 text-sm outline-none"
+              />
+              <span className="rounded-control bg-navy-900 p-2">
+                <button
+                  type="button"
+                  className="focus-ring-dark rounded-control border border-white/25 px-3 py-2 text-sm text-surface-100"
+                >
+                  focus-ring-dark
+                </button>
+              </span>
+            </div>
+          </div>
+        </Card>
+      </Section>
+
+      <Section title="Chữ — thang">
         <Card className="space-y-2">
-          <p className="text-2xl font-extrabold text-ink-900">Tiêu đề trang · 2xl extrabold</p>
+          <p className="text-2xl font-bold text-ink-900">Tiêu đề trang · 2xl bold</p>
           <p className="text-base font-bold text-ink-900">Tiêu đề thẻ · base bold</p>
           <p className="text-sm text-ink-700">Nội dung chính · sm ink-700</p>
           <p className="text-xs text-ink-500">Chú thích · xs ink-500</p>
           <p className="font-mono text-xs text-ink-700">Mã · font-mono xs</p>
+        </Card>
+      </Section>
+
+      {/* Ngân sách weight của ADR 008: 4 bậc sans, 2 bậc mono. Bậc nào không nạp thì trình
+          duyệt bôi đậm giả và chữ nhoè — hàng dưới là để nhìn ra điều đó ngay. */}
+      <Section title="Chữ — weight đã nạp (ADR 008)">
+        <Card className="space-y-3">
+          <p className="text-xs text-ink-500">
+            Be Vietnam Pro · chỉ 400 / 500 / 600 / 700 được nạp. Không dùng <code>font-extrabold</code>.
+          </p>
+          {(
+            [
+              ['font-normal', '400 · regular'],
+              ['font-medium', '500 · medium'],
+              ['font-semibold', '600 · semibold'],
+              ['font-bold', '700 · bold'],
+            ] as const
+          ).map(([cls, label]) => (
+            <div key={cls} className="flex flex-wrap items-baseline gap-3">
+              <span className="w-32 shrink-0 font-mono text-xs text-ink-500">{label}</span>
+              <span className={`text-lg text-ink-900 ${cls}`}>
+                Biến tài liệu thành bài học tương tác
+              </span>
+            </div>
+          ))}
+          <div className="flex flex-wrap items-baseline gap-3 border-t border-surface-200 pt-3">
+            <span className="w-32 shrink-0 font-mono text-xs text-ink-500">mono 400 / 700</span>
+            <span className="font-mono text-sm text-ink-900">AIJob · SUCCEEDED · 1.200 token</span>
+            <span className="font-mono text-sm font-bold text-ink-900">PARTIAL_FAILURES</span>
+          </div>
+        </Card>
+      </Section>
+
+      {/* UX-UI-PRINCIPLES §4.2: dấu mũ tiếng Việt dễ bị cắt ở cỡ nhỏ và line-height chặt.
+          Hàng dưới gom các tổ hợp chồng dấu xấu nhất, ở đúng những cỡ chữ thật của app. */}
+      <Section title="Chữ — dấu tiếng Việt">
+        <Card className="space-y-3">
+          <p className="text-xs text-ink-500">
+            Soi dấu bị cắt hoặc chạm dòng trên. Kiểm cả ở <code>--width 390</code>.
+          </p>
+          {(
+            [
+              ['text-2xl font-bold leading-tight', '2xl bold · tiêu đề'],
+              ['text-base', 'base · thân'],
+              ['text-sm', 'sm · nội dung'],
+              ['text-xs', 'xs · chú thích'],
+            ] as const
+          ).map(([cls, label]) => (
+            <div key={label} className="flex flex-wrap items-baseline gap-3">
+              <span className="w-32 shrink-0 font-mono text-xs text-ink-500">{label}</span>
+              <span className={`text-ink-900 ${cls}`}>ể ễ ệ ộ ỗ ợ ữ ự ằ ẵ ặ ỳ ỹ Ỵ Đ đ</span>
+            </div>
+          ))}
+          <p className="border-t border-surface-200 pt-3 text-sm leading-tight text-ink-900">
+            Nguyễn Thị Mỹ Duyên đã hoàn thành “Kiểu tĩnh” — điểm 85,7 · chuỗi 12 ngày
+          </p>
         </Card>
       </Section>
 

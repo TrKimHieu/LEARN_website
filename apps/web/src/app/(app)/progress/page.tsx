@@ -53,7 +53,7 @@ export default function ProgressPage() {
             <li key={c.courseId}>
               <Link
                 href={`/courses/${c.courseId}`}
-                className="block h-full rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+                className="block h-full rounded-card focus-ring"
               >
                 <Card className="h-full transition-shadow hover:shadow-raised">
                   <div className="flex items-start justify-between gap-2">
@@ -84,7 +84,7 @@ export default function ProgressPage() {
       )}
 
       {/* ------------------------------------------ lịch sử làm bài */}
-      <h2 className="mb-3 mt-10 text-lg font-extrabold text-ink-900">Lịch sử làm bài</h2>
+      <h2 className="mb-3 mt-10 text-lg font-bold text-ink-900">Lịch sử làm bài</h2>
 
       {history.isLoading && <Skeleton className="h-40" />}
 

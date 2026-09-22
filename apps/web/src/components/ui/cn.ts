@@ -17,8 +17,8 @@ import { extendTailwindMerge } from 'tailwind-merge';
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
-      rounded: [{ rounded: ['card', 'pill'] }],
-      shadow: [{ shadow: ['card', 'raised'] }],
+      rounded: [{ rounded: ['control', 'card', 'panel', 'pill'] }],
+      shadow: [{ shadow: ['card', 'raised', 'overlay'] }],
     },
   },
 });

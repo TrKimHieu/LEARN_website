@@ -75,10 +75,29 @@ hạng. Dải chỉ số ở `AppShell` chỉ hiện số có thật từ `Progr
 Nguồn duy nhất: `packages/config/tailwind/theme.css` (Tailwind v4, khai báo bằng `@theme`, không
 có `tailwind.config.js`).
 
-- Khối đầu file là `[SPEC]` §14.2 — **không đổi giá trị nào**.
-- Khối sau là phần bổ sung (ADR 0004): sắc độ sky 50–700, navy-500, surface-300/400, bộ màu
+- Khối đầu file là `[SPEC]` §14.2 — **không đổi giá trị nào**. Từ ADR 008, khối này chỉ còn
+  **màu**: hai biến `--font-*` đã chuyển xuống khối dưới, vì spec §14.2 ràng buộc màu và nói
+  "monospace cho code", chứ chưa bao giờ chỉ định font sans nào.
+- Khối sau là phần bổ sung (ADR 008): sắc độ sky 50–700, navy-500, surface-300/400, bộ màu
   phản hồi success/danger/warning, `--radius-card`, `--radius-pill`, `--shadow-card`,
-  `--shadow-raised`. Phần này mở rộng được.
+  `--shadow-raised`, và `--font-sans` / `--font-mono`. Phần này mở rộng được.
+
+**Chữ (ADR 008).** Sans là **Be Vietnam Pro**, mono là **JetBrains Mono**, nạp bằng `next/font`
+ở `app/layout.tsx`. Hai điều dễ dính:
+
+- **Chỉ 4 bậc sans được nạp: 400/500/600/700.** Be Vietnam Pro là họ tĩnh, mỗi bậc × mỗi subset là
+  một file woff2. Dùng `font-extrabold` (800) thì trình duyệt bôi đậm giả và chữ nhoè — nó đã bị gỡ
+  khỏi toàn bộ codebase, đừng đưa lại. Cần nhấn mạnh hơn `font-bold` thì đổi **màu**, không đổi
+  weight.
+- **`@theme` thường, không phải `@theme inline`.** `@theme inline` ngừng phát `--font-sans` ra
+  `:root` và làm hỏng âm thầm `body { font-family: var(--font-sans) }`. Lý do đầy đủ ở ADR 008.
+
+Đổi font xong thì kiểm bằng máy, đừng tin mắt:
+
+```bash
+npm run build -w apps/web
+grep -o -- "--font-sans:[^;]*;" apps/web/.next/static/css/*.css   # phải có var(--font-be-vietnam-pro) đứng đầu
+```
 
 Hai luật màu đã kiểm chứng, đừng phá:
 

@@ -125,7 +125,7 @@ function RegisterForm() {
         Đã có tài khoản?{' '}
         <Link
           href="/login"
-          className="rounded-md text-sky-700 underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+          className="rounded-md text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
         >
           Đăng nhập
         </Link>

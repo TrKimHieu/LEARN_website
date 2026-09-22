@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           mỗi lần đổi trang. Ẩn cho tới khi được focus. */}
       <a
         href="#main"
-        className="sr-only rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-sky-700 shadow-raised focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+        className="sr-only rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-sky-700 shadow-raised focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus-ring"
       >
         Bỏ qua tới nội dung chính
       </a>
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r-2 border-surface-300 bg-white px-3 py-5 md:flex">
         <Link
           href="/dashboard"
-          className="mb-7 block rounded-xl px-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+          className="mb-7 block rounded-xl px-2 focus-ring"
         >
           <Brand />
         </Link>
@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
-                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600',
+                  'focus-ring',
                   active
                     ? 'bg-sky-50 font-semibold text-sky-700'
                     : 'text-ink-500 hover:bg-surface-100 hover:text-ink-900',

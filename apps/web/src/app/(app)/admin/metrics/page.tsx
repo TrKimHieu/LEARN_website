@@ -75,7 +75,7 @@ export default function AdminMetricsPage() {
         />
       </div>
 
-      <h2 className="mb-3 mt-10 text-lg font-extrabold text-ink-900">
+      <h2 className="mb-3 mt-10 text-lg font-bold text-ink-900">
         Chi phí LLM theo ngày (7 ngày gần nhất)
       </h2>
 
@@ -128,7 +128,7 @@ function Stat({
         <Icon name={icon} size={22} strokeWidth={2.5} />
       </span>
       <div className="min-w-0">
-        <p className="text-2xl font-extrabold tabular-nums text-ink-900">{value}</p>
+        <p className="text-2xl font-bold tabular-nums text-ink-900">{value}</p>
         <p className="mt-0.5 text-xs font-medium text-ink-500">{label}</p>
         {/* ink-300 (#94a3b8) là bậc dành cho viền và chữ mờ TRÊN NỀN TỐI —
             trên nền trắng nó chỉ đạt 2.56:1, thua xa AA. Đây là chữ nội dung

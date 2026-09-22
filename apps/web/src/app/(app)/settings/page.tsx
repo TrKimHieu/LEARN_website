@@ -135,7 +135,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium text-ink-500">Gói hiện tại</p>
-            <p className="mt-1 text-2xl font-extrabold text-ink-900">{sub.planCode}</p>
+            <p className="mt-1 text-2xl font-bold text-ink-900">{sub.planCode}</p>
           </div>
           <div className="text-right">
             <Badge
@@ -217,7 +217,7 @@ export default function SettingsPage() {
       )}
 
       {/* ------------------------------------------------------ các gói */}
-      <h2 className="mb-3 mt-10 text-lg font-extrabold text-ink-900">Các gói</h2>
+      <h2 className="mb-3 mt-10 text-lg font-bold text-ink-900">Các gói</h2>
       <div className="grid gap-4 sm:grid-cols-3">
         {plans.data.map((plan) => {
           const current = plan.code === sub.planCode;
@@ -238,7 +238,7 @@ export default function SettingsPage() {
 
               {/* Gói "mở rộng tương lai" có priceCents = 0 làm chỗ giữ chỗ, không
                   phải vì nó miễn phí — hiện "Miễn phí" ở đây là nói sai. */}
-              <p className="mt-2 text-3xl font-extrabold text-ink-900">
+              <p className="mt-2 text-3xl font-bold text-ink-900">
                 {plan.isFutureExtension ? (
                   <span className="text-2xl text-ink-500">Chưa công bố</span>
                 ) : (

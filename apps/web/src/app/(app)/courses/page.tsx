@@ -86,7 +86,7 @@ export default function CoursesPage() {
               <li key={course.id}>
                 <Link
                   href={`/courses/${course.id}`}
-                  className="block h-full rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+                  className="block h-full rounded-card focus-ring"
                 >
                   <Card className="flex h-full flex-col transition-shadow hover:shadow-raised">
                     <div className="flex items-start justify-between gap-2">

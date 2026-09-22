@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md">
         <div className="mb-7 text-center">
           <LogoMark size={64} tone="dark" className="mx-auto mb-3 block" />
-          <h1 className="text-xl font-extrabold text-white">{BRAND.name}</h1>
+          <h1 className="text-xl font-bold text-white">{BRAND.name}</h1>
           <p className="mt-1 text-sm text-ink-300">{BRAND.taglineVi}</p>
         </div>
 
@@ -25,7 +25,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <p className="mt-6 text-center">
           <Link
             href="/"
-            className="rounded-md text-xs font-bold text-ink-300 underline underline-offset-4 hover:text-white hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+            className="rounded-md text-xs font-bold text-ink-300 underline underline-offset-4 hover:text-white hover:no-underline focus-ring-dark"
           >
             Về trang chủ
           </Link>

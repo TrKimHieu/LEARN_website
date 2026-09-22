@@ -11,7 +11,7 @@ export function Hero() {
           <p className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-sky-400">
             {usePick(HERO.eyebrow)}
           </p>
-          <h1 className="mt-4 text-balance text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="mt-4 text-balance text-4xl font-bold tracking-tight sm:text-5xl">
             {usePick(HERO.title)}
           </h1>
           <p className="mt-5 max-w-xl text-lg text-surface-100/75">{usePick(HERO.subtitle)}</p>
@@ -22,7 +22,7 @@ export function Hero() {
             {/* Neo trong cùng trang — dùng thẻ <a> thường thay vì Link. */}
             <a
               href="#technical"
-              className="inline-flex h-14 items-center justify-center rounded-2xl border-2 border-b-4 border-white/25 px-8 text-base font-bold uppercase tracking-wide text-surface-100 transition-colors hover:bg-white/5 active:translate-y-0.5 active:border-b-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+              className="inline-flex h-14 items-center justify-center rounded-2xl border-2 border-b-4 border-white/25 px-8 text-base font-bold uppercase tracking-wide text-surface-100 transition-colors hover:bg-white/5 active:translate-y-0.5 active:border-b-2 focus-ring-dark"
             >
               {usePick(HERO.ctaSecondary)}
             </a>

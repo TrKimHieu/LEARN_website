@@ -17,7 +17,7 @@ const CONTROL =
   'w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink-900 outline-none ' +
   'transition-all duration-200 placeholder:text-ink-300 ' +
   'hover:border-surface-400 ' +
-  'focus:border-sky-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-600 ' +
+  'focus:border-sky-500 focus-ring-tight ' +
   'disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-ink-500';
 
 function controlClass(invalid: boolean, className?: string) {
@@ -138,7 +138,7 @@ export function PasswordInput({
         onClick={() => setVisible((v) => !v)}
         aria-pressed={visible}
         aria-label={visible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-        className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-ink-500 hover:bg-surface-200 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-600"
+        className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-ink-500 hover:bg-surface-200 hover:text-ink-900 focus-ring-tight"
       >
         <Icon name={visible ? 'eye-off' : 'eye'} size={18} />
       </button>

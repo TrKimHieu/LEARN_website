@@ -65,7 +65,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-extrabold text-ink-900">{j.courseTitle}</h1>
+          <h1 className="text-2xl font-bold text-ink-900">{j.courseTitle}</h1>
           <p className="mt-1 text-sm text-ink-500">
             {jobTypeLabel(j.type)} · yêu cầu bởi {j.requesterEmail}
           </p>
@@ -116,14 +116,14 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
         </Card>
       )}
 
-      <h2 className="mb-3 mt-8 text-lg font-extrabold text-ink-900">Tham số đầu vào</h2>
+      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Tham số đầu vào</h2>
       <Card>
         <pre className="overflow-x-auto text-xs text-ink-700">
           {JSON.stringify(j.inputParams, null, 2)}
         </pre>
       </Card>
 
-      <h2 className="mb-3 mt-8 text-lg font-extrabold text-ink-900">
+      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">
         Lượt gọi LLM ({j.runs.length})
       </h2>
       {j.runs.length === 0 ? (
@@ -161,7 +161,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
         </TableCard>
       )}
 
-      <h2 className="mb-3 mt-8 text-lg font-extrabold text-ink-900">Lịch sử thao tác admin</h2>
+      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Lịch sử thao tác admin</h2>
       {auditLog.isLoading && <Skeleton className="h-24" />}
       {auditLog.data && auditLog.data.entries.length === 0 && (
         <Card>

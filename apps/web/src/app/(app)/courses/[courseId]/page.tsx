@@ -139,7 +139,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       {/* ------------------------------------------------ banner khóa học */}
       <div className="mt-3 rounded-card border-b-[6px] border-navy-900 bg-navy-800 px-6 py-5">
         <p className="text-xs font-medium text-sky-500">Khóa học</p>
-        <h1 className="mt-1 text-2xl font-extrabold text-white">{course.data.title}</h1>
+        <h1 className="mt-1 text-2xl font-bold text-white">{course.data.title}</h1>
         {course.data.description && (
           <p className="mt-1.5 max-w-2xl text-sm text-ink-300">{course.data.description}</p>
         )}
@@ -174,7 +174,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
 
       {/* ----------------------------------------------------- lộ trình */}
       <div className="mt-8 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-extrabold text-ink-900">Lộ trình bài học</h2>
+        <h2 className="text-lg font-bold text-ink-900">Lộ trình bài học</h2>
         {/* Hành động của người soạn nội dung, không phải của người học — để
             `secondary` cho nó không tranh chấp với nút "Tiếp tục học" ở banner. */}
         <Button
@@ -261,7 +261,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
 
       {/* ----------------------------------------------------- tài liệu */}
       <div className="mt-10 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-extrabold text-ink-900">Tài liệu nguồn</h2>
+        <h2 className="text-lg font-bold text-ink-900">Tài liệu nguồn</h2>
         <div>
           <input
             ref={fileInput}

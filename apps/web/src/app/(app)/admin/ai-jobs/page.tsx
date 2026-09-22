@@ -142,7 +142,7 @@ export default function AdminAiJobsPage() {
                   <Td align="right">
                     <Link
                       href={`/admin/ai-jobs/${j.id}`}
-                      className="inline-flex items-center gap-0.5 rounded-md text-sm font-bold text-sky-700 underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+                      className="inline-flex items-center gap-0.5 rounded-md text-sm font-bold text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
                     >
                       Chi tiết
                       <Icon name="chevron-right" size={15} strokeWidth={3} />

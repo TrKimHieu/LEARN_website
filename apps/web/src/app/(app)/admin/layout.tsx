@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200',
-                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600',
+                'focus-ring',
                 active
                   ? 'bg-sky-50 font-semibold text-sky-700'
                   : 'text-ink-500 hover:bg-surface-200 hover:text-ink-900',

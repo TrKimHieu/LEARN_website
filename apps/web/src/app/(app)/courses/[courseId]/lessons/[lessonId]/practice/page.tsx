@@ -191,7 +191,7 @@ export default function PracticePage({
         Bài học
       </Link>
 
-      <h1 className="mt-3 text-2xl font-extrabold text-ink-900">{data.title ?? 'Bài tập'}</h1>
+      <h1 className="mt-3 text-2xl font-bold text-ink-900">{data.title ?? 'Bài tập'}</h1>
       {data.instruction && <p className="mt-1 text-sm text-ink-500">{data.instruction}</p>}
 
       <div className="mt-4 flex items-center gap-3">
@@ -353,7 +353,7 @@ function QuestionCard({
             }
           }}
           placeholder="Nhập câu trả lời…"
-          className="mt-3 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm outline-none transition-all duration-200 hover:border-surface-400 focus:border-sky-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-600"
+          className="mt-3 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm outline-none transition-all duration-200 hover:border-surface-400 focus:border-sky-500 focus-ring-tight"
         />
       )}
     </Card>
@@ -394,7 +394,7 @@ function ResultScreen({
           )}
         >
           <Mascot state={result.passed ? 'celebrate' : 'confused'} size={96} />
-          <p className="text-3xl font-extrabold text-ink-900">
+          <p className="text-3xl font-bold text-ink-900">
             {result.score}/{result.maxScore} điểm
           </p>
           <p className="text-sm font-medium text-ink-500">

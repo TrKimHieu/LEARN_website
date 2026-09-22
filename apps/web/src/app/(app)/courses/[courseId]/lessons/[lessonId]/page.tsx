@@ -39,7 +39,7 @@ const TITLE_MIN = 5;
 
 const FIELD =
   'w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-ink-900 ' +
-  'outline-none focus:border-sky-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-600';
+  'outline-none focus:border-sky-500 focus-ring-tight';
 
 export default function LessonReadPage({
   params,
@@ -165,7 +165,7 @@ export default function LessonReadPage({
               <p className="text-xs font-medium text-sky-500">
                 {position ? `Bài ${position.index + 1}/${position.total}` : 'Bài học'}
               </p>
-              <h1 className="mt-1 text-2xl font-extrabold text-white">{data.title}</h1>
+              <h1 className="mt-1 text-2xl font-bold text-white">{data.title}</h1>
               {data.summary && !editing && (
                 <p className="mt-1.5 max-w-2xl text-sm text-ink-300">{data.summary}</p>
               )}

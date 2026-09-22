@@ -106,13 +106,13 @@ function LoginForm() {
       <div className="flex items-center justify-between gap-3 pt-1 text-xs font-bold">
         <Link
           href="/register"
-          className="rounded-md text-sky-700 underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+          className="rounded-md text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
         >
           Chưa có tài khoản? Đăng ký
         </Link>
         <Link
           href="/forgot-password"
-          className="rounded-md text-ink-700 underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+          className="rounded-md text-ink-700 underline underline-offset-2 hover:no-underline focus-ring"
         >
           Quên mật khẩu
         </Link>

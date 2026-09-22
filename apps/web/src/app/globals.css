@@ -6,9 +6,56 @@
     color-scheme: light;
   }
 
+  /* Khối `prefers-reduced-motion` bên dưới đã ép `scroll-behavior: auto !important`,
+     nên dòng này an toàn a11y sẵn. */
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-surface-100 text-ink-900 antialiased;
     font-family: var(--font-sans);
+  }
+
+  /* Ngắt dòng chủ động — UX-UI-PRINCIPLES §4.2. `balance` cân các dòng của tiêu đề
+     ngắn; `pretty` chỉ lo chống chữ mồ côi ở dòng cuối đoạn văn dài. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  /* Cột số trong bảng phải thẳng hàng — UX-UI-PRINCIPLES §4.2. */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Vòng focus — một nguồn duy nhất. Trước đó chuỗi này được gõ lại ở 23 chỗ,
+     nên sửa độ dày hay màu là phải đi tìm từng chỗ.
+
+     Ba biến thể, khác nhau đúng một thứ mỗi lần:
+     - `focus-ring`       offset-2 · sky-600 — mặc định, dùng trên nền sáng.
+     - `focus-ring-tight` offset-1 · sky-600 — ô nhập liệu: offset-2 chạm vào ô
+       bên cạnh trong form xếp sát, còn viền ô đã tự làm mốc rồi.
+     - `focus-ring-dark`  offset-2 · sky-500 — trên nền navy, nơi sky-600 chìm.
+       (Đây là đồ hoạ, không phải chữ, nên không vướng luật "sky-700 cho chữ".) */
+  .focus-ring {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600;
+  }
+
+  .focus-ring-tight {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-600;
+  }
+
+  .focus-ring-dark {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500;
   }
 }
 
@@ -65,8 +112,11 @@
 .lesson-content li {
   margin-bottom: 0.25em;
 }
+/* sky-700 là bậc sky DUY NHẤT hợp lệ cho chữ — xem docs/UI-GUIDE.md §10.
+   Giá trị cũ ở đây là sky-500: ~1.9:1 trên nền trắng, trượt hẳn WCAG 1.4.3.
+   Nó sống sót lâu vì `scripts/audit-a11y.mjs` không quét route bài học nào. */
 .lesson-content a {
-  color: var(--color-sky-500);
+  color: var(--color-sky-700);
   text-decoration: underline;
 }
 .lesson-content code {

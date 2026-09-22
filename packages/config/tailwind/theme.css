@@ -17,12 +17,27 @@
   --color-ink-500: #64748b;
   --color-ink-300: #94a3b8;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Menlo, monospace;
+  /* ------------------------------------------------------------------ */
+  /* Bổ sung (không thuộc [SPEC], chỉ mở rộng — xem docs/adr/008).       */
+  /* ------------------------------------------------------------------ */
 
-  /* ------------------------------------------------------------------ */
-  /* Bổ sung (không thuộc [SPEC], chỉ mở rộng — xem docs/adr/0004).      */
-  /* ------------------------------------------------------------------ */
+  /* Chữ — ADR 008. Spec §14.2 ràng buộc MÀU và nói "monospace cho code và
+     metadata kỹ thuật"; nó không chỉ định font sans nào, nên hai biến này
+     chưa bao giờ thuộc [SPEC] — chúng chỉ bị xếp nhầm vào khối trên.
+
+     `var(--font-*)` do next/font đặt lên <html> (app/layout.tsx). Dùng `@theme`
+     THƯỜNG, không phải `@theme inline`: `@theme` thường phát nguyên văn chuỗi
+     var() này ra `:root` và trình duyệt giải nó lúc dùng — đúng thứ ta cần vì
+     biến của next/font không tồn tại lúc build. `@theme inline` sẽ nội tuyến
+     giá trị vào utility `.font-sans` và NGỪNG phát `--font-sans` ra `:root`,
+     làm hỏng âm thầm `body { font-family: var(--font-sans) }` ở globals.css.
+
+     Đuôi stack giữ nguyên bộ cũ làm phương án dự phòng nếu webfont không tải. */
+  --font-sans:
+    var(--font-be-vietnam-pro), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, 'Cascadia Code', 'JetBrains Mono', Menlo, monospace;
 
   /* Sắc độ dẫn xuất của accent sky §14.2 — cùng hue, dùng cho nút và    */
   /* cạnh nổi 3D. Nền sky luôn đi với chữ navy-900 (tương phản 9.86:1);  */
@@ -66,11 +81,20 @@
      chữ trắng trên nền này vẫn 6.36 nên ghi chú phía trên vẫn đúng. */
   --color-warning-700: #81570e;
 
-  /* Bo góc — thang thống nhất, thẻ bo góc theo HANDBOOK §18. */
+  /* Bo góc — thang thống nhất, thẻ bo góc theo HANDBOOK §18.
+     Ba bậc để áp được luật quang học "bán kính ngoài = bán kính trong + padding"
+     (UX-UI-PRINCIPLES §3.4): điều khiển nằm trong thẻ, thẻ nằm trong panel.
+     Thêm bậc mới thì nhớ khai báo ở `components/ui/cn.ts`, nếu không
+     tailwind-merge coi nó khác nhóm với `rounded-lg` và cả hai cùng tồn tại. */
+  --radius-control: 0.5rem;
   --radius-card: 1rem;
+  --radius-panel: 1.5rem;
   --radius-pill: 9999px;
 
-  /* Đổ bóng — nông, lạnh, ăn theo navy thay vì đen trung tính. */
+  /* Đổ bóng — nông, lạnh, ăn theo navy thay vì đen trung tính.
+     Ba bậc theo UX-UI-PRINCIPLES §3.5: thẻ · nổi tạm thời · chiếm quyền.
+     Cùng một hướng nguồn sáng (thẳng từ trên xuống, không lệch ngang). */
   --shadow-card: 0 1px 2px rgb(15 23 32 / 0.04), 0 2px 8px rgb(15 23 32 / 0.04);
   --shadow-raised: 0 2px 4px rgb(15 23 32 / 0.06), 0 8px 24px rgb(15 23 32 / 0.08);
+  --shadow-overlay: 0 4px 8px rgb(15 23 32 / 0.08), 0 16px 48px rgb(15 23 32 / 0.14);
 }
