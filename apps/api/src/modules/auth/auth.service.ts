@@ -7,7 +7,10 @@ import { SecurityService } from '../../common/security';
 import { PrismaService } from '../../common/services';
 import { env } from '../../environment';
 import { UsageService } from '../subscriptions/usage.service';
+import { SubscriptionRepository } from '../subscriptions/subscription.repository';
+import { PlanRepository } from '../subscriptions/plan.repository';
 import { UserRepository } from './user.repository';
+import { RefreshTokenRepository } from './refresh-token.repository';
 
 const DAY_MS = 86_400_000;
 
@@ -26,6 +29,9 @@ const dummyHashPromise = hashPassword(randomBytes(32).toString('base64url'));
 export class AuthService {
   constructor(
     private readonly users: UserRepository,
+    private readonly refreshTokens: RefreshTokenRepository,
+    private readonly subscriptions: SubscriptionRepository,
+    private readonly plans: PlanRepository,
     private readonly prisma: PrismaService,
     private readonly security: SecurityService,
     private readonly usage: UsageService,
@@ -58,7 +64,7 @@ export class AuthService {
       email: user.email,
     });
     const { token, hashed } = this.issueRefreshToken(user.id, ip);
-    await this.prisma.client.refreshToken.create({ data: hashed });
+    await this.refreshTokens.create(hashed);
 
     return { user: toPublic(user), accessToken, refreshToken: token };
   }
@@ -76,29 +82,23 @@ export class AuthService {
       email: user.email,
     });
     const { token, hashed } = this.issueRefreshToken(user.id, ip, userAgent);
-    await this.prisma.client.refreshToken.create({ data: hashed });
+    await this.refreshTokens.create(hashed);
 
     return { user: toPublic(user), accessToken, refreshToken: token };
   }
 
   async refresh(rawToken: string, userAgent?: string, ip?: string) {
     const tokenHash = hashToken(rawToken);
-    const stored = await this.prisma.client.refreshToken.findUnique({ where: { tokenHash } });
+    const stored = await this.refreshTokens.findByHash(tokenHash);
     if (!stored) throw ApiError.unauthenticated();
 
     if (stored.revokedAt) {
       // Tái sử dụng token đã thu hồi → thu hồi cả family (HANDBOOK §10.1)
-      await this.prisma.client.refreshToken.updateMany({
-        where: { familyId: stored.familyId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+      await this.refreshTokens.revokeFamily(stored.familyId);
       throw ApiError.unauthenticated('Phiên đã hết hạn, vui lòng đăng nhập lại.');
     }
     if (stored.expiresAt < new Date()) {
-      await this.prisma.client.refreshToken.update({
-        where: { id: stored.id },
-        data: { revokedAt: new Date() },
-      });
+      await this.refreshTokens.revokeById(stored.id);
       throw ApiError.unauthenticated();
     }
 
@@ -107,13 +107,10 @@ export class AuthService {
 
     // Xoay vòng: tạo token mới cùng family, thu hồi token cũ.
     const next = this.issueRefreshToken(user.id, ip, userAgent, stored.familyId);
-    await this.prisma.client.$transaction([
-      this.prisma.client.refreshToken.update({
-        where: { id: stored.id },
-        data: { revokedAt: new Date() },
-      }),
-      this.prisma.client.refreshToken.create({ data: next.hashed }),
-    ]);
+    await this.prisma.client.$transaction(async (tx) => {
+      await this.refreshTokens.revokeById(stored.id, tx);
+      await this.refreshTokens.create(next.hashed, tx);
+    });
 
     const accessToken = await this.security.signAccessToken({
       sub: user.id,
@@ -128,11 +125,7 @@ export class AuthService {
     if (!user) throw ApiError.notFound();
 
     const [subscription, usage] = await Promise.all([
-      this.prisma.client.subscription.findFirst({
-        where: { userId, status: { in: ['ACTIVE', 'TRIALING'] } },
-        orderBy: { updatedAt: 'desc' },
-        include: { plan: true },
-      }),
+      this.subscriptions.findFirstWithPlan(userId),
       // Trước đây trả `usage: {}` cứng, nên dải hạn mức trong Settings không bao giờ có số.
       this.usage.snapshot(userId),
     ]);
@@ -158,29 +151,20 @@ export class AuthService {
     if (!ok) throw ApiError.unauthenticated('Mật khẩu hiện tại không đúng.');
     const passwordHash = await hashPassword(newPassword);
 
-    await this.prisma.client.$transaction([
-      this.prisma.client.user.update({ where: { id: userId }, data: { passwordHash } }),
-      // Thu hồi mọi phiên khác — phải cùng transaction với việc đổi hash, nếu không thì
-      // đổi mật khẩu thành công nhưng token cũ vẫn sống khi câu thứ hai lỗi.
-      this.prisma.client.refreshToken.updateMany({
-        where: { userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
-    ]);
+    // Đổi hash + thu hồi mọi phiên khác trong CÙNG một transaction — đổi mật khẩu thành
+    // công nhưng token cũ vẫn sống nếu câu thứ hai lỗi là lỗ hổng.
+    await this.prisma.client.$transaction(async (tx) => {
+      await this.users.updatePasswordHash(userId, passwordHash, tx);
+      await this.refreshTokens.revokeAllForUser(userId, tx);
+    });
   }
 
   async revokeToken(rawToken: string) {
-    await this.prisma.client.refreshToken.updateMany({
-      where: { tokenHash: hashToken(rawToken), revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    await this.refreshTokens.revokeByTokenHash(hashToken(rawToken));
   }
 
   async revokeAllForUser(userId: string) {
-    await this.prisma.client.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    await this.refreshTokens.revokeAllForUser(userId);
   }
 
   /** Sinh refresh token mới. Thuần đồng bộ — không có gì để `await`. */
@@ -220,18 +204,15 @@ export class AuthService {
   }
 
   private async ensureSubscription(userId: string) {
-    const freePlan = await this.prisma.client.plan.findUnique({ where: { code: 'FREE' } });
+    const freePlan = await this.plans.findFree();
     if (!freePlan) return;
     const now = new Date();
-    await this.prisma.client.subscription.create({
-      data: {
-        id: newId(),
-        userId,
-        planId: freePlan.id,
-        status: 'ACTIVE',
-        currentPeriodStart: now,
-        currentPeriodEnd: new Date(now.getTime() + 30 * DAY_MS),
-      },
+    await this.subscriptions.create({
+      userId,
+      planId: freePlan.id,
+      status: 'ACTIVE',
+      currentPeriodStart: now,
+      currentPeriodEnd: new Date(now.getTime() + 30 * DAY_MS),
     });
   }
 }

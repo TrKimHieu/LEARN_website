@@ -9,7 +9,15 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { prisma } from '@learn/db';
+import type { Prisma, PrismaClient } from '@learn/db';
 import { env } from '../environment';
+
+/**
+ * Loại "có thể chạy truy vấn" — nhận được cả client toàn cục (`PrismaService.client`) lẫn
+ * transaction client. Repository method nhận `db` ở tham số cuối để service gọi được trong
+ * cả hai ngữ cảnh mà không nhân đôi code.
+ */
+export type Db = Prisma.TransactionClient | PrismaClient;
 
 @Injectable()
 export class PrismaService {

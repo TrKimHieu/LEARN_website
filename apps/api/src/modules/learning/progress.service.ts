@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { prisma } from '@learn/db';
 import type {
   ProgressOverview,
   ProgressCourse,
@@ -8,6 +7,10 @@ import type {
 } from '@learn/contracts';
 import { ApiError } from '../../common/errors';
 import { env } from '../../environment';
+import { CourseRepository } from '../courses/course.repository';
+import { LessonRepository } from './lesson.repository';
+import { LearningProgressRepository } from './learning-progress.repository';
+import { SubmissionRepository } from './submission.repository';
 
 /**
  * Chuỗi ngày học liên tiếp chỉ cần nhìn lại tối đa ngần này ngày. Chuỗi dài hơn 1 năm
@@ -19,17 +22,22 @@ const DAY_MS = 86_400_000;
 
 @Injectable()
 export class ProgressService {
+  constructor(
+    private readonly courses: CourseRepository,
+    private readonly lessons: LessonRepository,
+    private readonly progress: LearningProgressRepository,
+    private readonly submissions: SubmissionRepository,
+  ) {}
+
   async overview(userId: string): Promise<ProgressOverview> {
     const [courseCount, totalLessons, completedLessons, scores, activeStreak] = await Promise.all([
-      prisma.course.count({ where: { ownerId: userId, deletedAt: null } }),
-      prisma.lesson.count({
-        where: { course: { ownerId: userId, deletedAt: null }, deletedAt: null },
-      }),
-      prisma.learningProgress.count({ where: { userId, status: 'COMPLETED' } }),
+      this.courses.countOwned(userId),
+      this.lessons.countForOwner(userId),
+      this.progress.countCompleted(userId),
       // score trong Submission là điểm % (0-100) đã chia tỷ lệ khi nộp bài (xem exercises.service).
       // Trung bình tính bằng `aggregate` trong Postgres; bản trước kéo TOÀN BỘ Submission của
       // người dùng về Node chỉ để cộng lại — không giới hạn, lớn dần mãi theo thời gian dùng.
-      prisma.submission.aggregate({ where: { userId }, _avg: { score: true } }),
+      this.submissions.averageForUser(userId),
       this.activeStreak(userId),
     ]);
 
@@ -43,19 +51,8 @@ export class ProgressService {
   }
 
   async perCourse(userId: string): Promise<{ courses: ProgressCourse[] }> {
-    const courses = await prisma.course.findMany({
-      where: { ownerId: userId, deletedAt: null },
-      select: {
-        id: true,
-        title: true,
-        _count: { select: { lessons: { where: { deletedAt: null } } } },
-      },
-    });
-    const rows = await prisma.learningProgress.groupBy({
-      by: ['courseId'],
-      where: { userId, status: 'COMPLETED' },
-      _count: { _all: true },
-    });
+    const courses = await this.courses.findManyWithLessonCount(userId);
+    const rows = await this.progress.completedByCourse(userId);
     const doneMap = new Map(rows.map((r) => [r.courseId, r._count._all]));
 
     return {
@@ -76,19 +73,7 @@ export class ProgressService {
   }
 
   async history(userId: string, limit = 20): Promise<{ items: HistoryItem[] }> {
-    const subs = await prisma.submission.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      include: {
-        exercise: {
-          select: {
-            title: true,
-            lesson: { select: { title: true, course: { select: { title: true } } } },
-          },
-        },
-      },
-    });
+    const subs = await this.submissions.recent(userId, limit);
     return {
       items: subs.map((s) => ({
         id: s.id,
@@ -103,22 +88,12 @@ export class ProgressService {
   }
 
   async courseProgress(userId: string, courseId: string): Promise<CourseProgress> {
-    const course = await prisma.course.findFirst({
-      where: { id: courseId, ownerId: userId, deletedAt: null },
-      select: { id: true },
-    });
+    const course = await this.courses.findOwned(courseId, userId);
     if (!course) throw ApiError.notFound('Không tìm thấy khóa học.');
 
     const [lessons, progress] = await Promise.all([
-      prisma.lesson.findMany({
-        where: { courseId: course.id, deletedAt: null },
-        orderBy: { orderIndex: 'asc' },
-        select: { id: true, title: true, orderIndex: true },
-      }),
-      prisma.learningProgress.findMany({
-        where: { userId, courseId: course.id },
-        select: { lessonId: true, status: true, bestScore: true },
-      }),
+      this.lessons.listLightForCourse(course.id),
+      this.progress.findForCourse(userId, course.id),
     ]);
 
     const map = new Map(progress.map((p) => [p.lessonId, p]));
@@ -155,13 +130,7 @@ export class ProgressService {
   private async activeStreak(userId: string): Promise<number> {
     const tz = env.APP_TIMEZONE;
     const since = new Date(Date.now() - STREAK_LOOKBACK_DAYS * DAY_MS);
-    const rows = await prisma.$queryRaw<Array<{ day: Date }>>`
-      SELECT DISTINCT date_trunc('day', ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${tz}) AS day
-      FROM "Submission"
-      WHERE "userId" = ${userId} AND "createdAt" >= ${since}
-      ORDER BY day DESC
-      LIMIT ${STREAK_LOOKBACK_DAYS}
-    `;
+    const rows = await this.submissions.distinctStudyDays(userId, since, tz, STREAK_LOOKBACK_DAYS);
     if (rows.length === 0) return 0;
 
     // `date_trunc` trả `timestamp` không múi giờ, mang đúng ngày địa phương; Prisma dựng Date

@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, newId, Prisma } from '@learn/db';
+import { Prisma } from '@learn/db';
 import { ApiError } from '../../common/errors';
+import { PrismaService, type Db } from '../../common/services';
+import { PlanRepository } from './plan.repository';
+import { SubscriptionRepository } from './subscription.repository';
+import { UsageCounterRepository } from './usage-counter.repository';
 
 export type UsageMetricKey =
   'COURSES_CREATED' | 'DOCUMENTS_UPLOADED' | 'PAGES_PROCESSED' | 'AI_JOBS_RUN';
@@ -37,21 +41,21 @@ const USAGE_SOURCE: Record<UsageMetricKey, 'derived' | 'counter' | 'per_document
   PAGES_PROCESSED: 'per_document',
 };
 
-/** Phần client Prisma mà service này dùng — nhận được cả `prisma` lẫn `tx`. */
-type Db = Pick<typeof prisma, 'course' | 'usageCounter' | '$executeRaw'>;
-
-/** Áp hạn mức — HANDBOOK §11.3. */
+/** Áp hạn mức — HANDBOOK §11.3. Truy vấn đi qua repository; service chỉ giữ luồng transaction. */
 @Injectable()
 export class UsageService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly plans: PlanRepository,
+    private readonly subscriptions: SubscriptionRepository,
+    private readonly usageCounter: UsageCounterRepository,
+  ) {}
+
   async planForUser(userId: string): Promise<PlanLike> {
     // Hai câu độc lập — chạy song song thay vì nối tiếp.
     const [free, sub] = await Promise.all([
-      prisma.plan.findFirst({ where: { code: 'FREE', isActive: true } }),
-      prisma.subscription.findFirst({
-        where: { userId, status: { in: ['ACTIVE', 'TRIALING'] } },
-        orderBy: { updatedAt: 'desc' },
-        include: { plan: true },
-      }),
+      this.plans.findByCode('FREE'),
+      this.subscriptions.findFirstWithPlan(userId),
     ]);
     return ((sub?.plan ?? free) as PlanLike | null) ?? FALLBACK_PLAN;
   }
@@ -63,7 +67,9 @@ export class UsageService {
     const keys = Object.keys(plan.limits) as UsageMetricKey[];
     // Bản trước `await` trong vòng `for`, nên N metric = N lượt chờ nối tiếp nhau dù chúng
     // hoàn toàn độc lập.
-    const used = await Promise.all(keys.map((key) => this.currentUsage(prisma, userId, key)));
+    const used = await Promise.all(
+      keys.map((key) => this.currentUsage(this.prisma.client, userId, key)),
+    );
 
     const out: Record<string, { used: number; limit: number | null; window: string }> = {};
     keys.forEach((key, i) => {
@@ -93,7 +99,7 @@ export class UsageService {
     metric: UsageMetricKey,
     work: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
-    return prisma.$transaction(async (tx) => {
+    return this.prisma.client.$transaction(async (tx) => {
       const plan = await this.planForUser(userId);
       const cfg = plan.limits[metric] as LimitConfig | undefined;
 
@@ -101,7 +107,7 @@ export class UsageService {
 
       // Nối tiền tố để hai metric của cùng một người không đụng nhau, và hai người không
       // đụng nhau. `hashtext` cho int4 — thừa đủ cho khoá lock.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`quota:${userId}:${metric}`}))`;
+      await this.usageCounter.lockQuota(userId, metric, tx);
 
       const used = await this.currentUsage(tx, userId, metric);
       if (used >= cfg.limit) throw ApiError.quota(cfg.limit, used, metric);
@@ -120,7 +126,7 @@ export class UsageService {
     const plan = await this.planForUser(userId);
     const cfg = plan.limits[metric] as LimitConfig | undefined;
     if (!cfg) return undefined;
-    const used = await this.currentUsage(prisma, userId, metric);
+    const used = await this.currentUsage(this.prisma.client, userId, metric);
     if (used >= cfg.limit) throw ApiError.quota(cfg.limit, used, metric);
     return cfg;
   }
@@ -128,18 +134,13 @@ export class UsageService {
   /** Ghi nhận một đơn vị đã dùng. Chỉ có tác dụng với metric kiểu `counter`. */
   private async record(db: Db, userId: string, metric: UsageMetricKey): Promise<void> {
     if (USAGE_SOURCE[metric] !== 'counter') return;
-    const period = currentPeriod();
-    await db.usageCounter.upsert({
-      where: { userId_period_metric: { userId, period, metric } },
-      update: { value: { increment: 1 } },
-      create: { id: newId(), userId, period, metric, value: 1 },
-    });
+    await this.usageCounter.increment(userId, currentPeriod(), metric, db);
   }
 
   private async currentUsage(db: Db, userId: string, metric: UsageMetricKey): Promise<number> {
     switch (USAGE_SOURCE[metric]) {
       case 'derived':
-        return db.course.count({ where: { ownerId: userId, deletedAt: null } });
+        return this.usageCounter.countOwnedCourses(userId, db);
 
       // `PAGES_PROCESSED` có window "per_document" — không có "used" tổng hợp để so hợp lý.
       // Enforce thật ở apps/worker/src/processors/document-extract.processor.ts, chặn theo TỪNG
@@ -149,9 +150,7 @@ export class UsageService {
         return 0;
 
       default: {
-        const row = await db.usageCounter.findUnique({
-          where: { userId_period_metric: { userId, period: currentPeriod(), metric } },
-        });
+        const row = await this.usageCounter.findValue(userId, currentPeriod(), metric, db);
         return row?.value ?? 0;
       }
     }

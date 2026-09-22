@@ -1,12 +1,13 @@
 import { Controller, Get, Post, Body, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { prisma } from '@learn/db';
 import { checkoutSchema } from '@learn/contracts';
 import type { CheckoutInput } from '@learn/contracts';
 import { zodBody } from '../../common/errors';
 import { Auth, CurrentUser, type UserContext } from '../../common/security';
 import { UsageService } from './usage.service';
 import { BillingService } from './billing.service';
+import { PlanRepository } from './plan.repository';
+import { SubscriptionRepository } from './subscription.repository';
 import { env } from '../../environment';
 
 @Controller('api/v1')
@@ -14,15 +15,14 @@ export class SubscriptionController {
   constructor(
     private readonly usage: UsageService,
     private readonly billing: BillingService,
+    private readonly plans: PlanRepository,
+    private readonly subscriptions: SubscriptionRepository,
   ) {}
 
   @Get('plans')
-  async plans() {
-    const plans = await prisma.plan.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
-    });
-    return plans.map((p) => ({
+  async listPlans() {
+    const rows = await this.plans.findManyActive();
+    return rows.map((p) => ({
       code: p.code,
       name: p.name,
       description: p.description,
@@ -37,11 +37,11 @@ export class SubscriptionController {
   @Get('subscription')
   @Auth()
   async subscription(@CurrentUser() user: UserContext) {
-    const sub = await prisma.subscription.findFirst({
-      where: { userId: user.userId, status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] } },
-      orderBy: { updatedAt: 'desc' },
-      include: { plan: true },
-    });
+    const sub = await this.subscriptions.findFirstWithPlan(user.userId, [
+      'ACTIVE',
+      'TRIALING',
+      'PAST_DUE',
+    ]);
     return {
       planCode: sub?.plan.code ?? 'FREE',
       status: sub?.status ?? 'ACTIVE',
@@ -71,10 +71,7 @@ export class SubscriptionController {
   @Post('subscription/cancel')
   @Auth()
   async cancel(@CurrentUser() user: UserContext) {
-    await prisma.subscription.updateMany({
-      where: { userId: user.userId, status: 'ACTIVE', cancelAtPeriodEnd: false },
-      data: { cancelAtPeriodEnd: true },
-    });
+    await this.subscriptions.setCancelAtPeriodEnd(user.userId);
     return { ok: true, message: 'Gói sẽ huỷ ở cuối kỳ hiện tại.' };
   }
 

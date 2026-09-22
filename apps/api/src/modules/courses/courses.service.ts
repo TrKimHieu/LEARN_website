@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, newId } from '@learn/db';
 import type {
   CourseStatus,
   CreateCourseInput,
@@ -9,6 +8,7 @@ import type {
 } from '@learn/contracts';
 import { ApiError } from '../../common/errors';
 import { UsageService } from '../subscriptions/usage.service';
+import { CourseRepository } from './course.repository';
 
 /** Cột của Course mà cả `toSummary` lẫn `toDetail` cần — tránh truyền 7 tham số rời. */
 interface CourseRow {
@@ -23,7 +23,10 @@ interface CourseRow {
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly usage: UsageService) {}
+  constructor(
+    private readonly usage: UsageService,
+    private readonly courses: CourseRepository,
+  ) {}
 
   /**
    * Danh sách khoá học của một người.
@@ -37,29 +40,14 @@ export class CoursesService {
    * định**, không phụ thuộc N.
    */
   async listForOwner(userId: string): Promise<Record<'courses', CourseSummary[]>> {
-    const courses = await prisma.course.findMany({
-      where: { ownerId: userId, deletedAt: null },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const courses = await this.courses.findManyForOwner(userId);
     if (courses.length === 0) return { courses: [] };
 
     const courseIds = courses.map((c) => c.id);
     const [lessonCounts, documentCounts, completedCounts] = await Promise.all([
-      prisma.lesson.groupBy({
-        by: ['courseId'],
-        where: { courseId: { in: courseIds }, deletedAt: null },
-        _count: { _all: true },
-      }),
-      prisma.document.groupBy({
-        by: ['courseId'],
-        where: { courseId: { in: courseIds } },
-        _count: { _all: true },
-      }),
-      prisma.learningProgress.groupBy({
-        by: ['courseId'],
-        where: { userId, courseId: { in: courseIds }, status: 'COMPLETED' },
-        _count: { _all: true },
-      }),
+      this.courses.lessonCounts(courseIds),
+      this.courses.documentCounts(courseIds),
+      this.courses.completedProgressCounts(userId, courseIds),
     ]);
 
     const lessons = countMap(lessonCounts);
@@ -90,15 +78,15 @@ export class CoursesService {
    */
   async create(userId: string, input: CreateCourseInput): Promise<CourseDetail> {
     const course = await this.usage.consume(userId, 'COURSES_CREATED', (tx) =>
-      tx.course.create({
-        data: {
-          id: newId(),
+      this.courses.create(
+        {
           ownerId: userId,
           title: input.title,
           description: input.description ?? null,
           language: input.language as 'vi' | 'en',
         },
-      }),
+        tx,
+      ),
     );
     return this.toDetail(userId, course);
   }
@@ -107,20 +95,17 @@ export class CoursesService {
     await this.assertOwned(courseId, userId);
     // Prisma bỏ qua field `undefined`, nên không cần đọc trước rồi điền lại giá trị cũ —
     // và làm vậy còn ghi đè thay đổi của request song song bằng dữ liệu đã cũ.
-    const updated = await prisma.course.update({
-      where: { id: courseId },
-      data: {
-        title: input.title,
-        description: input.description,
-        status: input.status as CourseStatus | undefined,
-      },
+    const updated = await this.courses.update(courseId, {
+      title: input.title,
+      description: input.description,
+      status: input.status as CourseStatus | undefined,
     });
     return this.toDetail(userId, updated);
   }
 
   async remove(userId: string, courseId: string): Promise<{ ok: true }> {
     await this.assertOwned(courseId, userId);
-    await prisma.course.update({ where: { id: courseId }, data: { deletedAt: new Date() } });
+    await this.courses.softDelete(courseId);
     return { ok: true };
   }
 
@@ -129,28 +114,21 @@ export class CoursesService {
     return this.toDetail(userId, course);
   }
 
-  /** Lọc quyền sở hữu ở tầng truy vấn — chống IDOR (AGENTS.md). */
+  /** Lọc quyền sở hữu ở tầng repository — chống IDOR (AGENTS.md). */
   private async assertOwned(courseId: string, userId: string): Promise<CourseRow> {
-    const course = await prisma.course.findFirst({
-      where: { id: courseId, ownerId: userId, deletedAt: null },
-    });
+    const course = await this.courses.findOwned(courseId, userId);
     if (!course) throw ApiError.notFound('Không tìm thấy khóa học.');
     return course;
   }
 
   private async toDetail(userId: string, course: CourseRow): Promise<CourseDetail> {
     const [totalLessons, completedLessons, scores] = await Promise.all([
-      prisma.lesson.count({ where: { courseId: course.id, deletedAt: null } }),
-      prisma.learningProgress.count({
-        where: { userId, courseId: course.id, status: 'COMPLETED' },
-      }),
+      this.courses.countLessons(course.id),
+      this.courses.countCompletedProgress(userId, course.id),
       // `aggregate` để Postgres tính trung bình. Bản trước `findMany` toàn bộ Submission của
       // khoá học về Node rồi `reduce` — bộ nhớ và thời gian tăng tuyến tính theo số lượt nộp,
       // không có giới hạn trên.
-      prisma.submission.aggregate({
-        where: { userId, exercise: { lesson: { courseId: course.id } } },
-        _avg: { score: true },
-      }),
+      this.courses.averageScore(userId, course.id),
     ]);
 
     return {

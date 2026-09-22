@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import { SignJWT, jwtVerify } from 'jose';
 import type { Request } from 'express';
-import { PrismaService, RedisService } from './services';
+import { RedisService } from './services';
+import { AuditRepository } from './audit.repository';
 import { env } from '../environment';
 
 export interface AccessTokenPayload {
@@ -154,7 +155,7 @@ export class AuditService {
   // `await import('@learn/db')` nằm trong đường xử lý request là thừa — module đã nằm sẵn trong
   // bộ nhớ từ lúc boot, và việc import động khiến chỗ này là nơi duy nhất trong repo không lấy
   // Prisma qua DI, nên test không thay thế được.
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly audit: AuditRepository) {}
 
   async log(input: {
     actorId?: string;
@@ -164,16 +165,7 @@ export class AuditService {
     metadata?: unknown;
     ipAddress?: string;
   }): Promise<void> {
-    await this.prisma.client.auditLog.create({
-      data: {
-        actorId: input.actorId ?? null,
-        action: input.action,
-        entityType: input.entityType,
-        entityId: input.entityId,
-        metadata: input.metadata as never,
-        ipAddress: input.ipAddress ?? null,
-      },
-    });
+    await this.audit.create(input);
   }
 }
 

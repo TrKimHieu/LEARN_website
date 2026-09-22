@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, newId } from '@learn/db';
+import { newId } from '@learn/db';
 import type {
   UploadUrlInput,
   UploadUrlResponse,
@@ -7,15 +7,19 @@ import type {
   DocumentList,
 } from '@learn/contracts';
 import { ApiError } from '../../common/errors';
-import { S3Service, QueueService } from '../../common/services';
+import { QueueService, S3Service } from '../../common/services';
 import { env } from '../../environment';
 import { UsageService } from '../subscriptions/usage.service';
+import { CourseRepository } from '../courses/course.repository';
+import { DocumentRepository } from './document.repository';
 
 const ALLOWED_MIME = new Set(['application/pdf', 'text/plain', 'text/markdown']);
 
 @Injectable()
 export class DocumentsService {
   constructor(
+    private readonly documents: DocumentRepository,
+    private readonly courses: CourseRepository,
     private readonly s3: S3Service,
     private readonly queue: QueueService,
     private readonly usage: UsageService,
@@ -34,9 +38,7 @@ export class DocumentsService {
     // Chặn trùng theo checksum trong cùng Course — HANDBOOK §7.2. Bỏ qua document còn `PENDING`
     // (đã xin presigned URL nhưng chưa từng confirm — coi như bỏ dở, không nên chặn upload lại
     // đúng file đó lần nữa).
-    const duplicate = await prisma.document.findFirst({
-      where: { courseId, checksumSha256: input.checksumSha256, status: { not: 'PENDING' } },
-    });
+    const duplicate = await this.documents.findDuplicateInCourse(courseId, input.checksumSha256);
     if (duplicate) {
       throw ApiError.conflict(
         `Tài liệu này đã tồn tại trong khóa học (trùng nội dung với "${duplicate.filename}").`,
@@ -50,18 +52,15 @@ export class DocumentsService {
 
     const safeName = input.filename.replace(/[^\w.\-\u00C0-\u1EF9 ]/g, '_').slice(0, 255);
     const key = `${userId}/documents/${newId()}.${safeName}`;
-    const document = await prisma.document.create({
-      data: {
-        id: newId(),
-        uploaderId: userId,
-        courseId,
-        filename: safeName,
-        mimeType: input.mimeType,
-        sizeBytes: input.sizeBytes,
-        checksumSha256: input.checksumSha256,
-        storageKey: key,
-        status: 'PENDING',
-      },
+    const document = await this.documents.create({
+      uploaderId: userId,
+      courseId,
+      filename: safeName,
+      mimeType: input.mimeType,
+      sizeBytes: input.sizeBytes,
+      checksumSha256: input.checksumSha256,
+      storageKey: key,
+      status: 'PENDING',
     });
 
     const uploadUrl = await this.s3.putUploadUrl(key, input.mimeType, input.sizeBytes);
@@ -70,16 +69,9 @@ export class DocumentsService {
 
   async list(userId: string, courseId: string): Promise<{ documents: DocumentList[] }> {
     await this.ownedCourse(courseId, userId);
-    const docs = await prisma.document.findMany({
-      where: { courseId, uploaderId: userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const docs = await this.documents.listForCourse(courseId, userId);
     const urls = await Promise.all(docs.map((d) => this.s3.getDownloadUrl(d.storageKey)));
-    const chunkCounts = await prisma.documentChunk.groupBy({
-      by: ['documentId'],
-      where: { documentId: { in: docs.map((d) => d.id) } },
-      _count: true,
-    });
+    const chunkCounts = await this.documents.chunkCounts(docs.map((d) => d.id));
     const chunkMap = new Map(chunkCounts.map((c) => [c.documentId, c._count]));
 
     return {
@@ -115,12 +107,7 @@ export class DocumentsService {
       throw ApiError.payloadTooLarge('Tài liệu vượt giới hạn dung lượng tải lên.');
 
     const updated = await this.usage.consume(userId, 'DOCUMENTS_UPLOADED', (tx) =>
-      tx.document.update({
-        // Lọc thêm `status: 'PENDING'` để hai lần confirm song song chỉ một lần đi qua —
-        // lần thua ném P2025 và error filter trả 404 thay vì trừ hạn mức hai lượt.
-        where: { id: doc.id, status: 'PENDING' },
-        data: { sizeBytes: input.sizeBytes, status: 'UPLOADED' },
-      }),
+      this.documents.markUploaded(doc.id, input.sizeBytes, tx),
     );
 
     // Worker M3 xử lý; queue sẵn sàng từ M0 — kiểu job trùng AIJobType.
@@ -151,7 +138,7 @@ export class DocumentsService {
       throw ApiError.conflict('Tài liệu đang được xử lý, vui lòng thử lại sau khi xong.');
     }
 
-    await prisma.document.delete({ where: { id: doc.id } });
+    await this.documents.delete(doc.id);
 
     try {
       await this.s3.deleteObject(doc.storageKey);
@@ -164,18 +151,13 @@ export class DocumentsService {
   }
 
   private async ownedCourse(courseId: string, userId: string) {
-    const course = await prisma.course.findFirst({
-      where: { id: courseId, ownerId: userId, deletedAt: null },
-    });
+    const course = await this.courses.findOwned(courseId, userId);
     if (!course) throw ApiError.notFound('Không tìm thấy khóa học.');
     return course;
   }
 
   private async ownedDocument(documentId: string, userId: string) {
-    const doc = await prisma.document.findFirst({
-      where: { id: documentId, uploaderId: userId },
-      include: { course: true },
-    });
+    const doc = await this.documents.findOwned(documentId, userId);
     if (!doc) throw ApiError.notFound('Không tìm thấy tài liệu.');
     return doc;
   }

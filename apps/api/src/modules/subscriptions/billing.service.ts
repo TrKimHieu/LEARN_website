@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, newId } from '@learn/db';
-import { env } from '../../environment';
+import { newId } from '@learn/db';
 import { ApiError } from '../../common/errors';
+import { PrismaService } from '../../common/services';
+import { env } from '../../environment';
+import { PlanRepository } from './plan.repository';
+import { SubscriptionRepository } from './subscription.repository';
+import { PaymentRepository } from './payment.repository';
 
 /**
  * Billing — HANDBOOK §11.4. Giá luôn lấy từ `Plan.priceCents` trong DB `[SPEC]`.
@@ -10,6 +14,13 @@ import { ApiError } from '../../common/errors';
  */
 @Injectable()
 export class BillingService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly plans: PlanRepository,
+    private readonly subscriptions: SubscriptionRepository,
+    private readonly payments: PaymentRepository,
+  ) {}
+
   async checkout(
     userId: string,
     planCode: string,
@@ -34,29 +45,25 @@ export class BillingService {
   }
 
   private async activatePlanDemo(userId: string, planCode: string) {
-    const plan = await prisma.plan.findFirst({ where: { code: planCode, isActive: true } });
+    const plan = await this.plans.findByCode(planCode);
     if (!plan) throw ApiError.notFound('Không tồn tại gói này.');
     if (plan.isFutureExtension) throw ApiError.forbidden('Gói này chưa được bán.');
 
     const now = new Date();
-    await prisma.$transaction(async (tx) => {
-      await tx.subscription.updateMany({
-        where: { userId, status: { in: ['ACTIVE', 'TRIALING'] } },
-        data: { status: 'CANCELED' },
-      });
-      const subscription = await tx.subscription.create({
-        data: {
-          id: newId(),
+    await this.prisma.client.$transaction(async (tx) => {
+      await this.subscriptions.cancelActive(userId, tx);
+      const subscription = await this.subscriptions.create(
+        {
           userId,
           planId: plan.id,
           status: 'ACTIVE',
           currentPeriodStart: now,
           currentPeriodEnd: new Date(now.getTime() + 30 * 86400 * 1000),
         },
-      });
-      await tx.payment.create({
-        data: {
-          id: newId(),
+        tx,
+      );
+      await this.payments.create(
+        {
           subscriptionId: subscription.id,
           amountCents: plan.priceCents,
           currency: plan.currency,
@@ -64,7 +71,8 @@ export class BillingService {
           providerPaymentId: `demo_${newId()}`,
           paidAt: now,
         },
-      });
+        tx,
+      );
     });
   }
 
@@ -72,7 +80,7 @@ export class BillingService {
     userId: string,
     planCode: string,
   ): Promise<{ url: string; mode: 'live' }> {
-    const plan = await prisma.plan.findFirst({ where: { code: planCode, isActive: true } });
+    const plan = await this.plans.findByCode(planCode);
     if (!plan) throw ApiError.notFound('Không tồn tại gói này.');
     if (!env.STRIPE_SECRET_KEY || !plan.providerPriceId) {
       throw ApiError.conflict('Thanh toán live chưa được cấu hình đầy đủ.');

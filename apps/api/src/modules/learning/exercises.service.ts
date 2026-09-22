@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, newId, Prisma } from '@learn/db';
+import type { Prisma } from '@learn/db';
 import type { ExerciseRead, SubmitExerciseInput, SubmissionResult } from '@learn/contracts';
 import { ApiError } from '../../common/errors';
+import { PrismaService } from '../../common/services';
+import { ExerciseRepository } from './exercise.repository';
+import { SubmissionRepository } from './submission.repository';
+import { LearningProgressRepository } from './learning-progress.repository';
+import { LessonRepository } from './lesson.repository';
 
 export interface GradedAnswer {
   questionId: string;
@@ -32,24 +37,20 @@ const isUniqueViolation = (e: unknown): boolean =>
 
 @Injectable()
 export class ExercisesService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly lessons: LessonRepository,
+    private readonly exercises: ExerciseRepository,
+    private readonly submissions: SubmissionRepository,
+    private readonly progress: LearningProgressRepository,
+  ) {}
+
   async getExerciseRead(userId: string, lessonId: string): Promise<ExerciseRead> {
     await this.assertLessonAccess(userId, lessonId);
-    const exercise = await prisma.exercise.findFirst({
-      where: { lessonId },
-      orderBy: { orderIndex: 'asc' },
-      include: {
-        questions: {
-          orderBy: { orderIndex: 'asc' },
-          include: { options: { orderBy: { orderIndex: 'asc' } } },
-        },
-      },
-    });
+    const exercise = await this.exercises.findFirstForLesson(lessonId);
     if (!exercise) throw ApiError.notFound('Không có bài tập cho bài học này.');
 
-    const best = await prisma.submission.findFirst({
-      where: { userId, exerciseId: exercise.id },
-      orderBy: { attemptNo: 'desc' },
-    });
+    const best = await this.submissions.findBest(userId, exercise.id);
 
     return {
       id: exercise.id,
@@ -90,13 +91,7 @@ export class ExercisesService {
     input: SubmitExerciseInput,
   ): Promise<SubmissionResult> {
     const lesson = await this.assertLessonAccess(userId, lessonId);
-    const exercise = await prisma.exercise.findFirst({
-      where: { lessonId },
-      orderBy: { orderIndex: 'asc' },
-      include: {
-        questions: { orderBy: { orderIndex: 'asc' }, include: { options: true } },
-      },
-    });
+    const exercise = await this.exercises.findFirstForLesson(lessonId);
     if (!exercise) throw ApiError.notFound('Không có bài tập cho bài học này.');
 
     const questions = exercise.questions;
@@ -168,42 +163,31 @@ export class ExercisesService {
   }): Promise<{ id: string; attemptNo: number; createdAt: Date }> {
     for (let retry = 0; ; retry++) {
       try {
-        return await prisma.$transaction(async (tx) => {
-          const previous = await tx.submission.aggregate({
-            where: { userId: args.userId, exerciseId: args.exerciseId },
-            _max: { attemptNo: true },
-          });
-          const attemptNo = (previous._max.attemptNo ?? 0) + 1;
-          const id = newId();
-
-          const submission = await tx.submission.create({
-            data: {
-              id,
-              userId: args.userId,
-              exerciseId: args.exerciseId,
-              attemptNo,
-              score: args.percent,
-              maxScore: SCORE_SCALE,
-              durationMs: args.durationMs,
-            },
-          });
-
-          // Một INSERT nhiều dòng thay cho N round-trip tuần tự trong transaction.
-          await tx.submissionAnswer.createMany({
-            data: args.results.map((r) => ({
-              id: newId(),
-              submissionId: id,
+        return await this.prisma.client.$transaction(async (tx) => {
+          const created = await this.submissions.createWithAnswers(tx, {
+            userId: args.userId,
+            exerciseId: args.exerciseId,
+            percent: args.percent,
+            maxScore: SCORE_SCALE,
+            durationMs: args.durationMs,
+            results: args.results.map((r) => ({
               questionId: r.questionId,
               rawAnswer: rawAnswerOf(args.answerByQuestion.get(r.questionId)),
               isCorrect: r.isCorrect,
               pointsEarned: r.pointsEarned,
-              feedback: r.explanation,
+              explanation: r.explanation,
             })),
           });
 
-          await this.upsertProgress(tx, args);
+          await this.progress.upsertAfterSubmission(tx, {
+            userId: args.userId,
+            courseId: args.courseId,
+            lessonId: args.lessonId,
+            percent: args.percent,
+            passed: args.passed,
+          });
 
-          return { id, attemptNo, createdAt: submission.createdAt };
+          return created;
         });
       } catch (e) {
         if (isUniqueViolation(e) && retry < ATTEMPT_CONFLICT_RETRIES) continue;
@@ -212,54 +196,8 @@ export class ExercisesService {
     }
   }
 
-  /** Cập nhật tiến độ — chạy TRONG transaction của `persistSubmission`. */
-  private async upsertProgress(
-    tx: Pick<typeof prisma, 'learningProgress'>,
-    args: {
-      userId: string;
-      courseId: string;
-      lessonId: string;
-      percent: number;
-      passed: boolean;
-    },
-  ): Promise<void> {
-    const { userId, courseId, lessonId, percent, passed } = args;
-    const now = new Date();
-    const existing = await tx.learningProgress.findUnique({
-      where: { userId_lessonId: { userId, lessonId } },
-      select: { status: true, bestScore: true, completedAt: true },
-    });
-
-    await tx.learningProgress.upsert({
-      where: { userId_lessonId: { userId, lessonId } },
-      create: {
-        id: newId(),
-        userId,
-        courseId,
-        lessonId,
-        status: passed ? 'COMPLETED' : 'IN_PROGRESS',
-        bestScore: percent,
-        attempts: 1,
-        startedAt: now,
-        completedAt: passed ? now : null,
-      },
-      update: {
-        // Đã COMPLETED thì không hạ cấp khi làm lại và trượt.
-        status: passed || existing?.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
-        bestScore: Math.max(existing?.bestScore ?? 0, percent),
-        // `increment` để hai lượt nộp song song không ghi đè bộ đếm của nhau
-        // (đọc-rồi-ghi `existing.attempts + 1` làm mất một lượt).
-        attempts: { increment: 1 },
-        completedAt: passed ? (existing?.completedAt ?? now) : existing?.completedAt,
-      },
-    });
-  }
-
   private async assertLessonAccess(userId: string, lessonId: string) {
-    const lesson = await prisma.lesson.findFirst({
-      where: { id: lessonId, deletedAt: null, course: { ownerId: userId, deletedAt: null } },
-      select: { id: true, courseId: true },
-    });
+    const lesson = await this.lessons.assertAccessible(lessonId, userId);
     if (!lesson) throw ApiError.notFound('Không tìm thấy bài học.');
     return lesson;
   }
@@ -320,7 +258,7 @@ export function gradeSubmission(
 export function normalize(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'D')
     .toLowerCase()
