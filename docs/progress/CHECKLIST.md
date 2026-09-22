@@ -649,3 +649,52 @@ Chi tiết từng lỗi ở `STATE.md` mục "Đợt audit + refactor backend/fr
       (1440, 390, `--reduced-motion`) chạy sạch. `git diff main -- theme.css` — 0 dòng `--color-*`
 - [ ] Merge `redesign/upgrade-2026-09` vào `main` (cần xác nhận — `main` đang có việc dở của người
       khác chưa commit, không phải của đợt này)
+
+## 20.17 Tái cấu trúc feature-based (phiên 18 — 2026-09-22)
+
+> Branch `refactor/feature-based-structure` (off `redesign/upgrade-2026-09`). Kế hoạch 7 phase do
+> người dùng duyệt — nguồn HANDBOOK §16 (DevOps/CI), §19 (cấu trúc), ADR-005. Chi tiết ở STATE.md
+> mục cùng tên.
+
+**Phase 0–4 — nền (commit `f2469ac`–`a98976b`)**
+
+- [x] Dọn root: `handbook.html`/`proposal-templates.html` → `docs/exports`, xoá `web-dev.log`
+- [x] Chuẩn hoá UTF-8/line-ending theo prettier 3.9; eslint/prettier/tsconfig/vitest dồn về
+      `packages/config` + shim root; vitest chạy ở root
+- [x] Frontend feature-based: `apps/web/src/features/*` + `components/shared`
+
+**Phase 5 — Backend repository per module (commit `c502436`)**
+
+- [x] Subscriptions: `plan`/`subscription`/`payment`/`usage-counter` repo + `usage.service`/`billing.service`
+- [x] Auth: `user`/`refresh-token` repo + `auth.service`
+- [x] Courses/Documents: `course`/`document` repo (thêm `countOwned`, `countOwnedInCourse`…)
+- [x] Learning: `lesson` (thêm `assertAccessible`, `listLightForCourse`) + `learning-progress` +
+      `exercise` + `submission` repo; `exercises.service` retry P2002 + `rawAnswerOf`
+- [x] AI: `ai-job`/`generation-run` repo + `ai.service`
+- [x] Admin: `admin` repo/service/controller (8 endpoint)
+- [x] Common: `audit` repo; SecurityModule (global) cung cấp `AuditRepository`
+- [x] Quyền sở hữu lọc ở tầng repository (IDOR); service giữ `$transaction`; `health` CỐ Ý giữ `SELECT 1`
+- [x] `typecheck`/`lint`/`build` xanh; `test` = 90 pass / 8 int fail pre-existing / 3 skip
+
+**Phase 6 — Infra + CI + boundary (commit `bebb643`)**
+
+- [x] Boundary lint: cấm module api import file nội bộ module khác (chỉ `*.module/*.repository/*.service`);
+      cấm feature web import chéo (allowlist `shell`→`auth`/`settings`, `portfolio`→`shell`); chặn
+      package→app và app chéo app. Cả repo 0 vi phạm
+- [x] `infra/Dockerfile.{api,worker,web}` + `.dockerignore` (loại `.env` ra khỏi context)
+- [~] Dockerfiles **chưa kiểm chứng build thật** (máy dev không có Docker) — cần máy có Docker hoặc CI
+- [x] `.github/workflows/ci.yml` theo HANDBOOK §16.3: lint · typecheck · test:unit · build · audit ·
+      `test:int` (services postgres+redis → `db:deploy` → build api → chạy `dist` → poll TCP → `test:int`)
+- [~] Job e2e (playwright) **chưa nối** — chưa có `playwright.config.ts`/test thật (HANDBOOK §16.3 vẽ e2e)
+- [~] Job audit chặn đang ở mức `--omit=dev --audit-level=critical` (prod 0 critical) — 7 high ở
+      prod (multer/postcss/deepmerge-ts) còn nợ, fix breaking, xem STATE.md next-actions #21
+- [x] `typecheck`/`lint`/`build` xanh; `test` không đổi so với baseline
+
+**Phase 7 — đóng phiên (đang chạy)**
+
+- [x] Verify toàn cục 3 lệnh gate (typecheck/lint/test) + build
+- [x] Cập nhật 3 file progress (`STATE`/`CHECKLIST`/`session-log`) + commit docs
+- [ ] Pop `stash@{0}` (WIP session khác: Gemini LLM + REQUIREMENTS/SRS + `.claude` + seed-demo-heavy)
+      — KHÔNG commit nội dung stash
+- [ ] (Sau này) Merge `refactor/feature-based-structure` → `main`, rồi quan sát CI lần đầu
+- [ ] (Quyết định) Scope worker: migrate `apps/worker/src/processors` sang repository hay giữ `prisma`

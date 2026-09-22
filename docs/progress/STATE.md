@@ -1009,8 +1009,27 @@ kia thì phải sửa spec trước rồi mới giữ thay đổi này.
     bằng `ApiError`) trả đúng `.../not_found`. `type` là định danh máy đọc nên đây là lỗi hợp đồng
     API. Sửa: suy `type` từ `code` y như nhánh `ApiError`, thêm test cho 401/403/500.
 19. **Lịch sử `session-log.md` có khoảng trống**: các phiên làm M4/M5/M6 ngày 2026-09-15 không được
-    ghi dòng nào (nhảy từ phiên 3 ngày 09-14 sang phiên 4 ngày 09-18). Không khôi phục được chính xác
-    nên để nguyên; từ nay ghi ngay cuối mỗi phiên theo đúng AGENTS.md.
+     ghi dòng nào (nhảy từ phiên 3 ngày 09-14 sang phiên 4 ngày 09-18). Không khôi phục được chính xác
+     nên để nguyên; từ nay ghi ngay cuối mỗi phiên theo đúng AGENTS.md.
+20. **Tái cấu trúc feature-based (branch `refactor/feature-based-structure`) — Phase 0–6 xong**
+     (commit `c502436` Phase 5 backend, `bebb643` Phase 6 infra/CI). Chi tiết mục cùng tên phía cuối
+     file. Còn lại: (a) quyết định scope worker (migrate repository hay giữ `prisma` trực tiếp ở
+     `apps/worker/src/processors`); (b) Dockerfiles + ci.yml chưa kiểm chứng thật vì máy dev này không
+     có Docker — merge rồi quan sát CI lần đầu là cách duy nhất xác minh; (c) `audit-a11y.mjs` (từ #1c)
+     và e2e playwright chưa có trong ci.yml.
+21. **Nợ npm audit:** CI có job `audit` — bước chặn `--omit=dev --audit-level=critical` (production
+     hiện 0 critical) + bước report `--audit-level=high` không chặn (`continue-on-error`). 7 high ở
+     chuỗi production: `multer` (qua `@nestjs/platform-express`), `postcss` (qua `next`), `deepmerge-ts`
+     (qua `prisma` CLI — thực ra dev-only). Fix đều là upgrade breaking (next@16, platform-express@12,
+     vitest@5) — theo dõi khi nâng version, đừng `npm audit fix --force` vô tội vạ.
+22. **e2e (playwright) chưa có test thật:** root có script `test:e2e` + dep `playwright` nhưng chưa có
+     `playwright.config.ts` hay test nào → ci.yml đang BỎ job e2e (HANDBOOK §16.3 vẽ e2e chỉ chạy PR vào
+     main). Viết test rồi nối vào ci.yml.
+23. **`apps/web` chưa bật `output: 'standalone'`** — Dockerfile.web đang single-stage (image to hơn;
+     an toàn hơn vì giữ nguyên `transpilePackages` cho `@learn/ui`). Tối ưu sau bằng standalone +
+     multi-stage, kiểm chứng trên máy có Docker.
+24. **CHECKLIST mục chờ Docker** (docker-compose lên, `db:migrate`/`db:seed` chạy thật, minio bucket)
+     — chưa ai chạy lại trên máy có Docker sau khi thêm Dockerfiles; các mục ấy giữ `[~]`.
 
 ## Đợt audit + refactor backend/frontend — 2026-09-19 (phiên 12)
 
@@ -1390,3 +1409,54 @@ với một cụm giai đoạn, đọc `git log --oneline` trên branch này đ�
 - Ảnh chụp `docs/screenshots/ui/root-*.png` sinh ra trong lúc làm GĐ5/GĐ7 (`root-1440.png`,
   `root-1440-rm.png`, `root-390.png`) là ảnh **kiểm tra tạm**, không phải ảnh portfolio cuối — không
   copy sang `apps/web/public/`.
+
+## Tái cấu trúc feature-based (2026-09-22, branch `refactor/feature-based-structure`)
+
+Kế hoạch 7 phase do người dùng duyệt. Nguồn: HANDBOOK §19 (cấu trúc), §16 (hạ tầng/CI), ADR-005.
+
+### Phase 0–4 (commit `f2469ac` … `a98976b`)
+- Dọn root: `handbook.html`/`proposal-templates.html` → `docs/exports`, xoá `web-dev.log` (`f2469ac`).
+- Chuẩn hoá UTF-8/line-ending theo prettier 3.9 (`fe136c4`); eslint/prettier/tsconfig/vitest dồn về
+  `packages/config`, giữ shim ở root (`cb253f2`, `453f6ea`).
+- Frontend feature-based: `apps/web/src/features/*` + `components/shared` (`a98976b`).
+
+### Phase 5 — Backend repository per module (commit `c502436`)
+- Mọi truy vấn prisma dồn về repository (lọc quyền sở hữu ở tầng repo, chống IDOR — ADR-005); service
+  giữ `$transaction` qua `PrismaService`. 38 file, +1666/−807.
+- Repos: subscriptions (`plan`/`subscription`/`payment`/`usage-counter`), auth (`user`/`refresh-token`),
+  `course`, `document`, learning (`lesson`/`learning-progress`/`exercise`/`submission`),
+  `ai-job`/`generation-run`, `admin`, `common/audit`.
+- Module wiring: CoursesModule exports `CourseRepository`; DocumentsModule imports
+  [SubscriptionsModule, CoursesModule] exports `DocumentRepository`; SubscriptionsModule exports
+  [UsageService, PlanRepository, SubscriptionRepository]; LearningModule imports CoursesModule + 4 repo;
+  AiModule imports [SubscriptionsModule, CoursesModule, DocumentsModule]; SecurityModule (global) thêm
+  `AuditRepository`.
+- Hành vi giữ nguyên khi migrate: `auth.me()` trả usage thật; `REFRESH_TOKEN_TTL_DAYS` đọc từ env;
+  billing demo dùng `demo_<newId()>`; retry P2002 khi đụng `attemptNo`. `health.controller` CỐ Ý giữ
+  `SELECT 1` trực tiếp (liveness probe, ngoại lệ có ghi chú).
+
+### Phase 6 — Infra + CI + boundary (commit `bebb643`)
+- **Boundary lint** (`packages/config/eslint/boundary-rules.mjs` + `no-restricted-imports`):
+  cấm module api import file nội bộ module khác (chỉ cho `*.module/*.repository/*.service`); cấm feature
+  web import chéo feature (allowlist: `shell`→`auth`/`settings` vì là chrome của app;
+  `portfolio`→`shell` vì tái dùng `LogoMark` — nên đưa LogoMark về `components/shared` sau này); chặn
+  package→app và app chéo app. Cả repo pass 0 vi phạm, có test âm tính bằng file scratch.
+- **Dockerfiles:** `infra/Dockerfile.{api,worker,web}` + `.dockerignore` (***bắt buộc loại `.env`***).
+  api/worker multi-stage — runtime chỉ `npm ci --omit=dev -w`, copy prisma client đã generate từ builder;
+  web single-stage (chưa bật `output: 'standalone'`).
+- **CI:** `.github/workflows/ci.yml` theo HANDBOOK §16.3 — lint · typecheck · test:unit · build · audit ·
+  test:int (`services:` postgres+redis, `db:deploy`, build api, chạy server từ `dist`, poll TCP :4000,
+  `test:int`, dừng server/dump log khi fail). `concurrency` chống chạy trùng.
+
+### Đã verify (Phase 5–6)
+- `npm run typecheck` toàn workspace xanh · `npm run lint` (eslint + prettier) xanh · `npm run build`
+  xanh (api → `dist/main.js`, worker, web 22 route) · `npm run test` = 90 pass / 8 integration fail
+  pre-existing (ECONNREFUSED :4000 — cần server+DB+Redis) / 3 skip (không đổi so với baseline).
+
+### Chưa làm / cần quyết định
+- **Dockerfiles + ci.yml chưa kiểm chứng thật** (máy dev không có Docker). Cách duy nhất xác minh:
+  merge rồi kéo CI lần đầu, hoặc build trên máy có Docker — đừng khẳng định "chạy được" trước đó.
+- **Worker processors** (`apps/worker/src/processors/*.ts`) vẫn import `prisma` từ `@learn/db` — chưa
+  chuyển sang repository (scope Phase 5 chỉ áp `apps/api`). Quyết định khi nào migrate worker.
+- **stash@{0}** chứa WIP session khác (Gemini LLM + REQUIREMENTS/SRS + `.claude` + seed-demo-heavy) —
+  **KHÔNG commit nội dung stash**, đã pop về working tree trước khi kết thúc Phase 7.
