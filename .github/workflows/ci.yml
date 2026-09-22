@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  DATABASE_URL: postgresql://learn:learn@localhost:5432/learn?schema=public
+  REDIS_URL: redis://localhost:6379
+  # NODE_ENV=test cho các job chạy server — chặn insecureProductionVars (chỉ áp cho production).
+  NODE_ENV: test
+  JWT_ACCESS_SECRET: ci-only-secret-0123456789abcdefghijklmnopqrstuv
+
+jobs:
+  lint:
+    name: Lint (eslint + prettier)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  test:unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  build:
+    name: Build (api + worker + web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Chặn: lỗ hổng CRITICAL ở chuỗi production. Đặt ngưỡng đang có (prod hiện 0 critical).
+      - name: Audit production (critical)
+        run: npm audit --omit=dev --audit-level=critical
+      # Không chặn: báo cáo đầy đủ theo HANDBOOK §16.3. Hiện có nợ đã biết (7 high ở prod:
+      # multer qua @nestjs/platform-express, postcss qua next; hết ở dev chain) — xem STATE.md.
+      - name: Audit full (non-blocking)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  test:int:
+    name: Integration tests (server thật + Postgres/Redis)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: learn
+          POSTGRES_PASSWORD: learn
+          POSTGRES_DB: learn
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U learn"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Migration
+        run: npm run db:deploy -w packages/db
+      - name: Build API (server thật cho test)
+        run: npm run build -w apps/api
+      - name: Start API server
+        run: |
+          node apps/api/dist/main.js > api-server.log 2>&1 &
+          echo $! > api-server.pid
+      - name: Wait (poll TCP :4000)
+        run: |
+          node -e "const net=require('net');const tryOnce=()=>new Promise(r=>{const s=net.connect(4000,'127.0.0.1');s.on('connect',()=>{s.end();r(true)});s.on('error',()=>r(false))});(async()=>{for(let i=0;i<60;i++){if(await tryOnce()){process.exit(0)}await new Promise(r=>setTimeout(r,1000))}process.exit(1)})()"
+      - name: Run integration tests
+        run: npm run test:int
+      - name: Stop API server
+        if: always()
+        run: kill $(cat api-server.pid) || true
+      - name: Show API log on failure
+        if: failure()
+        run: cat api-server.log || true

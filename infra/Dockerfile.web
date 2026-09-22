@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1
+
+###############################################################################
+# LEARN Web — Next.js (SSR). 
+# Build từ repo root:  docker build -f infra/Dockerfile.web -t learn-web .
+# Đơn giản một stage: chấp nhận image lớn hơn, bù lại chắc chắn (Next build cần
+# nguyên cây devDeps + nguồn workspace @learn/ui để transpilePackages).
+# Tối ưu sau: bật `output: 'standalone'` rồi hạ về multi-stage (xem docs/progress).
+###############################################################################
+
+ARG NODE_VERSION=22
+
+FROM node:${NODE_VERSION}-alpine
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/ai/package.json packages/ai/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/ui/package.json packages/ui/package.json
+COPY packages/db/prisma packages/db/prisma
+
+RUN npm ci
+
+COPY . .
+
+RUN npm run build -w apps/web
+
+USER node
+EXPOSE 3000
+CMD ["npm", "run", "start", "-w", "apps/web"]

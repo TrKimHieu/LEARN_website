@@ -2,9 +2,30 @@ import { fileURLToPath } from 'node:url';
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
+import boundary from './boundary-rules.mjs';
 
 /** Root của monorepo — config ở packages/config/eslint/, nên tính lại từ vị trí file. */
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
+
+/**
+ * Chặn import ngược / chéo tiến trình (kiến trúc feature-based, HANDBOOK §19).
+ * Chiều "package → app" và "app ↔ app khác" là vi phạm luôn luôn — không có ngoại lệ.
+ * ESLint 9.39+: `no-restricted-imports` nhận `[{ patterns: [{ group, message }] }]`.
+ */
+const NO_WORKSPACE_CROSS_IMPORT = (groups) => ({
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: groups.map((group) => ({
+          group: [group],
+          message:
+            'Phá vỡ ranh giới workspace: chỉ được import thẳng đứng theo cây phụ thuộc package (xem HANDBOOK §19 và ADR-005).',
+        })),
+      },
+    ],
+  },
+});
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -40,6 +61,7 @@ export default tseslint.config(
       'docs/exports/**',
       'scripts/**',
       '.github/**',
+      'infra/**',
     ],
   },
   // Chỉ áp cho JSX của web app. Bắt các lỗi a11y tĩnh (thiếu alt, label không
@@ -51,6 +73,7 @@ export default tseslint.config(
     rules: jsxA11y.flatConfigs.recommended.rules,
   },
   {
+    files: ['**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -59,5 +82,50 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
     },
+  },
+  {
+    plugins: { boundary },
+    rules: {
+      'boundary/no-cross-module-import': 'error',
+      'boundary/no-cross-feature-import': [
+        'error',
+        {
+          allow: {
+            // `shell` là chrome của app (AppShell, SideRail) nên được đọc provider của
+            // feature khác để gọi `useAuth`/`useSubscription` — không phải tái dùng UI nội bộ.
+            shell: ['auth', 'settings'],
+            // Landing `portfolio` (trang chủ marketing) tái dùng `LogoMark` của `shell`.
+            // Logo dùng chung nên sau này nên chuyển lên `components/shared/`.
+            portfolio: ['shell'],
+          },
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/**/*.{ts,tsx}'],
+    ...NO_WORKSPACE_CROSS_IMPORT(['@learn/api', '@learn/web', '@learn/worker', '**/apps/*']),
+  },
+  {
+    files: ['apps/api/src/**/*.ts'],
+    ...NO_WORKSPACE_CROSS_IMPORT([
+      '@learn/web',
+      '@learn/worker',
+      '**/apps/web/*',
+      '**/apps/worker/*',
+    ]),
+  },
+  {
+    files: ['apps/worker/src/**/*.ts'],
+    ...NO_WORKSPACE_CROSS_IMPORT(['@learn/web', '@learn/api', '**/apps/web/*', '**/apps/api/*']),
+  },
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    ...NO_WORKSPACE_CROSS_IMPORT([
+      '@learn/api',
+      '@learn/worker',
+      '**/apps/api/*',
+      '**/apps/worker/*',
+    ]),
   },
 );

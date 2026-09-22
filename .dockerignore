@@ -1,0 +1,15 @@
+# .dockerignore — context build = repo root (`docker build -f infra/Dockerfile.* .`)
+# Bắt buộc loại .env ra ngoài: không bao giờ để secret lọt vào image.
+.git
+.env
+.env.*
+**/node_modules
+**/dist
+**/build
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+test-results
+playwright-report
+docs/screenshots
