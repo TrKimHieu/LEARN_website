@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { BRAND } from '@learn/ui';
-import { Landing } from '@/components/portfolio/landing';
+import { Landing } from '@/features/portfolio/landing';
 
 /**
  * Trước đây file này chính là màn hình — `'use client'` cả cây, vì `LanguageProvider`
@@ -10,7 +10,7 @@ import { Landing } from '@/components/portfolio/landing';
  *
  * Ranh giới client giờ tụt xuống một tầng: file này là server component, chỉ export
  * `metadata` rồi render `<Landing />`. Thân trang cũ chuyển nguyên văn sang
- * `components/portfolio/landing.tsx` — không section nào phải thêm `'use client'`,
+ * `features/portfolio/landing.tsx` — không section nào phải thêm `'use client'`,
  * không import nào đổi.
  *
  * Không đưa `LanguageProvider` lên root layout: nó chỉ `/` dùng, đẩy lên gốc sẽ ép

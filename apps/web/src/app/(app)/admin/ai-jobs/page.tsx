@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useAdminAiJobs } from '@/lib/admin-api';
-import { StatusChip, jobTypeLabel, statusLabel } from '@/components/admin/status-chip';
+import { useAdminAiJobs } from '@/features/admin/admin-api';
+import { StatusChip, jobTypeLabel, statusLabel } from '@/features/admin/status-chip';
 import {
   Icon,
   PageHeader,

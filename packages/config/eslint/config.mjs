@@ -36,7 +36,7 @@ export default tseslint.config(
       // Mã vendor Blob Studio — nguồn gốc và bản chép vào app.
       // Xem docs/adr/006-mascot-dong-blob-studio.md
       'CircleMascot/**',
-      'apps/web/src/components/mascot/CircleAvatar.tsx',
+      'apps/web/src/components/shared/mascot/CircleAvatar.tsx',
       'docs/exports/**',
       'scripts/**',
       '.github/**',

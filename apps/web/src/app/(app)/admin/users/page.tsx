@@ -1,6 +1,6 @@
 'use client';
 
-import { useAdminUsers } from '@/lib/admin-api';
+import { useAdminUsers } from '@/features/admin/admin-api';
 import {
   Badge,
   Input,

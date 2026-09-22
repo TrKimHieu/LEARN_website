@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useProgressCourses, useProgressHistory } from '@/lib/learning-api';
+import { useProgressCourses, useProgressHistory } from '@/features/learning/learning-api';
 import { Badge, Button, Card, CardTitle, PageHeader, ProgressBar, Skeleton } from '@/components/ui';
 import { EmptyState, ErrorState } from '@/components/ui/states';
 import { Reveal } from '@/lib/motion';

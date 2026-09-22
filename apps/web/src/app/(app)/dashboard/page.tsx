@@ -2,7 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useProgressCourses, useProgressHistory, useProgressOverview } from '@/lib/learning-api';
+import {
+  useProgressCourses,
+  useProgressHistory,
+  useProgressOverview,
+} from '@/features/learning/learning-api';
 import {
   Badge,
   ButtonLink,

@@ -9,8 +9,8 @@ import {
   usePatchLesson,
   useDeleteLesson,
   useStartLesson,
-} from '@/lib/learning-api';
-import { renderMarkdown } from '@/components/markdown';
+} from '@/features/learning/learning-api';
+import { renderMarkdown } from '@/components/shared/markdown';
 import { Badge, Button, ButtonLink, Card, Field, Icon, Input, Textarea, cn } from '@/components/ui';
 import { ErrorState, InlineError, LoadingState } from '@/components/ui/states';
 import type { BadgeTone } from '@/components/ui';

@@ -1,12 +1,12 @@
 import Link from 'next/link';
-import { LogoMark } from '@/components/logo-mark';
+import { LogoMark } from '@/features/shell/logo-mark';
 
 /**
  * 404 có thương hiệu — trước đây route này không tồn tại nên Next dùng trang mặc
  * định trần trụi của framework.
  *
  * Server component thuần, không dùng `EmptyState`/`Mascot`: mascot động nạp qua
- * `next/dynamic({ ssr: false })` (xem `components/mascot.tsx`), phù hợp cho nội
+ * `next/dynamic({ ssr: false })` (xem `components/shared/mascot.tsx`), phù hợp cho nội
  * dung sau khi đã biết người dùng đăng nhập hay chưa, nhưng 404 là trang có thể
  * là điểm chạm ĐẦU TIÊN của một phiên (gõ nhầm URL, link cũ từ nơi khác) — không
  * đáng để trang này phải đợi hydrate xong mới vẽ được logo.

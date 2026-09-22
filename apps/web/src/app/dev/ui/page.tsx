@@ -34,8 +34,8 @@ import {
   type IconName,
 } from '@/components/ui';
 import { Reveal, RevealOnScroll, StaggerItem, StaggerList, StaggerOnScroll } from '@/lib/motion';
-import { LessonPath } from '@/components/lesson-path';
-import { LogoMark } from '@/components/logo-mark';
+import { LessonPath } from '@/features/learning/lesson-path';
+import { LogoMark } from '@/features/shell/logo-mark';
 import type { LessonSummary } from '@learn/contracts';
 
 /**

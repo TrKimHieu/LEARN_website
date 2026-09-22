@@ -1,8 +1,8 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useAdminAiJobDetail, useAiJobAuditLog, useRetryAiJob } from '@/lib/admin-api';
-import { StatusChip, jobTypeLabel } from '@/components/admin/status-chip';
+import { useAdminAiJobDetail, useAiJobAuditLog, useRetryAiJob } from '@/features/admin/admin-api';
+import { StatusChip, jobTypeLabel } from '@/features/admin/status-chip';
 import {
   Button,
   Card,

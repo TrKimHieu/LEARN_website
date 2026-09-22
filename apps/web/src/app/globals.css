@@ -76,7 +76,7 @@
   }
 }
 
-/* Nội dung Lesson render từ Markdown đã sanitize — apps/web/src/components/markdown.tsx */
+/* Nội dung Lesson render từ Markdown đã sanitize — apps/web/src/components/shared/markdown.tsx */
 .lesson-content h1,
 .lesson-content h2,
 .lesson-content h3,

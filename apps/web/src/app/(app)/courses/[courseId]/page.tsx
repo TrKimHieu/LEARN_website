@@ -2,13 +2,13 @@
 
 import { use, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useCourse, useCourseDocuments } from '@/lib/courses-api';
-import { useUploadDocument } from '@/lib/documents-api';
-import { useLessons, useReorderLessons } from '@/lib/learning-api';
-import { useGenerateLessons } from '@/lib/ai-api';
-import { AiJobProgress } from '@/components/ai-job-progress';
-import { QuotaNotice } from '@/components/quota-notice';
-import { LessonPath } from '@/components/lesson-path';
+import { useCourse, useCourseDocuments } from '@/features/courses/courses-api';
+import { useUploadDocument } from '@/features/documents/documents-api';
+import { useLessons, useReorderLessons } from '@/features/learning/learning-api';
+import { useGenerateLessons } from '@/features/ai/ai-api';
+import { AiJobProgress } from '@/features/ai/ai-job-progress';
+import { QuotaNotice } from '@/components/shared/quota-notice';
+import { LessonPath } from '@/features/learning/lesson-path';
 import { Badge, Button, ButtonLink, Card, CardTitle, Icon, ProgressBar } from '@/components/ui';
 import { EmptyState, ErrorState, InlineError, LoadingState } from '@/components/ui/states';
 import { errorText, isQuotaExceededError } from '@/lib/api-client';

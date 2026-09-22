@@ -1,7 +1,7 @@
 'use client';
 
-import { useAdminCourses } from '@/lib/admin-api';
-import { StatusChip } from '@/components/admin/status-chip';
+import { useAdminCourses } from '@/features/admin/admin-api';
+import { StatusChip } from '@/features/admin/status-chip';
 import {
   Input,
   PageHeader,

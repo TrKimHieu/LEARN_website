@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BRAND } from '@learn/ui';
-import { LogoMark } from '@/components/logo-mark';
+import { LogoMark } from '@/features/shell/logo-mark';
 
 /**
  * Khung màn đăng nhập/đăng ký: nền navy, thẻ sáng ở giữa.

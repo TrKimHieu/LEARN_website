@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import { BRAND } from '@learn/ui';
 import { env } from '@/lib/env';
-import { AuthProvider } from '@/lib/auth-context';
+import { AuthProvider } from '@/features/auth/auth-context';
 import { QueryProvider } from '@/lib/query-provider';
 import { MotionProvider } from '@/lib/motion';
 import './globals.css';

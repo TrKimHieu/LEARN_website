@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { RegisterView } from './register-view';
+import { RegisterView } from '@/features/auth/register-view';
 
 export const metadata: Metadata = {
   title: 'Đăng ký',

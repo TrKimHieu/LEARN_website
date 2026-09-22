@@ -1,7 +1,7 @@
 'use client';
 
-import { useAdminSubscriptions } from '@/lib/admin-api';
-import { StatusChip } from '@/components/admin/status-chip';
+import { useAdminSubscriptions } from '@/features/admin/admin-api';
+import { StatusChip } from '@/features/admin/status-chip';
 import {
   PageHeader,
   Table,

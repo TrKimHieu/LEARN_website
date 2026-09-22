@@ -1,6 +1,6 @@
 'use client';
 
-import { useAdminMetrics } from '@/lib/admin-api';
+import { useAdminMetrics } from '@/features/admin/admin-api';
 import {
   Card,
   Icon,

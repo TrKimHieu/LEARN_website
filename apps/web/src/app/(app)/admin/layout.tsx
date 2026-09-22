@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/features/auth/auth-context';
 import { cn } from '@/components/ui';
 
 const ADMIN_NAV = [

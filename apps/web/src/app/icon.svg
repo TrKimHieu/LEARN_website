@@ -1,6 +1,6 @@
 <!--
   Favicon = logo = nhân vật Circle. Giữ đồng bộ thủ công với
-  apps/web/src/components/logo-mark.tsx (tone="dark"); file này là SVG tĩnh nên
+  apps/web/src/features/shell/logo-mark.tsx (tone="dark"); file này là SVG tĩnh nên
   không dùng lại được component React.
 
   Dùng tông sáng (cầu sky, mặt navy) vì thanh tab của trình duyệt có thể sáng

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCourses } from '@/lib/courses-api';
+import { useCourses } from '@/features/courses/courses-api';
 import {
   Badge,
   ButtonLink,

@@ -3,8 +3,8 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/contracts';
-import { useExercise, useSubmitExercise } from '@/lib/learning-api';
-import { Mascot } from '@/components/mascot';
+import { useExercise, useSubmitExercise } from '@/features/learning/learning-api';
+import { Mascot } from '@/components/shared/mascot';
 import { Badge, Button, Card, Icon, ProgressBar, cn } from '@/components/ui';
 import { EmptyState, ErrorState, InlineError, LoadingState } from '@/components/ui/states';
 import { ApiClientError, errorDetail, errorText } from '@/lib/api-client';

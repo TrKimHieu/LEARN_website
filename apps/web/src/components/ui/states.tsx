@@ -1,4 +1,4 @@
-import { Mascot, type MascotState } from '../mascot';
+import { Mascot, type MascotState } from '@/components/shared/mascot';
 import { Button } from './button';
 import { Card } from './card';
 import { Icon } from './icon';

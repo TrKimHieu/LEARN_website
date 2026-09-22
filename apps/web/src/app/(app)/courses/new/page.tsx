@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createCourseSchema, type CreateCourseInput } from '@learn/contracts';
-import { useCreateCourse } from '@/lib/courses-api';
-import { QuotaNotice } from '@/components/quota-notice';
+import { useCreateCourse } from '@/features/courses/courses-api';
+import { QuotaNotice } from '@/components/shared/quota-notice';
 import {
   Button,
   Card,

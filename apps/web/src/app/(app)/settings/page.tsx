@@ -6,7 +6,7 @@ import {
   useSubscription,
   useCheckout,
   useCancelSubscription,
-} from '@/lib/subscription-api';
+} from '@/features/settings/subscription-api';
 import {
   Badge,
   Button,
