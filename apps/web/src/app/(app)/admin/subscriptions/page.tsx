@@ -14,6 +14,7 @@ import {
   Thead,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
+import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 
 export default function AdminSubscriptionsPage() {
@@ -43,32 +44,34 @@ export default function AdminSubscriptionsPage() {
       )}
 
       {subscriptions.data && subscriptions.data.subscriptions.length > 0 && (
-        <TableCard>
-          <Table>
-            <Thead>
-              <Th>Email</Th>
-              <Th>Gói</Th>
-              <Th>Trạng thái</Th>
-              <Th>Kết thúc kỳ</Th>
-            </Thead>
-            <Tbody>
-              {subscriptions.data.subscriptions.map((s) => (
-                <tr key={s.userId}>
-                  <Td className="font-medium text-ink-900">{s.email}</Td>
-                  <Td className="font-medium">{s.planCode}</Td>
-                  <Td>
-                    <StatusChip status={s.status} />
-                  </Td>
-                  <Td className="whitespace-nowrap text-ink-500">
-                    {s.currentPeriodEnd
-                      ? new Date(s.currentPeriodEnd).toLocaleDateString('vi-VN')
-                      : '—'}
-                  </Td>
-                </tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableCard>
+        <Reveal>
+          <TableCard>
+            <Table>
+              <Thead>
+                <Th>Email</Th>
+                <Th>Gói</Th>
+                <Th>Trạng thái</Th>
+                <Th>Kết thúc kỳ</Th>
+              </Thead>
+              <Tbody>
+                {subscriptions.data.subscriptions.map((s) => (
+                  <tr key={s.userId}>
+                    <Td className="font-medium text-ink-900">{s.email}</Td>
+                    <Td className="font-medium">{s.planCode}</Td>
+                    <Td>
+                      <StatusChip status={s.status} />
+                    </Td>
+                    <Td className="whitespace-nowrap text-ink-500">
+                      {s.currentPeriodEnd
+                        ? new Date(s.currentPeriodEnd).toLocaleDateString('vi-VN')
+                        : '—'}
+                    </Td>
+                  </tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableCard>
+        </Reveal>
       )}
     </section>
   );

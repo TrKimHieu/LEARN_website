@@ -15,6 +15,7 @@ import {
   Thead,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
+import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { useDebouncedQueryParam } from '@/lib/url-state';
 
@@ -71,41 +72,43 @@ export default function AdminUsersPage() {
         ))}
 
       {users.data && users.data.users.length > 0 && (
-        <TableCard>
-          <Table>
-            <Thead>
-              <Th>Email</Th>
-              <Th>Tên</Th>
-              <Th>Vai trò</Th>
-              <Th>Gói</Th>
-              <Th align="right">Số khóa học</Th>
-              <Th>Ngày tạo</Th>
-            </Thead>
-            <Tbody>
-              {users.data.users.map((u) => (
-                <tr key={u.id}>
-                  <Td className="font-medium text-ink-900">{u.email}</Td>
-                  <Td>{u.displayName}</Td>
-                  <Td>
-                    <Badge
-                      tone={u.role === 'ADMIN' ? 'info' : 'neutral'}
-                      icon={u.role === 'ADMIN' ? 'shield' : undefined}
-                    >
-                      {u.role}
-                    </Badge>
-                  </Td>
-                  <Td className="font-medium">{u.subscriptionCode ?? '—'}</Td>
-                  <Td align="right" className="tabular-nums">
-                    {u.courseCount}
-                  </Td>
-                  <Td className="whitespace-nowrap text-ink-500">
-                    {new Date(u.createdAt).toLocaleDateString('vi-VN')}
-                  </Td>
-                </tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableCard>
+        <Reveal>
+          <TableCard>
+            <Table>
+              <Thead>
+                <Th>Email</Th>
+                <Th>Tên</Th>
+                <Th>Vai trò</Th>
+                <Th>Gói</Th>
+                <Th align="right">Số khóa học</Th>
+                <Th>Ngày tạo</Th>
+              </Thead>
+              <Tbody>
+                {users.data.users.map((u) => (
+                  <tr key={u.id}>
+                    <Td className="font-medium text-ink-900">{u.email}</Td>
+                    <Td>{u.displayName}</Td>
+                    <Td>
+                      <Badge
+                        tone={u.role === 'ADMIN' ? 'info' : 'neutral'}
+                        icon={u.role === 'ADMIN' ? 'shield' : undefined}
+                      >
+                        {u.role}
+                      </Badge>
+                    </Td>
+                    <Td className="font-medium">{u.subscriptionCode ?? '—'}</Td>
+                    <Td align="right" className="tabular-nums">
+                      {u.courseCount}
+                    </Td>
+                    <Td className="whitespace-nowrap text-ink-500">
+                      {new Date(u.createdAt).toLocaleDateString('vi-VN')}
+                    </Td>
+                  </tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableCard>
+        </Reveal>
       )}
     </section>
   );

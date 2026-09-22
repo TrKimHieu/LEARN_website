@@ -196,7 +196,7 @@ export default function DashboardPage() {
         )}
         {history.data && history.data.items.length > 0 && (
           <Card padded={false}>
-            <ul className="divide-y-2 divide-surface-200">
+            <ul className="divide-y divide-surface-200">
               {history.data.items.map((item) => {
                 const passed = item.maxScore > 0 && item.score / item.maxScore >= 0.7;
                 return (

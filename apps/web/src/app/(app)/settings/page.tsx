@@ -19,6 +19,7 @@ import {
   cn,
 } from '@/components/ui';
 import { ErrorState, InlineError, PartialNotice } from '@/components/ui/states';
+import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { humanizeCode } from '@/lib/humanize';
 
@@ -60,6 +61,10 @@ export default function SettingsPage() {
   const cancelSubscription = useCancelSubscription();
   const [actionError, setActionError] = useState<string | null>(null);
   const [upgradingCode, setUpgradingCode] = useState<string | null>(null);
+  // Huỷ gói giờ xác nhận theo đúng mẫu 2 nhịp của "Xoá bài học" — trước đây bắn thẳng
+  // không hỏi, trong khi một hành động phá huỷ khác trong cùng app thì có. Hai hành
+  // động cùng mức hậu quả nên cùng một mẫu, không phải chuyện gu cá nhân của từng màn.
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   async function handleUpgrade(planCode: string) {
     setActionError(null);
@@ -77,6 +82,7 @@ export default function SettingsPage() {
     setActionError(null);
     try {
       await cancelSubscription.mutateAsync();
+      setConfirmingCancel(false);
     } catch (err) {
       setActionError(errorText(err, 'Không huỷ được gói, vui lòng thử lại.'));
     }
@@ -113,7 +119,7 @@ export default function SettingsPage() {
           onRetry={() => void subscription.refetch()}
         />
       ) : (
-        <>
+        <Reveal>
           {sub.billingMode === 'demo' && (
             <PartialNotice>
               <b>Chế độ demo</b> — nâng cấp gói ở đây không phát sinh giao dịch thật, chỉ để minh
@@ -184,26 +190,43 @@ export default function SettingsPage() {
             </div>
 
             {sub.planCode !== 'FREE' && !sub.cancelAtPeriodEnd && (
-              <div className="mt-5 border-t-2 border-surface-200 pt-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void handleCancel()}
-                  disabled={cancelSubscription.isPending}
-                >
-                  {cancelSubscription.isPending ? 'Đang huỷ…' : 'Huỷ gói (hiệu lực cuối kỳ)'}
-                </Button>
+              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-surface-200 pt-4">
+                {!confirmingCancel ? (
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmingCancel(true)}>
+                    Huỷ gói (hiệu lực cuối kỳ)
+                  </Button>
+                ) : (
+                  <>
+                    <span className="text-sm font-medium text-ink-700">Huỷ gói này?</span>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => void handleCancel()}
+                      disabled={cancelSubscription.isPending}
+                    >
+                      {cancelSubscription.isPending ? 'Đang huỷ…' : 'Xác nhận huỷ'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmingCancel(false)}
+                      disabled={cancelSubscription.isPending}
+                    >
+                      Không huỷ
+                    </Button>
+                  </>
+                )}
               </div>
             )}
             {sub.cancelAtPeriodEnd && (
-              <p className="mt-5 border-t-2 border-surface-200 pt-4 text-sm text-ink-500">
+              <p className="mt-5 border-t border-surface-200 pt-4 text-sm text-ink-500">
                 Gói sẽ huỷ ở cuối kỳ hiện tại.
               </p>
             )}
           </Card>
 
           {actionError && <InlineError className="mt-4">{actionError}</InlineError>}
-        </>
+        </Reveal>
       )}
 
       {/* ------------------------------------------------------ các gói */}
@@ -216,80 +239,82 @@ export default function SettingsPage() {
           onRetry={() => void plans.refetch()}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {plans.data.map((plan) => {
-            // `sub` có thể là `undefined` nếu truy vấn subscription lỗi trong khi plans vẫn
-            // tải được — khi đó không tô "gói hiện tại" cho gói nào, đúng với thực tế là ta
-            // không biết.
-            const current = sub ? plan.code === sub.planCode : false;
-            return (
-              <Card
-                key={plan.code}
-                className={cn('flex flex-col', current && 'border-sky-500 bg-sky-50/40')}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle>{plan.name}</CardTitle>
-                  {plan.isFutureExtension && <Badge tone="neutral">Mở rộng tương lai</Badge>}
-                  {current && !plan.isFutureExtension && (
-                    <Badge tone="info" icon="check">
-                      Đang dùng
-                    </Badge>
-                  )}
-                </div>
+        <Reveal delay={0.08}>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {plans.data.map((plan) => {
+              // `sub` có thể là `undefined` nếu truy vấn subscription lỗi trong khi plans vẫn
+              // tải được — khi đó không tô "gói hiện tại" cho gói nào, đúng với thực tế là ta
+              // không biết.
+              const current = sub ? plan.code === sub.planCode : false;
+              return (
+                <Card
+                  key={plan.code}
+                  className={cn('flex flex-col', current && 'border-sky-500 bg-sky-50/40')}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle>{plan.name}</CardTitle>
+                    {plan.isFutureExtension && <Badge tone="neutral">Mở rộng tương lai</Badge>}
+                    {current && !plan.isFutureExtension && (
+                      <Badge tone="info" icon="check">
+                        Đang dùng
+                      </Badge>
+                    )}
+                  </div>
 
-                {/* Gói "mở rộng tương lai" có priceCents = 0 làm chỗ giữ chỗ, không
+                  {/* Gói "mở rộng tương lai" có priceCents = 0 làm chỗ giữ chỗ, không
                   phải vì nó miễn phí — hiện "Miễn phí" ở đây là nói sai. */}
-                <p className="mt-2 text-3xl font-bold text-ink-900">
-                  {plan.isFutureExtension ? (
-                    <span className="text-2xl text-ink-500">Chưa công bố</span>
-                  ) : (
-                    <>
-                      {plan.priceCents === 0
-                        ? 'Miễn phí'
-                        : `$${(plan.priceCents / 100).toFixed(0)}`}
-                      {/* ink-500 ở đây chỉ đạt 4.49:1 trên nền thẻ gói nổi bật —
+                  <p className="mt-2 text-3xl font-bold text-ink-900">
+                    {plan.isFutureExtension ? (
+                      <span className="text-2xl text-ink-500">Chưa công bố</span>
+                    ) : (
+                      <>
+                        {plan.priceCents === 0
+                          ? 'Miễn phí'
+                          : `$${(plan.priceCents / 100).toFixed(0)}`}
+                        {/* ink-500 ở đây chỉ đạt 4.49:1 trên nền thẻ gói nổi bật —
                         dưới ngưỡng AA 4.5:1 (đo bằng axe). ink-700 = 9.77:1. */}
-                      {plan.priceCents > 0 && (
-                        <span className="text-sm font-bold text-ink-700">
-                          /{INTERVAL_LABEL[plan.interval] ?? humanizeCode(plan.interval)}
+                        {plan.priceCents > 0 && (
+                          <span className="text-sm font-bold text-ink-700">
+                            /{INTERVAL_LABEL[plan.interval] ?? humanizeCode(plan.interval)}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </p>
+
+                  <ul className="mt-4 space-y-1.5 text-sm text-ink-700">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2">
+                        <span className="mt-0.5 shrink-0 text-success-700">
+                          <Icon name="check" size={14} strokeWidth={3} />
                         </span>
-                      )}
-                    </>
-                  )}
-                </p>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
 
-                <ul className="mt-4 space-y-1.5 text-sm text-ink-700">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <span className="mt-0.5 shrink-0 text-success-700">
-                        <Icon name="check" size={14} strokeWidth={3} />
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-auto pt-5">
-                  {current ? (
-                    <p className="text-center text-sm font-bold text-ink-700">Gói hiện tại</p>
-                  ) : plan.isFutureExtension ? (
-                    <Button variant="secondary" fullWidth disabled>
-                      Chưa mở bán
-                    </Button>
-                  ) : (
-                    <Button
-                      fullWidth
-                      onClick={() => void handleUpgrade(plan.code)}
-                      disabled={upgradingCode !== null}
-                    >
-                      {upgradingCode === plan.code ? 'Đang xử lý…' : 'Chọn gói này'}
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                  <div className="mt-auto pt-5">
+                    {current ? (
+                      <p className="text-center text-sm font-bold text-ink-700">Gói hiện tại</p>
+                    ) : plan.isFutureExtension ? (
+                      <Button variant="secondary" fullWidth disabled>
+                        Chưa mở bán
+                      </Button>
+                    ) : (
+                      <Button
+                        fullWidth
+                        onClick={() => void handleUpgrade(plan.code)}
+                        disabled={upgradingCode !== null}
+                      >
+                        {upgradingCode === plan.code ? 'Đang xử lý…' : 'Chọn gói này'}
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </Reveal>
       )}
     </section>
   );

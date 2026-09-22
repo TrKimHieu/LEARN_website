@@ -18,6 +18,7 @@ import {
   cn,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
+import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { useQueryParam } from '@/lib/url-state';
 
@@ -104,54 +105,56 @@ export default function AdminAiJobsPage() {
         ))}
 
       {jobs.data && jobs.data.jobs.length > 0 && (
-        <TableCard>
-          <Table>
-            <Thead>
-              <Th>Khóa học</Th>
-              <Th>Người yêu cầu</Th>
-              <Th>Loại</Th>
-              <Th>Trạng thái</Th>
-              <Th align="right">Tiến độ</Th>
-              <Th>Lúc xếp hàng</Th>
-              <Th align="right" />
-            </Thead>
-            <Tbody>
-              {jobs.data.jobs.map((j) => (
-                <tr key={j.id}>
-                  <Td className="font-medium text-ink-900">{j.courseTitle}</Td>
-                  <Td>{j.requesterEmail}</Td>
-                  <Td>{jobTypeLabel(j.type)}</Td>
-                  <Td>
-                    <StatusChip status={j.status} />
-                    {j.status === 'FAILED' && j.error && (
-                      <p
-                        className="mt-1 max-w-xs truncate text-xs font-medium text-danger-700"
-                        title={j.error.message}
+        <Reveal>
+          <TableCard>
+            <Table>
+              <Thead>
+                <Th>Khóa học</Th>
+                <Th>Người yêu cầu</Th>
+                <Th>Loại</Th>
+                <Th>Trạng thái</Th>
+                <Th align="right">Tiến độ</Th>
+                <Th>Lúc xếp hàng</Th>
+                <Th align="right" />
+              </Thead>
+              <Tbody>
+                {jobs.data.jobs.map((j) => (
+                  <tr key={j.id}>
+                    <Td className="font-medium text-ink-900">{j.courseTitle}</Td>
+                    <Td>{j.requesterEmail}</Td>
+                    <Td>{jobTypeLabel(j.type)}</Td>
+                    <Td>
+                      <StatusChip status={j.status} />
+                      {j.status === 'FAILED' && j.error && (
+                        <p
+                          className="mt-1 max-w-xs truncate text-xs font-medium text-danger-700"
+                          title={j.error.message}
+                        >
+                          {j.error.message}
+                        </p>
+                      )}
+                    </Td>
+                    <Td align="right" className="tabular-nums">
+                      {j.progress}%
+                    </Td>
+                    <Td className="whitespace-nowrap text-ink-500">
+                      {new Date(j.queuedAt).toLocaleString('vi-VN')}
+                    </Td>
+                    <Td align="right">
+                      <Link
+                        href={`/admin/ai-jobs/${j.id}`}
+                        className="inline-flex items-center gap-0.5 rounded-md text-sm font-bold text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
                       >
-                        {j.error.message}
-                      </p>
-                    )}
-                  </Td>
-                  <Td align="right" className="tabular-nums">
-                    {j.progress}%
-                  </Td>
-                  <Td className="whitespace-nowrap text-ink-500">
-                    {new Date(j.queuedAt).toLocaleString('vi-VN')}
-                  </Td>
-                  <Td align="right">
-                    <Link
-                      href={`/admin/ai-jobs/${j.id}`}
-                      className="inline-flex items-center gap-0.5 rounded-md text-sm font-bold text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
-                    >
-                      Chi tiết
-                      <Icon name="chevron-right" size={15} strokeWidth={3} />
-                    </Link>
-                  </Td>
-                </tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableCard>
+                        Chi tiết
+                        <Icon name="chevron-right" size={15} strokeWidth={3} />
+                      </Link>
+                    </Td>
+                  </tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableCard>
+        </Reveal>
       )}
     </section>
   );

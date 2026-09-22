@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useProgressCourses, useProgressHistory } from '@/lib/learning-api';
 import { Badge, Button, Card, CardTitle, PageHeader, ProgressBar, Skeleton } from '@/components/ui';
 import { EmptyState, ErrorState } from '@/components/ui/states';
+import { Reveal } from '@/lib/motion';
 import { errorText } from '@/lib/api-client';
 import { absoluteTime, relativeTime } from '@/lib/format';
 
@@ -44,39 +45,41 @@ export default function ProgressPage() {
       )}
 
       {courses.data && courses.data.courses.length > 0 && (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {courses.data.courses.map((c) => (
-            <li key={c.courseId}>
-              <Link
-                href={`/courses/${c.courseId}`}
-                className="block h-full rounded-card focus-ring"
-              >
-                <Card className="h-full transition-shadow hover:shadow-raised">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="line-clamp-2">{c.courseTitle}</CardTitle>
-                    <Badge
-                      tone={c.percent === 100 ? 'success' : c.percent > 0 ? 'info' : 'neutral'}
-                      icon={c.percent === 100 ? 'check' : undefined}
-                      className="shrink-0 tabular-nums"
-                    >
-                      {c.percent}%
-                    </Badge>
-                  </div>
-                  <ProgressBar
-                    className="mt-3"
-                    tone={c.percent === 100 ? 'success' : 'sky'}
-                    value={c.completed}
-                    max={c.total}
-                    label={`${c.courseTitle}: ${c.completed} trên ${c.total} bài`}
-                  />
-                  <p className="mt-2 text-xs text-ink-500">
-                    {c.completed}/{c.total} bài đã hoàn thành
-                  </p>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <Reveal>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {courses.data.courses.map((c) => (
+              <li key={c.courseId}>
+                <Link
+                  href={`/courses/${c.courseId}`}
+                  className="block h-full rounded-card focus-ring"
+                >
+                  <Card className="h-full transition-shadow hover:shadow-raised">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="line-clamp-2">{c.courseTitle}</CardTitle>
+                      <Badge
+                        tone={c.percent === 100 ? 'success' : c.percent > 0 ? 'info' : 'neutral'}
+                        icon={c.percent === 100 ? 'check' : undefined}
+                        className="shrink-0 tabular-nums"
+                      >
+                        {c.percent}%
+                      </Badge>
+                    </div>
+                    <ProgressBar
+                      className="mt-3"
+                      tone={c.percent === 100 ? 'success' : 'sky'}
+                      value={c.completed}
+                      max={c.total}
+                      label={`${c.courseTitle}: ${c.completed} trên ${c.total} bài`}
+                    />
+                    <p className="mt-2 text-xs text-ink-500">
+                      {c.completed}/{c.total} bài đã hoàn thành
+                    </p>
+                  </Card>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Reveal>
       )}
 
       {/* ------------------------------------------ lịch sử làm bài */}
@@ -97,9 +100,9 @@ export default function ProgressPage() {
       )}
 
       {history.data && history.data.items.length > 0 && (
-        <>
+        <Reveal>
           <Card padded={false}>
-            <ul className="divide-y-2 divide-surface-200">
+            <ul className="divide-y divide-surface-200">
               {history.data.items.map((item) => {
                 const passed = item.maxScore > 0 && item.score / item.maxScore >= 0.7;
                 return (
@@ -130,7 +133,7 @@ export default function ProgressPage() {
               </Button>
             </div>
           )}
-        </>
+        </Reveal>
       )}
     </section>
   );

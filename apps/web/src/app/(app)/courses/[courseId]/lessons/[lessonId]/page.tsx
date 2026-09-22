@@ -11,7 +11,7 @@ import {
   useStartLesson,
 } from '@/lib/learning-api';
 import { renderMarkdown } from '@/components/markdown';
-import { Badge, Button, ButtonLink, Card, Icon, cn } from '@/components/ui';
+import { Badge, Button, ButtonLink, Card, Field, Icon, Input, Textarea, cn } from '@/components/ui';
 import { ErrorState, InlineError, LoadingState } from '@/components/ui/states';
 import type { BadgeTone } from '@/components/ui';
 import { errorText } from '@/lib/api-client';
@@ -32,10 +32,6 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 
 /** Ràng buộc của `patchLessonSchema` trong `packages/contracts`. */
 const TITLE_MIN = 5;
-
-const FIELD =
-  'w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-ink-900 ' +
-  'outline-none focus:border-sky-500 focus-ring-tight';
 
 export default function LessonReadPage({
   params,
@@ -246,21 +242,21 @@ export default function LessonReadPage({
         {editing ? (
           <Card className="mt-5 space-y-4">
             <div>
-              <label htmlFor="edit-title" className="mb-1.5 block text-xs font-bold text-ink-700">
-                Tiêu đề
-              </label>
-              <input
-                id="edit-title"
-                type="text"
-                value={draftTitle}
-                onChange={(e) => setDraftTitle(e.target.value)}
-                aria-describedby="edit-title-rule"
-                aria-invalid={titleTooShort ? true : undefined}
-                className={FIELD}
-              />
+              <Field label="Tiêu đề" htmlFor="edit-title">
+                <Input
+                  id="edit-title"
+                  type="text"
+                  value={draftTitle}
+                  onChange={(e) => setDraftTitle(e.target.value)}
+                  aria-describedby="edit-title-rule"
+                  invalid={titleTooShort}
+                />
+              </Field>
               {/* Điều kiện đúng hiện ngay cạnh ô, không chờ tới lúc bấm Lưu mới
                   báo — và nút "Lưu thay đổi" trỏ vào chính dòng này bằng
-                  `aria-describedby`, để nút xám không còn câm. */}
+                  `aria-describedby`, để nút xám không còn câm. Nằm ngoài `Field`
+                  vì đó là quy tắc luôn hiển thị, khác mô hình hint-HOẶC-error
+                  của primitive (ẩn hint khi có error). */}
               <p
                 id="edit-title-rule"
                 className={cn(
@@ -271,30 +267,23 @@ export default function LessonReadPage({
                 Tiêu đề cần ít nhất {TITLE_MIN} ký tự.
               </p>
             </div>
-            <div>
-              <label htmlFor="edit-summary" className="mb-1.5 block text-xs font-bold text-ink-700">
-                Tóm tắt
-              </label>
-              <input
+            <Field label="Tóm tắt" htmlFor="edit-summary">
+              <Input
                 id="edit-summary"
                 type="text"
                 value={draftSummary}
                 onChange={(e) => setDraftSummary(e.target.value)}
-                className={FIELD}
               />
-            </div>
-            <div>
-              <label htmlFor="edit-content" className="mb-1.5 block text-xs font-bold text-ink-700">
-                Nội dung (Markdown)
-              </label>
-              <textarea
+            </Field>
+            <Field label="Nội dung (Markdown)" htmlFor="edit-content">
+              <Textarea
                 id="edit-content"
                 rows={16}
                 value={draftContent}
                 onChange={(e) => setDraftContent(e.target.value)}
-                className={`${FIELD} font-mono text-xs`}
+                className="font-mono text-xs"
               />
-            </div>
+            </Field>
             {Boolean(saveError) && (
               <InlineError>{errorText(saveError, 'Không lưu được, vui lòng thử lại.')}</InlineError>
             )}

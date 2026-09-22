@@ -15,6 +15,7 @@ import {
   Thead,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
+import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { useDebouncedQueryParam } from '@/lib/url-state';
 
@@ -71,38 +72,40 @@ export default function AdminCoursesPage() {
         ))}
 
       {courses.data && courses.data.courses.length > 0 && (
-        <TableCard>
-          <Table>
-            <Thead>
-              <Th>Tên khóa học</Th>
-              <Th>Chủ sở hữu</Th>
-              <Th>Trạng thái</Th>
-              <Th align="right">Tài liệu</Th>
-              <Th align="right">Bài học</Th>
-              <Th>Cập nhật</Th>
-            </Thead>
-            <Tbody>
-              {courses.data.courses.map((c) => (
-                <tr key={c.id}>
-                  <Td className="font-medium text-ink-900">{c.title}</Td>
-                  <Td>{c.ownerEmail}</Td>
-                  <Td>
-                    <StatusChip status={c.status} />
-                  </Td>
-                  <Td align="right" className="tabular-nums">
-                    {c.documentCount}
-                  </Td>
-                  <Td align="right" className="tabular-nums">
-                    {c.lessonCount}
-                  </Td>
-                  <Td className="whitespace-nowrap text-ink-500">
-                    {new Date(c.updatedAt).toLocaleDateString('vi-VN')}
-                  </Td>
-                </tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableCard>
+        <Reveal>
+          <TableCard>
+            <Table>
+              <Thead>
+                <Th>Tên khóa học</Th>
+                <Th>Chủ sở hữu</Th>
+                <Th>Trạng thái</Th>
+                <Th align="right">Tài liệu</Th>
+                <Th align="right">Bài học</Th>
+                <Th>Cập nhật</Th>
+              </Thead>
+              <Tbody>
+                {courses.data.courses.map((c) => (
+                  <tr key={c.id}>
+                    <Td className="font-medium text-ink-900">{c.title}</Td>
+                    <Td>{c.ownerEmail}</Td>
+                    <Td>
+                      <StatusChip status={c.status} />
+                    </Td>
+                    <Td align="right" className="tabular-nums">
+                      {c.documentCount}
+                    </Td>
+                    <Td align="right" className="tabular-nums">
+                      {c.lessonCount}
+                    </Td>
+                    <Td className="whitespace-nowrap text-ink-500">
+                      {new Date(c.updatedAt).toLocaleDateString('vi-VN')}
+                    </Td>
+                  </tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableCard>
+        </Reveal>
       )}
     </section>
   );

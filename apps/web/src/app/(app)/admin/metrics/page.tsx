@@ -11,6 +11,7 @@ import {
   type IconName,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
+import { Reveal, StaggerItem, StaggerList } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 
 export default function AdminMetricsPage() {
@@ -51,28 +52,40 @@ export default function AdminMetricsPage() {
     <section>
       <PageHeader title="Tổng quan hệ thống" />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Stat
-          icon="shield"
-          label="Người dùng"
-          value={String(totals.users)}
-          sub={`+${totals.usersToday} hôm nay`}
-        />
-        <Stat icon="layers" label="Khóa học" value={String(totals.courses)} />
-        <Stat icon="book" label="Tài liệu" value={String(totals.documents)} />
-        <Stat
-          icon="target"
-          label="AI Job"
-          value={String(totals.aiJobs)}
-          sub={`+${totals.aiJobsToday} hôm nay`}
-        />
-        <Stat icon="check" label="Lượt nộp bài" value={String(totals.submissions)} />
-        <Stat
-          icon="chart"
-          label="Chi phí LLM (tổng)"
-          value={`$${totals.totalCostUsd.toFixed(4)}`}
-        />
-      </div>
+      <StaggerList className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StaggerItem>
+          <Stat
+            icon="shield"
+            label="Người dùng"
+            value={String(totals.users)}
+            sub={`+${totals.usersToday} hôm nay`}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <Stat icon="layers" label="Khóa học" value={String(totals.courses)} />
+        </StaggerItem>
+        <StaggerItem>
+          <Stat icon="book" label="Tài liệu" value={String(totals.documents)} />
+        </StaggerItem>
+        <StaggerItem>
+          <Stat
+            icon="target"
+            label="AI Job"
+            value={String(totals.aiJobs)}
+            sub={`+${totals.aiJobsToday} hôm nay`}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <Stat icon="check" label="Lượt nộp bài" value={String(totals.submissions)} />
+        </StaggerItem>
+        <StaggerItem>
+          <Stat
+            icon="chart"
+            label="Chi phí LLM (tổng)"
+            value={`$${totals.totalCostUsd.toFixed(4)}`}
+          />
+        </StaggerItem>
+      </StaggerList>
 
       <h2 className="mb-3 mt-10 text-lg font-bold text-ink-900">
         Chi phí LLM theo ngày (7 ngày gần nhất)
@@ -85,26 +98,28 @@ export default function AdminMetricsPage() {
           description="Biểu đồ xuất hiện sau job AI đầu tiên. Ở chế độ LLM_MODE=mock thì chi phí luôn bằng 0."
         />
       ) : (
-        <Card>
-          <ul className="space-y-3">
-            {dailyCosts.map((d) => (
-              <li key={d.date} className="flex items-center gap-3 text-sm">
-                <span className="w-24 shrink-0 font-medium tabular-nums text-ink-500">
-                  {d.date}
-                </span>
-                <ProgressBar
-                  value={d.totalCostUsd}
-                  max={maxCost}
-                  label={`${d.date}: ${d.totalCostUsd.toFixed(4)} đô la, ${d.jobCount} job`}
-                />
-                <span className="w-32 shrink-0 text-right font-bold tabular-nums text-ink-700">
-                  ${d.totalCostUsd.toFixed(4)}
-                  <span className="font-medium text-ink-500"> · {d.jobCount} job</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <Reveal delay={0.08}>
+          <Card>
+            <ul className="space-y-3">
+              {dailyCosts.map((d) => (
+                <li key={d.date} className="flex items-center gap-3 text-sm">
+                  <span className="w-24 shrink-0 font-medium tabular-nums text-ink-500">
+                    {d.date}
+                  </span>
+                  <ProgressBar
+                    value={d.totalCostUsd}
+                    max={maxCost}
+                    label={`${d.date}: ${d.totalCostUsd.toFixed(4)} đô la, ${d.jobCount} job`}
+                  />
+                  <span className="w-32 shrink-0 text-right font-bold tabular-nums text-ink-700">
+                    ${d.totalCostUsd.toFixed(4)}
+                    <span className="font-medium text-ink-500"> · {d.jobCount} job</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </Reveal>
       )}
     </section>
   );
