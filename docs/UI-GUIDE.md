@@ -210,7 +210,7 @@ Primitive mở rộng thêm: `Card interactive`, `CardDescription`, `LoadingStat
 (`card`/`list`/`text` — skeleton phải khớp hình dạng nội dung sắp hiện, nếu không bố cục nhảy một
 nhịp khi dữ liệu về), `EmptyState secondaryAction` + `EmptyState size="compact"` (mục con của một
 màn đã có nội dung khác — xem §4c), `ErrorState detail` (chỗ đặt requestId để người dùng copy khi
-báo lỗi), `InlineError` (lỗi của một *thao tác* — mutation hỏng, không phải query; nội dung xung
+báo lỗi), `InlineError` (lỗi của một _thao tác_ — mutation hỏng, không phải query; nội dung xung
 quanh vẫn còn, khác `ErrorState` thay hẳn nội dung khi query hỏng), `Button variant="outline"`
 (cho nền tối — hero portfolio), `RevealOnScroll`/`StaggerOnScroll` (như `Reveal`/`StaggerList`
 nhưng đợi cuộn tới mới chạy — xem cảnh báo về `whileInView` ở §4).
@@ -254,8 +254,8 @@ bảng quản trị) là sai ngữ cảnh không kém.
 
 Luật: **`EmptyState size="compact"`** — cùng component, cùng mascot (không đổi sang icon quản
 trị), chỉ hạ xuống một hàng ngang 48px thay vì một khối centered 88px. Dùng khi `EmptyState` nằm
-*bên trong* một trang đã có nội dung khác phía trên nó (`dashboard.tsx`, `progress.tsx`); dùng
-`size` mặc định khi `EmptyState` *là* toàn bộ nội dung của màn.
+_bên trong_ một trang đã có nội dung khác phía trên nó (`dashboard.tsx`, `progress.tsx`); dùng
+`size` mặc định khi `EmptyState` _là_ toàn bộ nội dung của màn.
 
 ## 4d. Lộ trình bài học (`components/lesson-path.tsx`)
 

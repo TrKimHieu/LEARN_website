@@ -48,10 +48,10 @@ Lựa chọn mono vẫn thoả §14.2 vì JetBrains Mono đúng là monospace.
 
 ## Quyết định
 
-| Vai trò | Font | Weight nạp |
-| ------- | ---- | ---------- |
+| Vai trò | Font               | Weight nạp            |
+| ------- | ------------------ | --------------------- |
 | Sans    | **Be Vietnam Pro** | 400 · 500 · 600 · 700 |
-| Mono    | **JetBrains Mono** | 400 · 700 |
+| Mono    | **JetBrains Mono** | 400 · 700             |
 
 Hai dòng `--font-*` chuyển xuống khối bổ sung, trỏ vào biến do `next/font` sinh ra, **giữ nguyên
 chuỗi hệ thống cũ làm đuôi dự phòng**. Không một dòng `--color-*` nào trong khối `[SPEC]` bị chạm.
@@ -86,7 +86,7 @@ và trình duyệt gặp weight không có sẽ tự bôi đậm giả, làm ch�
 
 Nên toàn bộ `font-extrabold` đã được đổi thành `font-bold` trong cùng thay đổi này. Đây không phải
 đánh đổi miễn cưỡng: UI-GUIDE §4b vốn đã xếp weight rất nặng vào "ngôn ngữ đã khai tử" và nói thứ
-bậc đến từ *weight + màu*, nhưng `PageHeader` vẫn ship `extrabold` — mâu thuẫn này nay khép lại.
+bậc đến từ _weight + màu_, nhưng `PageHeader` vẫn ship `extrabold` — mâu thuẫn này nay khép lại.
 
 ## Vì sao `@theme` thường, không phải `@theme inline`
 
@@ -121,5 +121,5 @@ Phải in ra chuỗi có `var(--font-be-vietnam-pro)` đứng đầu.
   ràng buộc thật, phương án thay thế là `next/font/local` với woff2 commit sẵn trong repo.
 - Bảo trì: muốn thêm một weight thì phải thêm vào mảng `weight` ở `app/layout.tsx` **và** cân nhắc
   chi phí 3 file mới. Đừng thêm weight chỉ để dùng một chỗ.
-- Nếu `subsets: ['vietnamese']` báo *Unknown subset* sau này, đó là bước xác minh dấu đang fail —
+- Nếu `subsets: ['vietnamese']` báo _Unknown subset_ sau này, đó là bước xác minh dấu đang fail —
   **không được bỏ subset đi cho hết lỗi**.

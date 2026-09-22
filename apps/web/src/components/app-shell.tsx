@@ -50,10 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ---------------------------------------------------- sidebar trái */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-surface-300 bg-white px-3 py-5 md:flex">
-        <Link
-          href="/dashboard"
-          className="mb-7 block rounded-xl px-2 focus-ring"
-        >
+        <Link href="/dashboard" className="mb-7 block rounded-xl px-2 focus-ring">
           <Brand />
         </Link>
 
