@@ -93,9 +93,7 @@ export default function ProgressPage() {
       )}
 
       {history.data && history.data.items.length === 0 && (
-        <Card>
-          <p className="text-sm text-ink-500">Chưa có lần làm bài nào.</p>
-        </Card>
+        <EmptyState size="compact" title="Chưa có lần làm bài nào" />
       )}
 
       {history.data && history.data.items.length > 0 && (

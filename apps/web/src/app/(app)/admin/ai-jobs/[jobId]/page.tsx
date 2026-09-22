@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState } from 'react';
-import Link from 'next/link';
 import { useAdminAiJobDetail, useAiJobAuditLog, useRetryAiJob } from '@/lib/admin-api';
 import { StatusChip, jobTypeLabel } from '@/components/admin/status-chip';
 import {
@@ -9,15 +8,17 @@ import {
   Card,
   CardTitle,
   Icon,
-  Skeleton,
+  PageHeader,
   Table,
   TableCard,
   Tbody,
   Td,
   Th,
   Thead,
+  TableSkeleton,
+  TableEmpty,
 } from '@/components/ui';
-import { ErrorState, InlineError } from '@/components/ui/states';
+import { ErrorState, InlineError, LoadingState } from '@/components/ui/states';
 import { errorDetail, errorText } from '@/lib/api-client';
 
 export default function AdminAiJobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
@@ -37,7 +38,24 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
     }
   }
 
-  if (job.isLoading) return <Skeleton className="h-48" />;
+  // Khung chờ phải mang hình dạng thứ sắp hiện ra (UI-GUIDE §4c) — không phải một
+  // tảng `<Skeleton className="h-48" />` đặc, đúng phản-mẫu mà TableSkeleton chỉ
+  // đích danh trong docblock của chính nó.
+  if (job.isLoading) {
+    return (
+      <section>
+        <PageHeader title="Đang tải job…" backLink={{ href: '/admin/ai-jobs', label: 'AI Job' }} />
+        <LoadingState
+          variant="card"
+          rows={4}
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        />
+        <div className="mt-8">
+          <TableSkeleton columns={5} rows={3} />
+        </div>
+      </section>
+    );
+  }
 
   if (job.isError || !job.data) {
     return (
@@ -54,34 +72,25 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
 
   return (
     <section>
-      <Link
-        href="/admin/ai-jobs"
-        className="inline-flex items-center gap-1 rounded-md text-sm font-bold text-ink-500 hover:text-ink-900"
-      >
-        <Icon name="chevron-right" size={15} className="rotate-180" />
-        AI Job
-      </Link>
+      <PageHeader
+        title={j.courseTitle}
+        description={`${jobTypeLabel(j.type)} · yêu cầu bởi ${j.requesterEmail}`}
+        backLink={{ href: '/admin/ai-jobs', label: 'AI Job' }}
+        action={
+          <div className="flex items-center gap-3">
+            <StatusChip status={j.status} />
+            {j.status === 'FAILED' && (
+              <Button size="sm" onClick={() => void handleRetry()} disabled={retry.isPending}>
+                {retry.isPending ? 'Đang chạy lại…' : 'Chạy lại job'}
+              </Button>
+            )}
+          </div>
+        }
+      />
 
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-ink-900">{j.courseTitle}</h1>
-          <p className="mt-1 text-sm text-ink-500">
-            {jobTypeLabel(j.type)} · yêu cầu bởi {j.requesterEmail}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <StatusChip status={j.status} />
-          {j.status === 'FAILED' && (
-            <Button size="sm" onClick={() => void handleRetry()} disabled={retry.isPending}>
-              {retry.isPending ? 'Đang chạy lại…' : 'Chạy lại job'}
-            </Button>
-          )}
-        </div>
-      </div>
+      {retryError && <InlineError className="mb-4">{retryError}</InlineError>}
 
-      {retryError && <InlineError className="mt-4">{retryError}</InlineError>}
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Fact
           label="Tiến độ"
           value={`${j.progress}%${j.progressLabel ? ` · ${j.progressLabel}` : ''}`}
@@ -117,9 +126,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
 
       <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Lượt gọi LLM ({j.runs.length})</h2>
       {j.runs.length === 0 ? (
-        <Card>
-          <p className="text-sm text-ink-500">Chưa có lượt gọi nào.</p>
-        </Card>
+        <TableEmpty title="Chưa có lượt gọi nào" icon="sparkles" />
       ) : (
         <TableCard>
           <Table>
@@ -152,15 +159,21 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
       )}
 
       <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Lịch sử thao tác admin</h2>
-      {auditLog.isLoading && <Skeleton className="h-24" />}
+      {auditLog.isLoading && <LoadingState variant="list" rows={3} />}
+      {auditLog.isError && (
+        <ErrorState
+          title="Không tải được lịch sử thao tác"
+          description={errorText(auditLog.error, 'Vui lòng thử lại.')}
+          detail={errorDetail(auditLog.error)}
+          onRetry={() => void auditLog.refetch()}
+        />
+      )}
       {auditLog.data && auditLog.data.entries.length === 0 && (
-        <Card>
-          <p className="text-sm text-ink-500">Chưa có thao tác admin nào trên job này.</p>
-        </Card>
+        <TableEmpty title="Chưa có thao tác admin nào trên job này" icon="clock" />
       )}
       {auditLog.data && auditLog.data.entries.length > 0 && (
         <Card padded={false}>
-          <ul className="divide-y-2 divide-surface-200">
+          <ul className="divide-y divide-surface-200">
             {auditLog.data.entries.map((e) => (
               <li key={e.id} className="px-5 py-3 text-sm">
                 <span className="font-bold text-ink-900">{e.action}</span>

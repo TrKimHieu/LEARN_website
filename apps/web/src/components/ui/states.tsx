@@ -65,13 +65,49 @@ export function EmptyState({
   action,
   secondaryAction,
   mascot = 'sleeping',
+  size = 'default',
 }: {
   title: string;
   description?: string;
   action?: { label: string; onClick: () => void };
   secondaryAction?: { label: string; onClick: () => void };
   mascot?: MascotState;
+  /**
+   * `compact` — cho khi `EmptyState` là MỤC CON của một màn đã có nội dung khác phía
+   * trên nó (ví dụ "Hoạt động gần đây" trên `/dashboard`), chứ không phải toàn bộ nội
+   * dung của màn. Xem docs/UI-GUIDE.md §4c. Vẫn dùng mascot — khác `TableEmpty`, thứ
+   * dành cho bảng quản trị chứ không phải để "bớt ồn" trên màn người học.
+   */
+  size?: 'default' | 'compact';
 }) {
+  if (size === 'compact') {
+    return (
+      <Card className="flex items-center gap-4 px-5 py-5 text-left">
+        <Mascot state={mascot} size={48} />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold tracking-tight text-ink-900">{title}</p>
+          {description && (
+            <p className="mt-0.5 text-sm leading-relaxed text-ink-500">{description}</p>
+          )}
+          {(action || secondaryAction) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {action && (
+                <Button size="sm" onClick={action.onClick}>
+                  {action.label}
+                </Button>
+              )}
+              {secondaryAction && (
+                <Button size="sm" variant="ghost" onClick={secondaryAction.onClick}>
+                  {secondaryAction.label}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="flex flex-col items-center px-6 py-12 text-center">
       <Mascot state={mascot} size={88} />

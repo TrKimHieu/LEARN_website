@@ -14,7 +14,7 @@ import {
   Skeleton,
   type IconName,
 } from '@/components/ui';
-import { EmptyState, ErrorState } from '@/components/ui/states';
+import { EmptyState, ErrorState, InlineError } from '@/components/ui/states';
 import { errorText } from '@/lib/api-client';
 import { Reveal, StaggerItem, StaggerList } from '@/lib/motion';
 import { absoluteTime, relativeTime } from '@/lib/format';
@@ -72,6 +72,9 @@ export default function DashboardPage() {
   }
 
   // Khóa học đang dở, ưu tiên cái gần hoàn thành nhất để đẩy người học về đích.
+  // `courses.data?.courses ?? []` chỉ an toàn khi có data — trước đây mục "Tiếp tục học"
+  // không hề có nhánh loading/error riêng, nên khi truy vấn `courses` lỗi, mục này lặng lẽ
+  // biến mất thay vì báo lỗi.
   const inProgress = (courses.data?.courses ?? [])
     .filter((c) => c.percent > 0 && c.percent < 100)
     .sort((a, b) => b.percent - a.percent)
@@ -114,7 +117,29 @@ export default function DashboardPage() {
       </StaggerList>
 
       {/* ------------------------------------------------ tiếp tục học */}
-      {inProgress.length > 0 && (
+      {courses.isLoading && (
+        <Reveal delay={0.12} className="mt-8">
+          <h2 className="mb-3 text-lg font-bold text-ink-900">Tiếp tục học</h2>
+          <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <li key={i}>
+                <Skeleton className="h-40" />
+              </li>
+            ))}
+          </ul>
+        </Reveal>
+      )}
+
+      {courses.isError && (
+        <Reveal delay={0.12} className="mt-8">
+          <h2 className="mb-3 text-lg font-bold text-ink-900">Tiếp tục học</h2>
+          <InlineError>
+            {errorText(courses.error, 'Không tải được danh sách khóa học đang dở.')}
+          </InlineError>
+        </Reveal>
+      )}
+
+      {!courses.isLoading && !courses.isError && inProgress.length > 0 && (
         <Reveal delay={0.12} className="mt-8">
           <h2 className="mb-3 text-lg font-bold text-ink-900">Tiếp tục học</h2>
           <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
@@ -163,11 +188,11 @@ export default function DashboardPage() {
           />
         )}
         {history.data && history.data.items.length === 0 && (
-          <Card>
-            <p className="text-sm text-ink-500">
-              Chưa có lần làm bài nào. Mở một bài học và làm bài tập để bắt đầu.
-            </p>
-          </Card>
+          <EmptyState
+            size="compact"
+            title="Chưa có lần làm bài nào"
+            description="Mở một bài học và làm bài tập để bắt đầu."
+          />
         )}
         {history.data && history.data.items.length > 0 && (
           <Card padded={false}>

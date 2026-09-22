@@ -222,6 +222,17 @@ onClearFilter`), trường hợp sau là nói khi nào dữ liệu sẽ xuất h
 `TableEmpty` chỉ có một icon 20px. Đây là ranh giới `[SPEC]` §13.1 về vị trí mascot, không phải
 sở thích.
 
+**Mục con của một màn đã có nội dung** là trường hợp thứ ba, không nằm gọn trong bảng trên.
+`dashboard.tsx` là trang có 4 thẻ số liệu + "Tiếp tục học" + "Hoạt động gần đây" — nếu mục
+"Hoạt động gần đây" trống mà vẫn hiện `EmptyState` centered với mascot 88px, khối đó sẽ nặng hơn
+chính trang chứa nó. Nhưng đây vẫn là màn người học, nên đưa thẳng về `TableEmpty` (icon, dành cho
+bảng quản trị) là sai ngữ cảnh không kém.
+
+Luật: **`EmptyState size="compact"`** — cùng component, cùng mascot (không đổi sang icon quản
+trị), chỉ hạ xuống một hàng ngang 48px thay vì một khối centered 88px. Dùng khi `EmptyState` nằm
+*bên trong* một trang đã có nội dung khác phía trên nó (`dashboard.tsx`, `progress.tsx`); dùng
+`size` mặc định khi `EmptyState` *là* toàn bộ nội dung của màn.
+
 ## 4d. Lộ trình bài học (`components/lesson-path.tsx`)
 
 Lộ trình là một **đồ thị hình sin**: `x = 50 − A·cos(πu)` với `u` là vị trí bài học. `cos(πu)`
