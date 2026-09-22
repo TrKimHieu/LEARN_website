@@ -24,14 +24,8 @@ export default function NotFound() {
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link
-          href="/"
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-sky-500 px-4 text-sm font-medium text-navy-900 transition-all duration-200 hover:bg-sky-400 focus-ring"
-        >
-          Về trang chủ
-        </Link>
-        <Link
           href="/dashboard"
-          className="inline-flex h-10 items-center justify-center rounded-lg border border-surface-300 bg-white px-4 text-sm font-medium text-ink-700 shadow-card transition-all duration-200 hover:border-surface-400 hover:text-ink-900 focus-ring"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-sky-500 px-4 text-sm font-medium text-navy-900 transition-all duration-200 hover:bg-sky-400 focus-ring"
         >
           Vào ứng dụng
         </Link>

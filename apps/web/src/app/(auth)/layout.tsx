@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { BRAND } from '@learn/ui';
 import { LogoMark } from '@/features/shell/logo-mark';
 
@@ -21,15 +20,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <div className="rounded-card bg-white p-6 shadow-raised">{children}</div>
-
-        <p className="mt-6 text-center">
-          <Link
-            href="/"
-            className="rounded-md text-xs font-bold text-ink-300 underline underline-offset-4 hover:text-white hover:no-underline focus-ring-dark"
-          >
-            Về trang chủ
-          </Link>
-        </p>
       </div>
     </div>
   );

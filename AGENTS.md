@@ -10,9 +10,13 @@
 1. `AGENTS.md` (file này)
 2. `docs/progress/STATE.md` — bộ nhớ chính: đang ở đâu, việc kế tiếp là gì
 3. `docs/progress/CHECKLIST.md` — checklist master (phản chiếu HANDBOOK §20)
-4. Phần liên quan của `docs/HANDBOOK.md` cho việc đang làm
-5. `learnflow-ai-portfolio-agent-spec.md` nếu có nghi ngờ ràng buộc `[SPEC]`
-6. `docs/UI-GUIDE.md` **nếu phiên này đụng tới giao diện** — token, thư viện, bảng mẫu `/dev/ui`,
+4. `docs/REQUIREMENTS.md` **nếu có nghi ngờ một tính năng có nằm trong yêu cầu không, hoặc
+   trạng thái của nó là gì** — bảng FR/NFR có ID, nhãn (Có trong MVP/Đang phát triển/Đã lên kế
+   hoạch/Mở rộng tương lai), đối chiếu trực tiếp route thật; cập nhật file này khi trạng thái
+   một FR/NFR đổi thật sự (không chỉ khi bắt đầu làm)
+5. Phần liên quan của `docs/HANDBOOK.md` cho việc đang làm
+6. `learnflow-ai-portfolio-agent-spec.md` nếu có nghi ngờ ràng buộc `[SPEC]`
+7. `docs/UI-GUIDE.md` **nếu phiên này đụng tới giao diện** — token, thư viện, bảng mẫu `/dev/ui`,
    những bẫy đã dính và checklist trước khi đóng thay đổi
 
 ## Cấm / Bắt buộc

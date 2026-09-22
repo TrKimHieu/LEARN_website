@@ -2,6 +2,7 @@ export * from './chunker';
 export * from './llm/provider';
 export * from './llm/mock';
 export * from './llm/anthropic';
+export * from './llm/gemini';
 export * from './llm/fixtures';
 export * from './prompts/outline';
 export * from './prompts/lesson';

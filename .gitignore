@@ -31,6 +31,16 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Config/cache cục bộ của các công cụ AI coding assistant — không commit
+.claude/
+.agent/
+.cursor/
+.codex/
+.windsurf/
+.cline/
+.continue/
+.aider*
+
 # Playwright
 test-results/
 playwright-report/

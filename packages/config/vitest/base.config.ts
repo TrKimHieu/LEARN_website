@@ -13,6 +13,8 @@ export default defineConfig({
       // Logic thuần ở web (parser, helper) — không render component, không cần jsdom.
       'apps/web/src/**/*.test.ts',
     ],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    // *.integration.test.ts cần hạ tầng thật (Postgres/Redis/server) — chạy riêng qua
+    // vitest.int.config.ts, không chạy chung với unit test.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.integration.test.ts'],
   },
 });

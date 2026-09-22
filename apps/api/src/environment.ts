@@ -56,7 +56,7 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().default(DEV_ONLY_DEFAULTS.S3_ACCESS_KEY_ID),
   S3_SECRET_ACCESS_KEY: z.string().default(DEV_ONLY_DEFAULTS.S3_SECRET_ACCESS_KEY),
   S3_REGION: z.string().default('us-east-1'),
-  LLM_PROVIDER: z.enum(['anthropic']).default('anthropic'),
+  LLM_PROVIDER: z.enum(['anthropic', 'google']).default('anthropic'),
   LLM_API_KEY: z.string().default(''),
   LLM_MODEL_GENERATION: z.string().default('claude-sonnet-5'),
   LLM_MODEL_FAST: z.string().default('claude-haiku-4-5-20251001'),
