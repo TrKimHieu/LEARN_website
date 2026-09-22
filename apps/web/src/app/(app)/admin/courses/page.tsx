@@ -15,7 +15,7 @@ import {
   Thead,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorDetail, errorText } from '@/lib/api-client';
 import { useDebouncedQueryParam } from '@/lib/url-state';
 
 export default function AdminCoursesPage() {
@@ -48,9 +48,8 @@ export default function AdminCoursesPage() {
       {courses.isError && (
         <ErrorState
           title="Không tải được danh sách khóa học"
-          description={
-            courses.error instanceof ApiClientError ? courses.error.message : 'Vui lòng thử lại.'
-          }
+          description={errorText(courses.error, 'Vui lòng thử lại.')}
+          detail={errorDetail(courses.error)}
           onRetry={() => void courses.refetch()}
         />
       )}

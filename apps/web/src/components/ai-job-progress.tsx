@@ -6,7 +6,7 @@ import { Button, Card, ProgressBar } from '@/components/ui';
 import { PartialNotice } from '@/components/ui/states';
 import { useAiJob, useCancelAiJob } from '@/lib/ai-api';
 import { partialFailuresOf } from '@/lib/ai-job-partial';
-import { ApiClientError } from '@/lib/api-client';
+import { errorText } from '@/lib/api-client';
 
 /**
  * Tiến độ AI Job — HANDBOOK §7.4: % + nhãn bước + mascot, fallback polling 2s (SSE để sau).
@@ -58,7 +58,7 @@ export function AiJobProgress({
       <Panel>
         <Mascot state="alerting" size={88} />
         <p className="text-sm font-medium text-ink-900">
-          {job.error instanceof ApiClientError ? job.error.message : 'Không theo dõi được job.'}
+          {errorText(job.error, 'Không theo dõi được job.')}
         </p>
         <Button variant="secondary" onClick={() => onDone({ succeeded: false })}>
           Đóng

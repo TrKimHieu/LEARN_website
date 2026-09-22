@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { registerSchema } from '@learn/contracts';
 import { useAuth } from '@/lib/auth-context';
-import { Button, Field, Input, PasswordInput } from '@/components/ui';
-import { ApiClientError } from '@/lib/api-client';
+import { Button, Field, InlineError, Input, PasswordInput } from '@/components/ui';
+import { errorText } from '@/lib/api-client';
 import { fieldErrorsFrom, focusFirstError } from '@/lib/form-errors';
 
 export default function RegisterPage() {
@@ -52,11 +52,7 @@ function RegisterForm() {
       router.replace(next || '/dashboard');
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof ApiClientError
-          ? err.message
-          : 'Không kết nối được máy chủ, vui lòng thử lại.',
-      );
+      setError(errorText(err, 'Không kết nối được máy chủ, vui lòng thử lại.'));
     } finally {
       setSubmitting(false);
     }
@@ -108,14 +104,7 @@ function RegisterForm() {
         />
       </Field>
 
-      {error && (
-        <p
-          role="alert"
-          className="rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-        >
-          {error}
-        </p>
-      )}
+      {error && <InlineError>{error}</InlineError>}
 
       <Button type="submit" fullWidth size="lg" disabled={submitting}>
         {submitting ? 'Đang tạo tài khoản…' : 'Tạo tài khoản'}

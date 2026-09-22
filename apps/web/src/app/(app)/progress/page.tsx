@@ -5,14 +5,10 @@ import Link from 'next/link';
 import { useProgressCourses, useProgressHistory } from '@/lib/learning-api';
 import { Badge, Button, Card, CardTitle, PageHeader, ProgressBar, Skeleton } from '@/components/ui';
 import { EmptyState, ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorText } from '@/lib/api-client';
 import { absoluteTime, relativeTime } from '@/lib/format';
 
 const PAGE_SIZE = 10;
-
-function errorText(err: unknown, fallback: string) {
-  return err instanceof ApiClientError || err instanceof Error ? err.message : fallback;
-}
 
 export default function ProgressPage() {
   const courses = useProgressCourses();

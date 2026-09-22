@@ -15,7 +15,7 @@ import {
   Thead,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorDetail, errorText } from '@/lib/api-client';
 import { useDebouncedQueryParam } from '@/lib/url-state';
 
 export default function AdminUsersPage() {
@@ -48,9 +48,8 @@ export default function AdminUsersPage() {
       {users.isError && (
         <ErrorState
           title="Không tải được danh sách người dùng"
-          description={
-            users.error instanceof ApiClientError ? users.error.message : 'Vui lòng thử lại.'
-          }
+          description={errorText(users.error, 'Vui lòng thử lại.')}
+          detail={errorDetail(users.error)}
           onRetry={() => void users.refetch()}
         />
       )}

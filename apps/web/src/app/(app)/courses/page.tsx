@@ -15,7 +15,7 @@ import {
   type BadgeTone,
 } from '@/components/ui';
 import { EmptyState, ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorDetail, errorText } from '@/lib/api-client';
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: 'Nháp',
@@ -58,11 +58,8 @@ export default function CoursesPage() {
       {isError && (
         <ErrorState
           title="Không tải được danh sách khóa học"
-          description={
-            error instanceof ApiClientError
-              ? `${error.message}${error.requestId ? ` (mã yêu cầu: ${error.requestId})` : ''}`
-              : 'Vui lòng thử lại.'
-          }
+          description={errorText(error, 'Vui lòng thử lại.')}
+          detail={errorDetail(error)}
           onRetry={() => {
             if (!isRefetching) void refetch();
           }}

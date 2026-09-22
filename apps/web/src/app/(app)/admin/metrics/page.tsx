@@ -11,7 +11,7 @@ import {
   type IconName,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorDetail, errorText } from '@/lib/api-client';
 
 export default function AdminMetricsPage() {
   const metrics = useAdminMetrics();
@@ -35,9 +35,8 @@ export default function AdminMetricsPage() {
         <PageHeader title="Tổng quan hệ thống" />
         <ErrorState
           title="Không tải được số liệu"
-          description={
-            metrics.error instanceof ApiClientError ? metrics.error.message : 'Vui lòng thử lại.'
-          }
+          description={errorText(metrics.error, 'Vui lòng thử lại.')}
+          detail={errorDetail(metrics.error)}
           onRetry={() => void metrics.refetch()}
         />
       </section>

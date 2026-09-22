@@ -18,7 +18,7 @@ import {
   cn,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorDetail, errorText } from '@/lib/api-client';
 import { useQueryParam } from '@/lib/url-state';
 
 const STATUS_OPTIONS = ['', 'QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED'] as const;
@@ -76,14 +76,13 @@ export default function AdminAiJobsPage() {
         </p>
       )}
 
-      {jobs.isLoading && <TableSkeleton columns={6} />}
+      {jobs.isLoading && <TableSkeleton columns={7} />}
 
       {jobs.isError && (
         <ErrorState
           title="Không tải được danh sách job"
-          description={
-            jobs.error instanceof ApiClientError ? jobs.error.message : 'Vui lòng thử lại.'
-          }
+          description={errorText(jobs.error, 'Vui lòng thử lại.')}
+          detail={errorDetail(jobs.error)}
           onRetry={() => void jobs.refetch()}
         />
       )}

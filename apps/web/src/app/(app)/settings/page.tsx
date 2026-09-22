@@ -18,8 +18,8 @@ import {
   Skeleton,
   cn,
 } from '@/components/ui';
-import { ErrorState, PartialNotice } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { ErrorState, InlineError, PartialNotice } from '@/components/ui/states';
+import { errorDetail, errorText } from '@/lib/api-client';
 import { humanizeCode } from '@/lib/humanize';
 
 /**
@@ -67,9 +67,7 @@ export default function SettingsPage() {
     try {
       await checkout.mutateAsync(planCode);
     } catch (err) {
-      setActionError(
-        err instanceof ApiClientError ? err.message : 'Không nâng cấp được gói, vui lòng thử lại.',
-      );
+      setActionError(errorText(err, 'Không nâng cấp được gói, vui lòng thử lại.'));
     } finally {
       setUpgradingCode(null);
     }
@@ -80,9 +78,7 @@ export default function SettingsPage() {
     try {
       await cancelSubscription.mutateAsync();
     } catch (err) {
-      setActionError(
-        err instanceof ApiClientError ? err.message : 'Không huỷ được gói, vui lòng thử lại.',
-      );
+      setActionError(errorText(err, 'Không huỷ được gói, vui lòng thử lại.'));
     }
   }
 
@@ -107,7 +103,8 @@ export default function SettingsPage() {
         <PageHeader title="Cài đặt" />
         <ErrorState
           title="Không tải được thông tin gói"
-          description={err instanceof ApiClientError ? err.message : 'Vui lòng thử lại.'}
+          description={errorText(err, 'Vui lòng thử lại.')}
+          detail={errorDetail(err)}
           onRetry={() => {
             void plans.refetch();
             void subscription.refetch();
@@ -207,14 +204,7 @@ export default function SettingsPage() {
         )}
       </Card>
 
-      {actionError && (
-        <p
-          role="alert"
-          className="mt-4 rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-        >
-          {actionError}
-        </p>
-      )}
+      {actionError && <InlineError className="mt-4">{actionError}</InlineError>}
 
       {/* ------------------------------------------------------ các gói */}
       <h2 className="mb-3 mt-10 text-lg font-bold text-ink-900">Các gói</h2>

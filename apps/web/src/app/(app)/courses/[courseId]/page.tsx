@@ -10,8 +10,8 @@ import { AiJobProgress } from '@/components/ai-job-progress';
 import { QuotaNotice } from '@/components/quota-notice';
 import { LessonPath } from '@/components/lesson-path';
 import { Badge, Button, ButtonLink, Card, CardTitle, Icon, ProgressBar } from '@/components/ui';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
-import { ApiClientError, isQuotaExceededError } from '@/lib/api-client';
+import { EmptyState, ErrorState, InlineError, LoadingState } from '@/components/ui/states';
+import { errorText, isQuotaExceededError } from '@/lib/api-client';
 
 const DOC_STATUS_LABEL: Record<string, string> = {
   PENDING: 'Chờ tải lên',
@@ -25,10 +25,6 @@ function docTone(status: string) {
   if (status === 'FAILED') return 'danger' as const;
   if (status === 'EXTRACTED') return 'success' as const;
   return 'neutral' as const;
-}
-
-function errorText(err: unknown, fallback: string) {
-  return err instanceof ApiClientError || err instanceof Error ? err.message : fallback;
 }
 
 export default function CourseDetailPage({ params }: { params: Promise<{ courseId: string }> }) {
@@ -208,20 +204,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         </div>
       )}
       {Boolean(generateError) && !isQuotaExceededError(generateError) && (
-        <p
-          role="alert"
-          className="mt-3 rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-        >
+        <InlineError className="mt-3">
           {errorText(generateError, 'Không sinh được bài học, vui lòng thử lại.')}
-        </p>
+        </InlineError>
       )}
       {Boolean(reorderError) && (
-        <p
-          role="alert"
-          className="mt-3 rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-        >
+        <InlineError className="mt-3">
           {errorText(reorderError, 'Không sắp xếp lại được, vui lòng thử lại.')}
-        </p>
+        </InlineError>
       )}
 
       {activeJobId && <AiJobProgress jobId={activeJobId} onDone={handleJobDone} />}
@@ -294,12 +284,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         </div>
       )}
       {Boolean(uploadError) && !isQuotaExceededError(uploadError) && (
-        <p
-          role="alert"
-          className="mt-3 rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-        >
+        <InlineError className="mt-3">
           {errorText(uploadError, 'Tải tài liệu thất bại, vui lòng thử lại.')}
-        </p>
+        </InlineError>
       )}
 
       {documents.isLoading && (

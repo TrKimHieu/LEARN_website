@@ -14,7 +14,7 @@ import {
   Thead,
 } from '@/components/ui';
 import { ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorDetail, errorText } from '@/lib/api-client';
 
 export default function AdminSubscriptionsPage() {
   const subscriptions = useAdminSubscriptions();
@@ -23,16 +23,13 @@ export default function AdminSubscriptionsPage() {
     <section>
       <PageHeader title="Gói đăng ký" />
 
-      {subscriptions.isLoading && <TableSkeleton columns={5} />}
+      {subscriptions.isLoading && <TableSkeleton columns={4} />}
 
       {subscriptions.isError && (
         <ErrorState
           title="Không tải được danh sách gói"
-          description={
-            subscriptions.error instanceof ApiClientError
-              ? subscriptions.error.message
-              : 'Vui lòng thử lại.'
-          }
+          description={errorText(subscriptions.error, 'Vui lòng thử lại.')}
+          detail={errorDetail(subscriptions.error)}
           onRetry={() => void subscriptions.refetch()}
         />
       )}

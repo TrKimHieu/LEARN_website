@@ -6,8 +6,8 @@ import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn
 import { useExercise, useSubmitExercise } from '@/lib/learning-api';
 import { Mascot } from '@/components/mascot';
 import { Badge, Button, Card, Icon, ProgressBar, cn } from '@/components/ui';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { EmptyState, ErrorState, InlineError, LoadingState } from '@/components/ui/states';
+import { ApiClientError, errorDetail, errorText } from '@/lib/api-client';
 import { celebrateSuccess } from '@/lib/celebrate';
 import { popIn } from '@/lib/motion';
 import { motion } from 'motion/react';
@@ -116,9 +116,7 @@ export default function PracticePage({
       const res = await submitExercise.mutateAsync({ answers: list });
       setResult(res);
     } catch (err) {
-      setSubmitError(
-        err instanceof ApiClientError ? err.message : 'Nộp bài thất bại, vui lòng thử lại.',
-      );
+      setSubmitError(errorText(err, 'Nộp bài thất bại, vui lòng thử lại.'));
     }
   }
 
@@ -144,11 +142,8 @@ export default function PracticePage({
         ) : (
           <ErrorState
             title="Không tải được bài tập"
-            description={
-              exercise.error instanceof ApiClientError
-                ? exercise.error.message
-                : 'Vui lòng thử lại.'
-            }
+            description={errorText(exercise.error, 'Vui lòng thử lại.')}
+            detail={errorDetail(exercise.error)}
             onRetry={() => void exercise.refetch()}
           />
         )}
@@ -225,14 +220,7 @@ export default function PracticePage({
         ))}
       </div>
 
-      {submitError && (
-        <p
-          role="alert"
-          className="mt-4 rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-        >
-          {submitError}
-        </p>
-      )}
+      {submitError && <InlineError className="mt-4">{submitError}</InlineError>}
 
       <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t-2 border-surface-300 bg-surface-100/95 px-4 py-3 backdrop-blur md:-mx-8 md:px-8">
         <div className="flex items-center justify-between gap-3">

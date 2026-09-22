@@ -17,8 +17,8 @@ import {
   Th,
   Thead,
 } from '@/components/ui';
-import { ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { ErrorState, InlineError } from '@/components/ui/states';
+import { errorDetail, errorText } from '@/lib/api-client';
 
 export default function AdminAiJobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = use(params);
@@ -33,9 +33,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
       await retry.mutateAsync();
       await Promise.all([job.refetch(), auditLog.refetch()]);
     } catch (err) {
-      setRetryError(
-        err instanceof ApiClientError ? err.message : 'Không chạy lại được job, vui lòng thử lại.',
-      );
+      setRetryError(errorText(err, 'Không chạy lại được job, vui lòng thử lại.'));
     }
   }
 
@@ -45,7 +43,8 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
     return (
       <ErrorState
         title="Không tải được job"
-        description={job.error instanceof ApiClientError ? job.error.message : 'Vui lòng thử lại.'}
+        description={errorText(job.error, 'Vui lòng thử lại.')}
+        detail={errorDetail(job.error)}
         onRetry={() => void job.refetch()}
       />
     );
@@ -80,14 +79,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
         </div>
       </div>
 
-      {retryError && (
-        <p
-          role="alert"
-          className="mt-4 rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-        >
-          {retryError}
-        </p>
-      )}
+      {retryError && <InlineError className="mt-4">{retryError}</InlineError>}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Fact
@@ -123,9 +115,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
         </pre>
       </Card>
 
-      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">
-        Lượt gọi LLM ({j.runs.length})
-      </h2>
+      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Lượt gọi LLM ({j.runs.length})</h2>
       {j.runs.length === 0 ? (
         <Card>
           <p className="text-sm text-ink-500">Chưa có lượt gọi nào.</p>

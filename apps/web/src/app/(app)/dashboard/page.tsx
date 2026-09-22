@@ -15,7 +15,7 @@ import {
   type IconName,
 } from '@/components/ui';
 import { EmptyState, ErrorState } from '@/components/ui/states';
-import { ApiClientError } from '@/lib/api-client';
+import { errorText } from '@/lib/api-client';
 import { Reveal, StaggerItem, StaggerList } from '@/lib/motion';
 import { absoluteTime, relativeTime } from '@/lib/format';
 
@@ -23,10 +23,6 @@ import { absoluteTime, relativeTime } from '@/lib/format';
 const CONTINUE_LIMIT = 3;
 /** Số lần làm bài gần nhất hiện ở mục hoạt động. */
 const HISTORY_LIMIT = 5;
-
-function errorText(err: unknown, fallback: string) {
-  return err instanceof ApiClientError || err instanceof Error ? err.message : fallback;
-}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -124,10 +120,7 @@ export default function DashboardPage() {
           <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             {inProgress.map((c) => (
               <li key={c.courseId}>
-                <Link
-                  href={`/courses/${c.courseId}`}
-                  className="block rounded-card focus-ring"
-                >
+                <Link href={`/courses/${c.courseId}`} className="block rounded-card focus-ring">
                   <Card className="h-full transition-shadow hover:shadow-raised">
                     <CardTitle className="line-clamp-2">{c.courseTitle}</CardTitle>
                     <div className="mt-3 flex items-center gap-2">

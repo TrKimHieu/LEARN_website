@@ -7,8 +7,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { createCourseSchema, type CreateCourseInput } from '@learn/contracts';
 import { useCreateCourse } from '@/lib/courses-api';
 import { QuotaNotice } from '@/components/quota-notice';
-import { Button, Card, Field, Input, PageHeader, Select, Textarea } from '@/components/ui';
-import { ApiClientError, isQuotaExceededError } from '@/lib/api-client';
+import {
+  Button,
+  Card,
+  Field,
+  InlineError,
+  Input,
+  PageHeader,
+  Select,
+  Textarea,
+} from '@/components/ui';
+import { errorText, isQuotaExceededError } from '@/lib/api-client';
 
 type FormValues = z.input<typeof createCourseSchema>;
 
@@ -84,14 +93,9 @@ export default function NewCoursePage() {
             />
           )}
           {createCourse.isError && !isQuotaExceededError(createCourse.error) && (
-            <p
-              role="alert"
-              className="rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-            >
-              {createCourse.error instanceof ApiClientError
-                ? createCourse.error.message
-                : 'Không tạo được khóa học, vui lòng thử lại.'}
-            </p>
+            <InlineError>
+              {errorText(createCourse.error, 'Không tạo được khóa học, vui lòng thử lại.')}
+            </InlineError>
           )}
 
           <div className="flex gap-3 pt-1">

@@ -12,9 +12,9 @@ import {
 } from '@/lib/learning-api';
 import { renderMarkdown } from '@/components/markdown';
 import { Badge, Button, ButtonLink, Card, Icon, cn } from '@/components/ui';
-import { ErrorState, LoadingState } from '@/components/ui/states';
+import { ErrorState, InlineError, LoadingState } from '@/components/ui/states';
 import type { BadgeTone } from '@/components/ui';
-import { ApiClientError } from '@/lib/api-client';
+import { errorText } from '@/lib/api-client';
 import { absoluteTime, relativeTime } from '@/lib/format';
 import { humanizeCode } from '@/lib/humanize';
 
@@ -29,10 +29,6 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   IN_PROGRESS: 'info',
   COMPLETED: 'success',
 };
-
-function errorText(err: unknown, fallback: string) {
-  return err instanceof ApiClientError || err instanceof Error ? err.message : fallback;
-}
 
 /** Ràng buộc của `patchLessonSchema` trong `packages/contracts`. */
 const TITLE_MIN = 5;
@@ -241,12 +237,9 @@ export default function LessonReadPage({
         )}
 
         {Boolean(deleteError) && (
-          <p
-            role="alert"
-            className="mt-3 rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-          >
+          <InlineError className="mt-3">
             {errorText(deleteError, 'Không xoá được, vui lòng thử lại.')}
-          </p>
+          </InlineError>
         )}
 
         {/* ------------------------------------------------- nội dung */}
@@ -303,12 +296,7 @@ export default function LessonReadPage({
               />
             </div>
             {Boolean(saveError) && (
-              <p
-                role="alert"
-                className="rounded-card bg-danger-50 px-4 py-3 text-sm font-medium text-danger-700"
-              >
-                {errorText(saveError, 'Không lưu được, vui lòng thử lại.')}
-              </p>
+              <InlineError>{errorText(saveError, 'Không lưu được, vui lòng thử lại.')}</InlineError>
             )}
             <div className="flex justify-end gap-2">
               <Button
