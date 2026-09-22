@@ -1,11 +1,11 @@
 export { cn } from './cn';
 export { Icon, type IconName } from './icon';
 export { Button, ButtonLink } from './button';
-export { Card, CardHeader, CardTitle } from './card';
+export { Card, CardHeader, CardTitle, CardDescription } from './card';
 export { Badge, type BadgeTone } from './badge';
 export { ProgressBar } from './progress-bar';
 export { Skeleton } from './skeleton';
-export { LoadingState, EmptyState, ErrorState, PartialNotice } from './states';
+export { LoadingState, EmptyState, ErrorState, InlineError, PartialNotice } from './states';
 export { Field, Input, PasswordInput, Textarea, Select } from './form';
 export { PageHeader } from './page-header';
 export { TableCard, Table, Thead, Th, Tbody, Td, TableSkeleton, TableEmpty } from './table';

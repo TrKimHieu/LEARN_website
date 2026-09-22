@@ -130,6 +130,75 @@ export function StaggerItem({
 }
 
 /**
+ * Ngưỡng kích hoạt cho hai component `*OnScroll` dưới đây.
+ *
+ * `once: true` — chạy đúng một lần. Nội dung nhấp nháy lại mỗi lần cuộn qua là trang trí,
+ * không phải giải thích, và nó phá luật 1.
+ * `amount: 0.2` — đợi 20% khối lọt vào khung nhìn. Đặt 0 thì khối cao hơn màn hình sẽ
+ * kích hoạt ngay khi mép trên vừa chạm đáy, tức người dùng chưa thấy gì đã chạy xong.
+ */
+const IN_VIEW = { once: true, amount: 0.2 } as const;
+
+/**
+ * Như `Reveal`, nhưng đợi tới lúc khối thật sự lọt vào khung nhìn.
+ *
+ * Vì sao cần cả hai: `Reveal` dùng `animate="show"`, tức kích hoạt **lúc mount**. Với màn
+ * app ngắn, nằm gọn trên một khung hình, đó là đúng. Với trang chủ 16 section thì sai —
+ * mọi thứ dưới nếp gấp chạy xong animation trước khi người dùng cuộn tới, nên ta trả đủ
+ * chi phí mà không được gì.
+ *
+ * Quy tắc chọn: nội dung nằm trên nếp gấp → `Reveal`. Phải cuộn mới thấy → `RevealOnScroll`.
+ */
+export function RevealOnScroll({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial="hidden"
+      whileInView="show"
+      viewport={IN_VIEW}
+      variants={fadeUp}
+      transition={{ delay, duration: DURATION.base, ease: EASE_OUT }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** `StaggerList` phiên bản cuộn-mới-chạy. Phần tử con vẫn bọc bằng `StaggerItem`. */
+export function StaggerOnScroll({
+  children,
+  stagger = 0.06,
+  className,
+  as = 'div',
+}: {
+  children: React.ReactNode;
+  stagger?: number;
+  className?: string;
+  as?: 'div' | 'ul' | 'ol';
+}) {
+  const Tag = motion[as];
+  return (
+    <Tag
+      initial="hidden"
+      whileInView="show"
+      viewport={IN_VIEW}
+      variants={staggerContainer(stagger)}
+      className={className}
+    >
+      {children}
+    </Tag>
+  );
+}
+
+/**
  * `true` khi người dùng đã bật giảm chuyển động. Dùng cho hiệu ứng **không**
  * chạy qua `motion.*` (ví dụ pháo giấy trên canvas) — những thứ `MotionConfig`
  * không với tới được.

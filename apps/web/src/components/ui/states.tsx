@@ -139,6 +139,39 @@ export function ErrorState({
  * Partial: có dữ liệu nhưng thiếu/chưa đủ — hiện dữ liệu kèm dải cảnh báo,
  * không thay thế nội dung.
  */
+/**
+ * Lỗi cục bộ của một thao tác — hỏng một nút, không hỏng cả màn.
+ *
+ * Khác `ErrorState`: `ErrorState` thay thế nội dung khi *query* hỏng; cái này nằm cạnh
+ * form hoặc nút khi một *mutation* hỏng, và nội dung xung quanh vẫn còn nguyên.
+ *
+ * Trước khi có component này, đoạn markup dưới đây được chép nguyên văn ở **11 chỗ** —
+ * và cả 11 bản đều thiếu icon, tức là chỉ dựa vào màu đỏ để báo lỗi. UI-GUIDE §2 cấm
+ * thẳng điều đó ("màu không bao giờ là tín hiệu duy nhất"). Gộp trùng lặp chỉ là lợi
+ * ích phụ; thêm icon một lần cho cả 11 chỗ mới là lý do.
+ */
+export function InlineError({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <p
+      role="alert"
+      className={cn(
+        'flex items-start gap-2.5 rounded-card border border-danger-100 bg-danger-50',
+        'px-4 py-3 text-sm font-medium leading-relaxed text-danger-700',
+        className,
+      )}
+    >
+      <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+      <span>{children}</span>
+    </p>
+  );
+}
+
 export function PartialNotice({ children }: { children: React.ReactNode }) {
   return (
     <div

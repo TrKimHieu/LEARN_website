@@ -15,6 +15,7 @@ import {
   Input,
   LoadingState,
   PageHeader,
+  InlineError,
   PartialNotice,
   PasswordInput,
   ProgressBar,
@@ -32,7 +33,13 @@ import {
   type BadgeTone,
   type IconName,
 } from '@/components/ui';
-import { Reveal, StaggerItem, StaggerList } from '@/lib/motion';
+import {
+  Reveal,
+  RevealOnScroll,
+  StaggerItem,
+  StaggerList,
+  StaggerOnScroll,
+} from '@/lib/motion';
 import { LessonPath } from '@/components/lesson-path';
 import { LogoMark } from '@/components/logo-mark';
 import type { LessonSummary } from '@learn/contracts';
@@ -639,6 +646,12 @@ export default function UiStyleguidePage() {
             />
           </div>
           <div>
+            {/* Không nằm trong "5 trạng thái" — đây là lỗi của một *mutation*, nên nội
+                dung quanh nó vẫn còn. `ErrorState` mới là thứ thay chỗ khi *query* hỏng. */}
+            <p className="mb-2 font-mono text-xs text-ink-500">InlineError (lỗi thao tác)</p>
+            <InlineError>Không tải được tài liệu lên. Dung lượng tối đa là 20 MB.</InlineError>
+          </div>
+          <div>
             <p className="mb-2 font-mono text-xs text-ink-500">Partial</p>
             <PartialNotice>
               2/5 bài học chưa sinh xong — dữ liệu hiển thị chưa đầy đủ.
@@ -730,6 +743,28 @@ export default function UiStyleguidePage() {
               </StaggerItem>
             ))}
           </StaggerList>
+          <RevealOnScroll>
+            <Card>
+              <p className="text-sm text-ink-700">
+                <code className="font-mono text-xs">RevealOnScroll</code> — như trên, nhưng đợi tới
+                lúc khối lọt vào khung nhìn. Nằm cuối trang nên muốn thấy phải cuộn tới.
+              </p>
+            </Card>
+          </RevealOnScroll>
+          <StaggerOnScroll className="grid gap-3 sm:grid-cols-3">
+            {['Bốn', 'Năm', 'Sáu'].map((t) => (
+              <StaggerItem key={t}>
+                <Card>
+                  <p className="text-sm font-bold text-ink-900">{t}</p>
+                </Card>
+              </StaggerItem>
+            ))}
+          </StaggerOnScroll>
+          <p className="text-xs text-ink-500">
+            Hai cái trên kích hoạt <strong>lúc mount</strong> — đúng cho màn app ngắn. Hai cái dưới
+            đợi <strong>cuộn tới</strong> — dành cho trang chủ, nơi phần lớn nội dung nằm dưới nếp
+            gấp và sẽ chạy xong trước khi ai kịp nhìn.
+          </p>
           <p className="text-xs text-ink-500">
             Bật &ldquo;giảm chuyển động&rdquo; trong hệ điều hành rồi tải lại — mọi hiệu ứng trên
             đây chỉ còn mờ dần, không còn dịch chuyển.

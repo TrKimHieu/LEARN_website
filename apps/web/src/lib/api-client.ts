@@ -40,6 +40,29 @@ export function isQuotaExceededError(
   return err instanceof ApiClientError && err.code === 'QUOTA_EXCEEDED';
 }
 
+/**
+ * Câu chữ hiển thị cho một lỗi bất kỳ.
+ *
+ * Trước đây hàm này được định nghĩa lại **y hệt nhau ở 4 file màn hình**, còn 7 file khác
+ * tự viết tay đúng cái ternary đó tại chỗ. Đặt ở đây vì `api-client` vốn đã sở hữu phân
+ * loại lỗi (`ApiClientError`, `isQuotaExceededError`) và mọi call site đều đã import từ
+ * file này, nên gom về không tốn thêm dòng import nào.
+ */
+export function errorText(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+/**
+ * `requestId` để người dùng copy khi báo lỗi — hợp với prop `detail` của `<ErrorState>`.
+ *
+ * Prop đó được dựng riêng cho việc này nhưng chưa màn nào dùng; `courses/page.tsx` thay
+ * vào đó nhét mã vào giữa câu mô tả (" (mã yêu cầu: …)"). Tách ra để mọi màn nói cùng
+ * một kiểu: `description={errorText(...)} detail={errorDetail(...)}`.
+ */
+export function errorDetail(err: unknown): string | undefined {
+  return err instanceof ApiClientError ? err.requestId : undefined;
+}
+
 export interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
