@@ -616,3 +616,33 @@ Chi tiết từng lỗi ở `STATE.md` mục "Đợt audit + refactor backend/fr
 - [x] Nét mảnh 10px → 2.5px cho đúng chất "đồ thị" thay vì "con đường"
 - [x] Nét đứt/nét liền làm kênh tín hiệu thứ hai ngoài màu — gỡ vi phạm §2 tồn từ trước
 - [x] Kiểm chứng trên khoá học thật lẫn `/dev/ui`, 1440px và 390px; axe 18/18 màn 0 vi phạm
+
+## 20.16 Đợt nâng cấp giao diện (phiên 17 — 2026-09-22) — GĐ 1–6/7, GĐ 7 CHƯA làm ⚠️
+
+> Branch `redesign/upgrade-2026-09`, chưa merge `main`. Kế hoạch đầy đủ:
+> `C:\Users\hocvi\.claude\plans\ti-n-h-nh-redesign-website-zesty-swan.md`. Chi tiết ở STATE.md
+> mục "Đợt nâng cấp giao diện 2026-09-22".
+
+- [x] GĐ1 — Nạp Be Vietnam Pro + JetBrains Mono qua `next/font`, gỡ `font-extrabold` 24 chỗ, ADR 008
+- [x] GĐ2 — Sửa lỗi AA thật (`.lesson-content a` dùng sky-500), thang bo góc mới, `--shadow-overlay`,
+      `.focus-ring{,-tight,-dark}`
+- [x] GĐ3 — `InlineError`, `errorText`/`errorDetail` dùng chung, `RevealOnScroll`/`StaggerOnScroll`
+- [x] GĐ4 — Quét nhất quán 12 màn `(app)`: 11 banner lỗi chép tay → `InlineError`, 2 `TableSkeleton`
+      sai cột, dựng lại `admin/ai-jobs/[jobId]`, `EmptyState size="compact"`, 2 chỗ trạng thái bị
+      nuốt, motion trải ra các màn còn lại, xác nhận huỷ gói 2 nhịp
+- [x] GĐ5 — Trang chủ portfolio: server/client split, hero có khung xem trước sản phẩm (spec §10.1),
+      phá nhịp 4 lưới 3-cột liên tiếp, nav scroll-spy, footer có link thật, xoá CTA GitHub chết
+- [x] GĐ6 — `not-found`/`error`/`global-error`/`sitemap`/`robots`, metadata riêng 3 màn `(auth)`
+- [x] Mỗi giai đoạn: `typecheck -w apps/web` + `eslint apps/web/src` + `build -w apps/web` xanh
+- [x] `git diff packages/config/tailwind/theme.css` — 0 dòng `--color-*` trong khối `[SPEC]` bị đổi
+- [ ] **GĐ7a** — Rà soát cỡ chữ ad-hoc lặp lại, chỉ thêm token nếu thật sự cần
+- [ ] **GĐ7b** — Xoá `useCourseProgress` (0 call site), xoá 4 file mồ côi `public/mascot/*.svg`,
+      sửa cảnh báo lệch token đã cũ trong `packages/ui/src/index.ts:4-8` (giá trị hiện khớp)
+- [ ] **GĐ7c — BẮT BUỘC — chụp lại `apps/web/public/screenshots/*.png`** bằng
+      `scripts/capture-screenshots.mjs` trên stack thật (docker + seed). Ảnh hiện tại còn là bản
+      TRƯỚC nâng cấp — trang chủ đang quảng cáo thiết kế không còn tồn tại
+- [ ] **GĐ7d** — `node scripts/audit-a11y.mjs` trên stack đầy đủ (chưa chạy lần nào cho đợt này —
+      bắt buộc vì đổi font ảnh hưởng chiều cao dòng/tương phản), 3 lệnh `capture-ui.mjs` (1440, 390,
+      `--reduced-motion`), checklist thủ công đầy đủ ở cuối file kế hoạch
+- [ ] Merge `redesign/upgrade-2026-09` vào `main` (cần xác nhận — `main` đang có việc dở của người
+      khác chưa commit, không phải của đợt này)

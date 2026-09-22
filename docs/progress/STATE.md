@@ -7,10 +7,10 @@
 
 | Hạng mục              | Giá trị                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mốc hiện tại**      | **M0, M1, M5 — Hoàn TẤT** ✅. **M2, M3 core đã chạy thật end-to-end qua browser** ✅. **M4 — Hoàn TẤT** ✅. **M6 — nội dung/component/ADR/ảnh chụp UI/Lighthouse/demo CTA đều xong 2026-09-15** ✅, chỉ còn video demo (ngoài phạm vi công cụ hiện có). **Redesign frontend toàn diện 7/7 giai đoạn — Hoàn TẤT 2026-09-19** ✅ (xem mục riêng bên dưới). **Hạ tầng vibe-code giao diện + đợt cải tiến — 2026-09-19** ✅ (`docs/UI-GUIDE.md`, `/dev/ui`, motion/lucide/confetti). **Đợt hoàn thiện UX + a11y — 2026-09-19** ✅ (audit 18 màn thật bằng axe-core: 0 vi phạm WCAG 2.2 AA, từ 85 vi phạm). **Logo đổi sang nhân vật Circle — 2026-09-19** ✅ (ADR 007; còn chờ xác nhận ranh giới logo/mascot của §13.1). |
+| **Mốc hiện tại**      | **M0, M1, M5 — Hoàn TẤT** ✅. **M2, M3 core đã chạy thật end-to-end qua browser** ✅. **M4 — Hoàn TẤT** ✅. **M6 — nội dung/component/ADR/ảnh chụp UI/Lighthouse/demo CTA đều xong 2026-09-15** ✅, chỉ còn video demo (ngoài phạm vi công cụ hiện có). **Redesign frontend toàn diện 7/7 giai đoạn — Hoàn TẤT 2026-09-19** ✅ (xem mục riêng bên dưới). **Hạ tầng vibe-code giao diện + đợt cải tiến — 2026-09-19** ✅ (`docs/UI-GUIDE.md`, `/dev/ui`, motion/lucide/confetti). **Đợt hoàn thiện UX + a11y — 2026-09-19** ✅ (audit 18 màn thật bằng axe-core: 0 vi phạm WCAG 2.2 AA, từ 85 vi phạm). **Logo đổi sang nhân vật Circle — 2026-09-19** ✅ (ADR 007; còn chờ xác nhận ranh giới logo/mascot của §13.1). **Đợt nâng cấp giao diện 2026-09-22 (branch `redesign/upgrade-2026-09`) — GĐ 1–6/7 xong, GĐ 7 (đánh bóng/dọn dẹp/chụp lại ảnh portfolio) CHƯA làm** ⚠️ (xem mục riêng bên dưới — bắt buộc đọc trước khi tiếp tục). |
 | **Tần xuất cập nhật** | Mỗi lần xong 1 mục checklist                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **Blocker**           | Không có blocker. **CI đã xanh trở lại 2026-09-19**: 34 lỗi typecheck trong `packages/ai/src/__tests__/` đã sửa (helper `at()` cho `noUncheckedIndexedAccess`), `npm run typecheck` toàn workspace exit 0. Docker Desktop: đã sửa, root cause đầy đủ ở mục "Docker Desktop" bên dưới.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Git**               | Đã `git init` (chưa commit lần đầu)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Git**               | `main` đã có commit. Đợt nâng cấp giao diện 2026-09-22 làm trên branch riêng `redesign/upgrade-2026-09` (6 commit, chưa merge — xem mục riêng bên dưới). `main` đang có việc dở của người khác chưa commit (`packages/ai/src/llm/gemini.ts` + liên quan) — **đừng đụng vào**, không phải của đợt này.                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Lộ trình tổng thể (HANDBOOK §19)
 
@@ -1239,3 +1239,139 @@ phải lỗi code, phải dừng dev server, `rm -rf apps/web/.next` rồi chạ
 ## Nhật ký chi tiết
 
 Xem `docs/progress/session-log.md`.
+
+## Nhà cung cấp LLM — thêm Google Gemini (2026-09-22)
+
+Người dùng cung cấp API key Google AI Studio (free trial). Codebase trước đó chỉ có
+`AnthropicLlmProvider`, nên đã bổ sung adapter thứ hai sau interface `LlmProvider` (HANDBOOK §441 —
+đổi nhà cung cấp không sửa pipeline):
+
+- `packages/ai/src/llm/gemini.ts` — `GeminiLlmProvider`, gọi thẳng REST `:generateContent` bằng
+  `fetch`, **không thêm SDK**. Key đi ở header `x-goog-api-key`, không bao giờ ở query string.
+- `LLM_PROVIDER` mở rộng thành `'anthropic' | 'google'` ở cả `apps/api` và `apps/worker`.
+  `createLlmProvider()` chặn ngay nếu provider=google mà model không thuộc họ `gemini`.
+- 8 unit test (`packages/ai/src/__tests__/gemini.test.ts`) dùng fetch giả, không chạm mạng.
+
+**Ba điều học được khi kiểm chứng thật với key này:**
+
+1. **Gemini 1.5 và cả họ 2.5 đã bị Google khoá với key/project mới.** `gemini-1.5-flash` → 404
+   "not found"; `gemini-2.5-flash` / `2.5-pro` / `2.5-flash-lite` → 404 "no longer available to new
+   users". Họ cũ nhất còn gọi được là **3.1**. Đừng chép model name cũ từ tài liệu.
+2. **Thought token ăn vào `maxOutputTokens`.** Gemini 3.x luôn sinh phần suy nghĩ (một prompt 16
+   token vẫn tốn 140 thought token) và nó tính chung hạn mức output → để 4096 như Anthropic là dễ bị
+   cắt, trả text rỗng kèm `finishReason=MAX_TOKENS`. Mặc định của adapter là 8192, và lỗi này được
+   dịch thành thông báo nói rõ nguyên nhân. Thought token cũng được cộng vào `outputTokens` để
+   `estimateCostUsd` không ước thiếu.
+3. **503 "high demand" xảy ra thường xuyên** trên model mới nhất (`gemini-3.6-flash`,
+   `gemini-flash-latest` đều 503 lúc thử). Adapter thử lại 429/503 hai lần với backoff 1s/2s.
+
+**Cấu hình đang chạy:** `LLM_PROVIDER=google`, `LLM_MODE=live`,
+`LLM_MODEL_GENERATION=LLM_MODEL_FAST=gemini-3.1-flash-lite`. Smoke test thật qua
+`createLlmProvider()` cho JSON hợp lệ, 34 in / 93 out token, ~6s.
+
+⚠️ **Bẫy cấu hình đã phát hiện:** `apps/api` và `apps/worker` gọi `dotenv/config` với cwd là thư mục
+của chính app, nên chúng đọc `apps/<app>/.env` — **không** đọc `.env` ở gốc repo (README đang ngầm
+hiểu ngược lại). Trước đó `apps/worker/.env` chỉ có comment và `apps/api/.env` không tồn tại, tức là
+cả hai app đang chạy hoàn toàn bằng giá trị default trong zod schema (kể cả `JWT_ACCESS_SECRET`
+dev-only). Key LLM vì vậy đặt ở `apps/worker/.env`.
+
+⚠️ **Giá cho model Gemini 3.x chưa đối chiếu bảng giá chính thức** — `estimateCostUsd` dùng mức
+Gemini 2.5 Pro làm fallback (cố tình ước cao để chặn `AI_JOB_MAX_COST_USD` sớm còn hơn tiêu vượt).
+
+Dọn kèm: cắt đoạn rác UTF-16LE (`# LEARN_website`) ở cuối `README.md` — nó khiến prettier coi file là
+binary và `npm run lint` đỏ từ trước phiên này.
+
+## Đợt nâng cấp giao diện 2026-09-22 — GĐ 1–6/7 xong, GĐ 7 CHƯA làm ⚠️
+
+Yêu cầu: "redesign website thành phiên bản upgrade" theo `taste-skill:redesign-skill`. Kế hoạch đầy
+đủ (7 giai đoạn, lý do từng quyết định, checklist kiểm chứng) nằm ở
+`C:\Users\hocvi\.claude\plans\ti-n-h-nh-redesign-website-zesty-swan.md` — **đọc file đó trước khi
+làm tiếp GĐ 7**, phần này chỉ tóm tắt.
+
+**Branch:** `redesign/upgrade-2026-09`, tách từ `main` lúc `main` đang có việc dở chưa commit của
+người khác (Gemini provider — xem mục phía trên). Chưa merge vào `main`. 6 commit, mỗi commit ứng
+với một cụm giai đoạn, đọc `git log --oneline` trên branch này để thấy đúng thứ tự.
+
+### Đã xong (GĐ 1–6), mỗi giai đoạn đã qua `typecheck` + `eslint` + `build` xanh
+
+1. **Bộ chữ.** Nạp Be Vietnam Pro (sans, 4 weight 400/500/600/700) + JetBrains Mono qua `next/font`
+   — trước đó `--font-sans` là chuỗi hệ thống, không nạp webfont nào. Cả hai đã xác minh phủ đủ dấu
+   tiếng Việt. Hai dòng `--font-*` **không** còn nằm trong khối `[SPEC]` của `theme.css` — spec
+   §14.2 chỉ ràng buộc màu + "monospace cho code", chưa từng chỉ định font sans (lý do đầy đủ ở
+   `docs/adr/008-chu-be-vietnam-pro-jetbrains-mono.md`, ADR mới). Gỡ hết `font-extrabold` (24 chỗ) vì
+   weight 800 không nằm trong ngân sách 4 bậc — họ chữ tĩnh, thêm bậc là thêm 3 file/subset.
+   **Kiểm bằng máy:** `grep -o -- "--font-sans:[^;]*;" apps/web/.next/static/css/*.css` phải có
+   `var(--font-be-vietnam-pro)` đứng đầu — đã xác nhận sau build.
+2. **Token + sửa lỗi AA thật.** `.lesson-content a` dùng sky-500 (~1.9:1 trên trắng, trượt AA) → đổi
+   sky-700. Lỗi này **không nằm trong tầm quét của `scripts/audit-a11y.mjs`** (route bài học không có
+   trong `LEARNER_ROUTES`) — kiểm tay, hoặc thêm route bài học vào audit trước khi tin kết quả audit
+   là đủ. Thêm thang bo góc 3 bậc + `--shadow-overlay`, `.focus-ring{,-tight,-dark}` (thay 23 chỗ gõ
+   lại), `scroll-behavior: smooth`, `text-wrap`, `tabular-nums`.
+3. **Primitive dùng chung (thuần thêm mới).** `InlineError` (states.tsx) thay 11 bản banner lỗi chép
+   tay giống hệt nhau — bản cũ không có icon, tức chỉ dựa vào màu để báo lỗi (UI-GUIDE §2 cấm).
+   `errorText()`/`errorDetail()` gom vào `lib/api-client.ts`. `RevealOnScroll`/`StaggerOnScroll` cho
+   trang chủ — xem cảnh báo động cơ ở mục 5.
+4. **Quét nhất quán 12 màn `(app)`.** Gộp 11 banner lỗi + 4 bản `errorText` cục bộ; sửa 2
+   `TableSkeleton` sai số cột (`admin/ai-jobs` 6→7, `admin/subscriptions` 5→4); dựng lại
+   `admin/ai-jobs/[jobId]` (màn lệch chuẩn nhất — thiếu `PageHeader`, thiếu nhánh lỗi cho
+   `auditLog`, skeleton kiểu "tảng xám"); thêm `EmptyState size="compact"` cho mục con của màn đã có
+   nội dung (luật mới, ghi vào UI-GUIDE §4c); sửa 2 chỗ trạng thái bị nuốt (`/dashboard` bỏ qua lỗi
+   `courses`, `/settings` gộp 2 query độc lập thành 1 cổng ăn-cả-ngã-về-không); trải motion ra
+   `/courses`/`/progress`/`/settings`/5 bảng admin; xác nhận huỷ gói theo mẫu 2 nhịp giống xoá bài
+   học; 4 tàn dư viền 2px còn sót sau đợt §4b.
+5. **Trang chủ portfolio — phần việc lớn nhất.** `app/page.tsx` tách server/client (metadata giờ
+   xuất được — trước đó cả trang `'use client'` vì `LanguageProvider`); hero thêm khung xem trước
+   sản phẩm (bịt khoảng trống spec §10.1, trước đó chỉ có mascot); phá nhịp 4 lưới `sm:grid-cols-3`
+   liên tiếp (TargetUsers/ProductValue/CoreFeatures/Screenshots) thành 4 hình thái khác nhau — không
+   màu mới, không bịa dữ liệu; nav có scroll-spy; footer có link thật; xoá `GITHUB_INFO.cta` vì repo
+   chưa public (CTA chết còn tệ hơn không có CTA).
+
+   ⚠️ **Phát hiện quan trọng, phải đọc trước khi động vào `lib/motion.tsx`:** `whileInView` của
+   `motion` (Framer Motion) **kẹt vĩnh viễn ở trạng thái ẩn** trong ít nhất một môi trường thực tế
+   đã gặp khi build phần này (cửa sổ trình duyệt bị che/tab nền — `IntersectionObserver` không bao
+   giờ bắn callback, đo trực tiếp chứ không phải suy đoán). Thử kết hợp `animate` làm lưới an toàn
+   cũng không ăn thua. `RevealOnScroll`/`StaggerOnScroll` hiện **không dùng `motion.div` nữa** — tự
+   quản bằng `IntersectionObserver` + CSS transition thuần (Tailwind), cộng lưới an toàn ép hiện sau
+   1 giây. Trạng thái "ẩn" dùng `opacity-60` chứ không phải `opacity-0`, để nếu paint có kẹt ở đâu đó
+   thì ảnh chụp màn hình (`capture-ui.mjs`) vẫn đọc được nội dung thay vì trắng trơn. Toàn bộ lý do +
+   cách đo nằm trong docblock ngay trên `RevealOnScroll` ở `lib/motion.tsx` — đọc nó trước khi "sửa
+   lại cho giống code cũ".
+6. **Hạ tầng route Next.js còn thiếu.** `not-found.tsx`, `error.tsx`, `global-error.tsx`,
+   `sitemap.ts`, `robots.ts`, `metadataBase`/`openGraph`/`twitter` ở root layout, metadata riêng cho
+   3 màn `(auth)` (tách server/client theo đúng mẫu trang chủ). `env.siteUrl` dùng lại `APP_URL` đã
+   có sẵn trong `.env.example` (không thêm biến trùng nghĩa) — nhưng `apps/web` **không tự đọc `.env`
+   gốc repo** (đúng bẫy đã ghi ở mục Gemini phía trên, giờ áp cho cả web app), nên khi deploy thật
+   phải set `APP_URL` ở nơi Next.js thực sự đọc được (env của nền tảng deploy, hoặc `apps/web/.env`).
+
+### CHƯA làm — GĐ 7 (bắt buộc trước khi coi đợt này là xong)
+
+Đọc mục "Giai đoạn 7" trong file kế hoạch để có chi tiết đầy đủ. Tóm tắt:
+
+- **7a — token thang chữ:** chỉ thêm nếu vòng rà soát cho thấy cỡ chữ ad-hoc lặp lại ≥ 2 lần. Chưa
+  rà soát.
+- **7b — dọn code chết/tài liệu cũ:** xoá `useCourseProgress` (`lib/learning-api.ts:132`, 0 call
+  site — đã xác nhận trước khi bắt đầu redesign, chưa xoá), xoá 4 file mồ côi
+  `apps/web/public/mascot/*.svg`, sửa mệnh đề cảnh báo lệch token đã sai trong
+  `packages/ui/src/index.ts:4-8` (giá trị hiện đang khớp `theme.css`, không còn lệch).
+- **7c — CHỤP LẠI ẢNH PORTFOLIO — bắt buộc, làm cuối cùng.** `apps/web/public/screenshots/*.png`
+  (dùng ở trang chủ, section Screenshots) vẫn là ảnh **TRƯỚC** đợt nâng cấp — font hệ thống, UI cũ.
+  Chạy `docker compose -f infra/docker-compose.yml up -d && npm run db:migrate && npm run db:seed &&
+  npm run dev`, rồi `node scripts/capture-screenshots.mjs`. Nếu không làm bước này, trang chủ đang
+  quảng cáo một thiết kế không còn tồn tại.
+- **7d — gate cuối + checklist thủ công:** `rm -rf apps/web/.next && npm run build -w apps/web`,
+  `npm run typecheck -w apps/web`, `npx eslint apps/web/src`,
+  `node scripts/audit-a11y.mjs` (cần full stack — **bắt buộc chạy lại** vì đổi font làm đổi chiều
+  cao dòng/bề rộng chữ, có thể ảnh hưởng tương phản ở nền có pha màu), 3 lệnh `capture-ui.mjs` (1440,
+  390, `--reduced-motion`). Checklist thủ công đầy đủ nằm ở cuối file kế hoạch (mục "Kiểm chứng") —
+  gồm cả việc xác nhận không dòng `--color-*` nào trong khối `[SPEC]` của `theme.css` bị đổi.
+
+### Việc chưa làm, ngoài phạm vi GĐ 1–7 (không chặn, ghi lại để khỏi quên)
+
+- `docs/UI-GUIDE.md` cần thêm mục cho `InlineError`, `RevealOnScroll`, luật `EmptyState
+  size="compact"` mới (đã ghi luật vào §4c trong lúc làm GĐ4, nhưng §4b "Primitive mở rộng thêm" và
+  §2 (token chữ) chưa cập nhật đủ — kiểm lại khi làm 7a/7b).
+- Chưa merge branch vào `main`. Người yêu cầu đợt này tạm dừng phiên trước khi merge — hỏi lại trước
+  khi merge, đặc biệt vì `main` đang có việc dở của người khác chưa commit.
+- Ảnh chụp `docs/screenshots/ui/root-*.png` sinh ra trong lúc làm GĐ5 (`root-1440.png`,
+  `root-1440-rm.png`, `root-390.png`) là ảnh **kiểm tra tạm**, không phải ảnh portfolio cuối — không
+  copy sang `apps/web/public/`.
