@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { MotionConfig, motion, useReducedMotion, type Variants } from 'motion/react';
+import { cn } from '@/components/ui/cn';
 
 /**
  * Lớp chuyển động dùng chung — xem docs/UI-GUIDE.md §Chuyển động.
@@ -130,25 +132,77 @@ export function StaggerItem({
 }
 
 /**
- * Ngưỡng kích hoạt cho hai component `*OnScroll` dưới đây.
+ * Như `Reveal`, nhưng đợi tới lúc khối thật sự lọt vào khung nhìn — dùng cho trang chủ 16
+ * section, nơi kích hoạt lúc mount (`Reveal`) sẽ chạy xong animation trước khi người dùng
+ * cuộn tới. Quy tắc chọn: nội dung nằm trên nếp gấp → `Reveal`. Phải cuộn mới thấy →
+ * `RevealOnScroll`.
  *
- * `once: true` — chạy đúng một lần. Nội dung nhấp nháy lại mỗi lần cuộn qua là trang trí,
- * không phải giải thích, và nó phá luật 1.
- * `amount: 0.2` — đợi 20% khối lọt vào khung nhìn. Đặt 0 thì khối cao hơn màn hình sẽ
- * kích hoạt ngay khi mép trên vừa chạm đáy, tức người dùng chưa thấy gì đã chạy xong.
+ * **Cố ý KHÔNG dùng `motion.div` + `animate`/`whileInView` ở đây** — khác mọi component
+ * khác trong file này. Lý do đo được trực tiếp, không phải suy đoán: một animation Framer
+ * Motion kích hoạt LÚC MOUNT (như `Reveal`) chạy đúng trong mọi môi trường đã thử, nhưng
+ * animation cần **đổi state SAU khi đã mount** rồi mới chạy (đúng thứ `whileInView` cần)
+ * thì kẹt tại trạng thái ban đầu vô thời hạn trong ít nhất một môi trường thực tế đã gặp
+ * (cửa sổ trình duyệt bị che khuất — có thể xảy ra với người dùng thật khi mở link bằng
+ * chuột giữa vào tab nền). Test trực tiếp: một `motion.div` khác trong app (`ProgressBar`,
+ * đổi giá trị qua state sau một cú click) cũng kẹt y hệt, trong khi một `<div>` thường đổi
+ * `style.opacity` qua CSS transition thì luôn chạy đúng. Nên "đổi trạng thái sau mount" ở
+ * đây dùng CSS transition thuần (Tailwind), không giao cho animation engine của Framer
+ * Motion — pipeline đó có vẻ cần một tick nội bộ không phải lúc nào cũng có được.
  */
-const IN_VIEW = { once: true, amount: 0.2 } as const;
+const FORCE_SHOW_MS = 1000;
+
+// Callback ref: component nhận `as` là 'div' | 'ul' | 'ol', mỗi thẻ một kiểu phần tử DOM
+// khác nhau — không có `RefObject<T>` cụ thể nào khớp cả ba, nhưng callback ref
+// (`(node) => void`) thì khớp mọi kiểu phần tử.
+function useInView(threshold = 0.2): [(node: HTMLElement | null) => void, boolean] {
+  const elRef = useRef<HTMLElement | null>(null);
+  const [inView, setInView] = useState(false);
+  const forceShow = useForceShow();
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold, rootMargin: '-20% 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  const setRef = (node: HTMLElement | null) => {
+    elRef.current = node;
+  };
+
+  return [setRef, inView || forceShow];
+}
 
 /**
- * Như `Reveal`, nhưng đợi tới lúc khối thật sự lọt vào khung nhìn.
- *
- * Vì sao cần cả hai: `Reveal` dùng `animate="show"`, tức kích hoạt **lúc mount**. Với màn
- * app ngắn, nằm gọn trên một khung hình, đó là đúng. Với trang chủ 16 section thì sai —
- * mọi thứ dưới nếp gấp chạy xong animation trước khi người dùng cuộn tới, nên ta trả đủ
- * chi phí mà không được gì.
- *
- * Quy tắc chọn: nội dung nằm trên nếp gấp → `Reveal`. Phải cuộn mới thấy → `RevealOnScroll`.
+ * Lưới an toàn: quá `FORCE_SHOW_MS` mà chưa vào khung nhìn thì ép hiện — nội dung không
+ * bao giờ được phép kẹt vô hình vĩnh viễn, chỉ mất phần chuyển động.
  */
+function useForceShow(): boolean {
+  const [forceShow, setForceShow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setForceShow(true), FORCE_SHOW_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return forceShow;
+}
+
+// `opacity-60`, không phải `opacity-0`: nếu paint bị treo (đã gặp thật trong ít nhất
+// một môi trường — xem docblock trên `RevealOnScroll`) và transition không bao giờ
+// chạy xong, nội dung vẫn đọc được ở trạng thái "chưa hiện" thay vì biến mất hẳn.
+const CSS_REVEAL_HIDDEN = 'opacity-60 translate-y-2';
+const CSS_REVEAL_SHOW = 'opacity-100 translate-y-0';
+const CSS_REVEAL_BASE =
+  'transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none';
+
 export function RevealOnScroll({
   children,
   delay = 0,
@@ -158,40 +212,39 @@ export function RevealOnScroll({
   delay?: number;
   className?: string;
 }) {
+  const [ref, show] = useInView();
   return (
-    <motion.div
-      initial="hidden"
-      whileInView="show"
-      viewport={IN_VIEW}
-      variants={fadeUp}
-      transition={{ delay, duration: DURATION.base, ease: EASE_OUT }}
-      className={className}
+    <div
+      ref={ref}
+      className={cn(CSS_REVEAL_BASE, show ? CSS_REVEAL_SHOW : CSS_REVEAL_HIDDEN, className)}
+      style={delay ? { transitionDelay: `${delay}s` } : undefined}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
-/** `StaggerList` phiên bản cuộn-mới-chạy. Phần tử con vẫn bọc bằng `StaggerItem`. */
+/**
+ * `StaggerList` phiên bản cuộn-mới-chạy. Không dùng `StaggerItem` (bản Framer Motion) cho
+ * từng con — cùng lý do đã giải thích ở trên. Cả nhóm hiện cùng lúc bằng CSS transition,
+ * không so le từng phần tử; đơn giản hơn và không phụ thuộc animation engine đang có vấn
+ * đề trong một số môi trường.
+ */
 export function StaggerOnScroll({
   children,
-  stagger = 0.06,
   className,
   as = 'div',
 }: {
   children: React.ReactNode;
-  stagger?: number;
   className?: string;
   as?: 'div' | 'ul' | 'ol';
 }) {
-  const Tag = motion[as];
+  const Tag = as;
+  const [ref, show] = useInView();
   return (
     <Tag
-      initial="hidden"
-      whileInView="show"
-      viewport={IN_VIEW}
-      variants={staggerContainer(stagger)}
-      className={className}
+      ref={ref}
+      className={cn(CSS_REVEAL_BASE, show ? CSS_REVEAL_SHOW : CSS_REVEAL_HIDDEN, className)}
     >
       {children}
     </Tag>

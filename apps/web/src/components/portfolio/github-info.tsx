@@ -12,7 +12,7 @@ npm run dev`;
 export function GithubInfo() {
   const lang = useLang();
   return (
-    <section id="github" className="bg-white py-16 sm:py-24">
+    <section id="github" className="scroll-mt-16 bg-white py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading eyebrow={GITHUB_INFO.eyebrow} title={GITHUB_INFO.title} />
 

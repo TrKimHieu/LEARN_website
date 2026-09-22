@@ -1,44 +1,38 @@
-'use client';
+import type { Metadata } from 'next';
+import { BRAND } from '@learn/ui';
+import { Landing } from '@/components/portfolio/landing';
 
-import { LanguageProvider } from '@/lib/portfolio-language';
-import { PortfolioNav } from '@/components/portfolio/nav';
-import { Hero } from '@/components/portfolio/hero';
-import { Problem } from '@/components/portfolio/problem';
-import { TargetUsers } from '@/components/portfolio/target-users';
-import { ProductValue } from '@/components/portfolio/product-value';
-import { CoreFeatures } from '@/components/portfolio/core-features';
-import { Screenshots } from '@/components/portfolio/screenshots';
-import { HowItWorks } from '@/components/portfolio/how-it-works';
-import { MvpScope } from '@/components/portfolio/mvp-scope';
-import { TechnicalArchitecture } from '@/components/portfolio/technical-architecture';
-import { AiPipeline } from '@/components/portfolio/ai-pipeline';
-import { DatabaseApi } from '@/components/portfolio/database-api';
-import { EngineeringDecisions } from '@/components/portfolio/engineering-decisions';
-import { DemoCta } from '@/components/portfolio/demo-cta';
-import { GithubInfo } from '@/components/portfolio/github-info';
-import { PortfolioFooter } from '@/components/portfolio/footer';
+/**
+ * Trước đây file này chính là màn hình — `'use client'` cả cây, vì `LanguageProvider`
+ * (toggle VI/EN) buộc cả cây phải chạy trên client. Một trang `'use client'` không xuất
+ * được `metadata`, nên landing page không có `<title>`/`description` riêng, chỉ thừa
+ * hưởng mặc định của root layout.
+ *
+ * Ranh giới client giờ tụt xuống một tầng: file này là server component, chỉ export
+ * `metadata` rồi render `<Landing />`. Thân trang cũ chuyển nguyên văn sang
+ * `components/portfolio/landing.tsx` — không section nào phải thêm `'use client'`,
+ * không import nào đổi.
+ *
+ * Không đưa `LanguageProvider` lên root layout: nó chỉ `/` dùng, đẩy lên gốc sẽ ép
+ * toàn bộ app vào cây client cho một provider của riêng một trang. Cũng không đọc
+ * ngôn ngữ từ cookie để giữ metadata "phản ứng" — làm vậy biến `/` thành render động,
+ * mất hẳn prerender tĩnh cho một trang không có dữ liệu động nào.
+ */
+export const metadata: Metadata = {
+  title: BRAND.tagline,
+  description: BRAND.taglineVi,
+  openGraph: {
+    title: `${BRAND.name} — ${BRAND.tagline}`,
+    description: BRAND.taglineVi,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${BRAND.name} — ${BRAND.tagline}`,
+    description: BRAND.taglineVi,
+  },
+};
 
 export default function HomePage() {
-  return (
-    <LanguageProvider>
-      <PortfolioNav />
-      <main>
-        <Hero />
-        <Problem />
-        <TargetUsers />
-        <ProductValue />
-        <CoreFeatures />
-        <Screenshots />
-        <HowItWorks />
-        <MvpScope />
-        <TechnicalArchitecture />
-        <AiPipeline />
-        <DatabaseApi />
-        <EngineeringDecisions />
-        <DemoCta />
-        <GithubInfo />
-      </main>
-      <PortfolioFooter />
-    </LanguageProvider>
-  );
+  return <Landing />;
 }

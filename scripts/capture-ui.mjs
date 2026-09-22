@@ -87,8 +87,12 @@ async function main() {
         failed += 1;
         continue;
       }
-      // Chờ animation vào chỗ (motion dùng ~250ms) rồi mới chụp.
-      await page.waitForTimeout(700);
+      // Chờ animation vào chỗ rồi mới chụp. `Reveal` (mount, ~250ms) là phần lớn;
+      // `RevealOnScroll`/`StaggerOnScroll` (trang chủ) dùng `whileInView` — nếu quan
+      // sát không bao giờ bắn (tab nền, cửa sổ bị che, đúng thứ đang chụp) thì có lưới
+      // an toàn tự ép hiện sau 1000ms (`FORCE_SHOW_MS` ở lib/motion.tsx). Chờ 1500ms để
+      // luôn qua khỏi mốc đó.
+      await page.waitForTimeout(1500);
       // Hậu tố ghi lại điều kiện chụp, nếu không bản --dark và --reduced-motion
       // sẽ ghi đè lên bản thường và không so sánh được với nhau.
       const suffix =

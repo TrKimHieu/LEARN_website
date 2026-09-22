@@ -14,16 +14,25 @@ import { cn } from './cn';
  * Màu giữ nguyên `[SPEC]` §14.2: biến thể `primary` là nền sky + chữ navy-900 (tương phản
  * 9.86:1). Chữ trắng trên sky chỉ 1.90:1 nên **không** có biến thể đó — xem docs/UI-GUIDE.md §2.
  */
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
 type Size = 'sm' | 'md' | 'lg';
 
+// Vòng focus nằm TRONG từng biến thể, không phải BASE dùng chung: `outline` sống
+// trên nền navy nên cần `focus-ring-dark` (sky-500), còn lại dùng `focus-ring`
+// (sky-600) — hai class CSS riêng, gộp ở BASE thì cả hai cùng áp và cạnh tranh
+// theo thứ tự nạp stylesheet thay vì theo variant nào đang dùng.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-sky-500 text-navy-900 shadow-card hover:bg-sky-400 active:bg-sky-600',
+  primary: 'bg-sky-500 text-navy-900 shadow-card hover:bg-sky-400 active:bg-sky-600 focus-ring',
   secondary:
     'bg-white text-ink-700 border border-surface-300 shadow-card ' +
-    'hover:border-surface-400 hover:text-ink-900 active:bg-surface-100',
-  ghost: 'bg-transparent text-ink-700 hover:bg-surface-200 hover:text-ink-900',
-  danger: 'bg-danger-700 text-white shadow-card hover:bg-danger-500 active:bg-danger-700',
+    'hover:border-surface-400 hover:text-ink-900 active:bg-surface-100 focus-ring',
+  ghost: 'bg-transparent text-ink-700 hover:bg-surface-200 hover:text-ink-900 focus-ring',
+  danger:
+    'bg-danger-700 text-white shadow-card hover:bg-danger-500 active:bg-danger-700 focus-ring',
+  // Viền mảnh trên nền tối — dùng ở hero (navy-900). Chữ `surface-100` giữ đúng
+  // luật "chữ trắng trên sky chỉ 1.90:1 không tồn tại": đây không phải nền sky.
+  outline:
+    'border border-white/25 text-surface-100 hover:bg-white/5 active:bg-white/10 focus-ring-dark',
 };
 
 // Thang chiều cao 36/40/48 — bội số của 4 như phần còn lại của lưới.
@@ -36,7 +45,6 @@ const SIZES: Record<Size, string> = {
 const BASE =
   'inline-flex items-center justify-center rounded-lg font-medium select-none ' +
   'transition-all duration-200 ' +
-  'focus-ring ' +
   'disabled:pointer-events-none disabled:opacity-50';
 
 function classes(variant: Variant, size: Size, fullWidth: boolean, className?: string) {

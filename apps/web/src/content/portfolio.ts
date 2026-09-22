@@ -617,6 +617,10 @@ export const DEMO = {
   cta: { vi: 'Vào Demo', en: 'Launch Demo' },
 } satisfies { eyebrow: Bi; title: Bi; description: Bi; credentialsLabel: Bi; cta: Bi };
 
+// Không có trường `cta` ("Xem trên GitHub"): repo chưa public (xem câu cuối
+// `github-info.tsx`), nên một nút dẫn tới URL không tồn tại còn tệ hơn không có
+// nút nào — AGENTS.md cấm trình bày thứ chưa làm như đã làm. Có repo public thật
+// thì thêm lại trường này và render một ButtonLink trỏ đúng URL.
 export const GITHUB_INFO = {
   eyebrow: { vi: 'Mã nguồn', en: 'GitHub & Project Info' },
   title: { vi: 'Xem mã nguồn, chạy local', en: 'View the source, run it locally' },
@@ -628,5 +632,4 @@ export const GITHUB_INFO = {
     'MinIO (S3-compatible)',
     'Anthropic Claude',
   ],
-  cta: { vi: 'Xem trên GitHub', en: 'View on GitHub' },
-} satisfies { eyebrow: Bi; title: Bi; stack: string[]; cta: Bi };
+} satisfies { eyebrow: Bi; title: Bi; stack: string[] };

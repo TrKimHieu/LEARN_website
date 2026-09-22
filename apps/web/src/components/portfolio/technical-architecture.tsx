@@ -15,7 +15,7 @@ const LAYERS = [
 export function TechnicalArchitecture() {
   const lang = useLang();
   return (
-    <section id="technical" className="bg-navy-900 py-16 text-surface-100 sm:py-24">
+    <section id="technical" className="scroll-mt-16 bg-navy-900 py-16 text-surface-100 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
           eyebrow={ARCHITECTURE.eyebrow}

@@ -6,14 +6,22 @@ export function SectionHeading({
   title,
   intro,
   light = false,
+  align = 'start',
 }: {
   eyebrow: Bi;
   title: Bi;
   intro?: Bi;
   light?: boolean;
+  /**
+   * `center` dùng `mx-auto` + `text-center` — trước đây `DemoCta` phải tự bọc
+   * `text-center` ở component cha vì đây là chỗ DUY NHẤT component này bị
+   * "chống lại" thay vì dùng thẳng: `text-center` của cha chỉ căn CHỮ, khối
+   * `max-w-2xl` của chính component vẫn lệch trái vì thiếu `mx-auto`.
+   */
+  align?: 'start' | 'center';
 }) {
   return (
-    <div className="max-w-2xl">
+    <div className={align === 'center' ? 'mx-auto max-w-2xl text-center' : 'max-w-2xl'}>
       <p
         className={`font-mono text-xs font-bold uppercase tracking-[0.14em] ${
           light ? 'text-sky-400' : 'text-sky-700'

@@ -23,6 +23,18 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // `<html lang="vi">` khai ở root layout — đúng cho toàn app, nhưng landing page
+  // có toggle VI/EN nên khi bật "en" thì thuộc tính này phải nói đúng sự thật.
+  // Cleanup trả về "vi" khi rời trang: `LanguageProvider` chỉ mount ở `/`, điều
+  // hướng client sang /login sẽ unmount nó — không trả lại thì "en" bị bỏ quên
+  // trên một app còn lại toàn tiếng Việt.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    return () => {
+      document.documentElement.lang = 'vi';
+    };
+  }, [lang]);
+
   function setLang(l: Lang) {
     setLangState(l);
     try {

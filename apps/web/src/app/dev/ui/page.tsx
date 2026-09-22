@@ -33,13 +33,7 @@ import {
   type BadgeTone,
   type IconName,
 } from '@/components/ui';
-import {
-  Reveal,
-  RevealOnScroll,
-  StaggerItem,
-  StaggerList,
-  StaggerOnScroll,
-} from '@/lib/motion';
+import { Reveal, RevealOnScroll, StaggerItem, StaggerList, StaggerOnScroll } from '@/lib/motion';
 import { LessonPath } from '@/components/lesson-path';
 import { LogoMark } from '@/components/logo-mark';
 import type { LessonSummary } from '@learn/contracts';
@@ -358,8 +352,8 @@ export default function UiStyleguidePage() {
 
           <div className="border-t border-surface-200 pt-5">
             <p className="mb-3 text-xs text-ink-500">
-              Ba bậc, một hướng nguồn sáng — thẳng từ trên xuống, không lệch ngang
-              (UX-UI-PRINCIPLES §3.5).
+              Ba bậc, một hướng nguồn sáng — thẳng từ trên xuống, không lệch ngang (UX-UI-PRINCIPLES
+              §3.5).
             </p>
             <div className="flex flex-wrap gap-5">
               {(
@@ -422,7 +416,8 @@ export default function UiStyleguidePage() {
       <Section title="Chữ — weight đã nạp (ADR 008)">
         <Card className="space-y-3">
           <p className="text-xs text-ink-500">
-            Be Vietnam Pro · chỉ 400 / 500 / 600 / 700 được nạp. Không dùng <code>font-extrabold</code>.
+            Be Vietnam Pro · chỉ 400 / 500 / 600 / 700 được nạp. Không dùng{' '}
+            <code>font-extrabold</code>.
           </p>
           {(
             [
@@ -502,6 +497,26 @@ export default function UiStyleguidePage() {
             </Button>
             <Button variant="danger">
               <Icon name="trash" size={18} /> Xoá
+            </Button>
+          </div>
+        </Card>
+
+        {/* `outline` chỉ dùng trên nền tối (hero) — viền trắng mờ + focus-ring-dark
+            vì sky-600 của focus-ring thường chìm trên navy. */}
+        <Card className="mt-4 space-y-3 bg-navy-900">
+          <p className="font-mono text-xs text-sky-400">outline — nền tối</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm">
+              Nhỏ
+            </Button>
+            <Button variant="outline" size="md">
+              Vừa
+            </Button>
+            <Button variant="outline" size="lg">
+              Lớn
+            </Button>
+            <Button variant="outline" disabled>
+              Vô hiệu
             </Button>
           </div>
         </Card>
@@ -753,11 +768,9 @@ export default function UiStyleguidePage() {
           </RevealOnScroll>
           <StaggerOnScroll className="grid gap-3 sm:grid-cols-3">
             {['Bốn', 'Năm', 'Sáu'].map((t) => (
-              <StaggerItem key={t}>
-                <Card>
-                  <p className="text-sm font-bold text-ink-900">{t}</p>
-                </Card>
-              </StaggerItem>
+              <Card key={t}>
+                <p className="text-sm font-bold text-ink-900">{t}</p>
+              </Card>
             ))}
           </StaggerOnScroll>
           <p className="text-xs text-ink-500">
