@@ -90,7 +90,14 @@ async function main() {
   const adminCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const ap = await adminCtx.newPage();
   await login(ap, 'admin@learn.ai', 'Admin@12345');
-  await ap.goto(`${BASE_URL}/admin`);
+  // `/admin` tự nó không có nội dung — chỉ redirect phía client sang `/admin/metrics`
+  // (`useEffect` + `router.replace`). Vào thẳng `/admin` rồi chụp từng làm ảnh trắng
+  // trơn: lúc `shoot()` kiểm tra `.animate-pulse`, trang `/admin` chưa kịp redirect
+  // nên chưa có khung xương nào để đợi detach — `waitFor({state:'detached'})` coi một
+  // phần tử KHÔNG TỒN TẠI là "đã detach" nên trả về ngay, rồi chỉ còn 300ms cố định,
+  // không đủ cho redirect + biên dịch route lần đầu (dev mode) + gọi API metrics.
+  // Vào thẳng đích cuối để bỏ hẳn khoảng trắng đó.
+  await ap.goto(`${BASE_URL}/admin/metrics`);
   await ap.waitForLoadState('networkidle');
   await shoot(ap, 'admin');
   await adminCtx.close();
