@@ -16,7 +16,7 @@ export function DemoCta() {
           align="center"
         />
         <div className="mx-auto mt-8 max-w-sm rounded-card border-2 border-white/10 bg-white/5 p-5 text-left">
-          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-sky-400">
+          <p className="font-mono text-2xs font-bold uppercase tracking-[0.14em] text-sky-400">
             {usePick(DEMO.credentialsLabel)}
           </p>
           <dl className="mt-3 space-y-2 font-mono text-sm">

@@ -1,10 +1,11 @@
 /**
  * Design token LEARN — spec §14.2. Không tím, không đổi giá trị.
  *
- * ⚠️ **Nguồn sự thật là `packages/config/tailwind/theme.css`.** Khối này là bản
- * sao cho mã TypeScript nào cần giá trị màu ngoài Tailwind. Sửa một bên thì phải
- * sửa bên kia — đã có lần lệch: `sky.700` và `warning.700` được sửa trong
- * `theme.css` cho đạt tương phản AA nhưng ở đây vẫn giữ giá trị cũ.
+ * **Nguồn sự thật là `packages/config/tailwind/theme.css`.** Khối này là bản sao
+ * cho mã TypeScript nào cần giá trị màu ngoài Tailwind. Sửa một bên thì phải sửa
+ * bên kia — từng có lần lệch (`sky.700`/`warning.700` sửa trong `theme.css` cho
+ * đạt tương phản AA nhưng ở đây vẫn giữ giá trị cũ); đã đối chiếu lại và hai file
+ * hiện khớp nhau (2026-09-22).
  */
 export const colors = {
   navy: {

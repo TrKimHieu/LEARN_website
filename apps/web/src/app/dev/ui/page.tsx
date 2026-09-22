@@ -245,7 +245,7 @@ function Swatch({ varName, label }: { varName: string; label: string }) {
       />
       <span className="min-w-0">
         <span className="block truncate text-xs font-bold text-ink-900">{label}</span>
-        <span className="block truncate font-mono text-[10px] text-ink-500">{varName}</span>
+        <span className="block truncate font-mono text-2xs text-ink-500">{varName}</span>
       </span>
     </div>
   );
@@ -344,7 +344,7 @@ export default function UiStyleguidePage() {
               ).map(([cls, label]) => (
                 <div key={cls} className="text-center">
                   <div className={`size-20 border border-surface-300 bg-surface-100 ${cls}`} />
-                  <p className="mt-1.5 font-mono text-[11px] text-ink-500">{label}</p>
+                  <p className="mt-1.5 font-mono text-2xs text-ink-500">{label}</p>
                 </div>
               ))}
             </div>
@@ -365,7 +365,7 @@ export default function UiStyleguidePage() {
               ).map(([cls, label]) => (
                 <div key={cls} className="text-center">
                   <div className={`size-20 rounded-card bg-white ${cls}`} />
-                  <p className="mt-1.5 font-mono text-[11px] text-ink-500">{label}</p>
+                  <p className="mt-1.5 font-mono text-2xs text-ink-500">{label}</p>
                 </div>
               ))}
             </div>
@@ -408,6 +408,11 @@ export default function UiStyleguidePage() {
           <p className="text-sm text-ink-700">Nội dung chính · sm ink-700</p>
           <p className="text-xs text-ink-500">Chú thích · xs ink-500</p>
           <p className="font-mono text-xs text-ink-700">Mã · font-mono xs</p>
+          {/* Token mới (GĐ7a) — thay 7 chỗ từng viết tay text-[11px]/text-[10px] rời
+              rạc: eyebrow trang chủ, mã kỹ thuật, tên token ở chính trang này. */}
+          <p className="font-mono text-2xs uppercase tracking-[0.14em] text-ink-500">
+            Nhãn mono cực nhỏ · text-2xs (11px)
+          </p>
         </Card>
       </Section>
 
@@ -550,7 +555,7 @@ export default function UiStyleguidePage() {
                 className="flex flex-col items-center gap-1 rounded-xl p-2 text-ink-700 hover:bg-surface-100"
               >
                 <Icon name={name} size={22} />
-                <span className="w-full truncate text-center font-mono text-[10px] text-ink-500">
+                <span className="w-full truncate text-center font-mono text-2xs text-ink-500">
                   {name}
                 </span>
               </div>
@@ -567,7 +572,7 @@ export default function UiStyleguidePage() {
               <Badge tone="info">mặc định</Badge>
             </CardHeader>
             <p className="text-sm text-ink-700">
-              Viền 2px, bo góc <code className="font-mono text-xs">rounded-card</code>, bóng{' '}
+              Viền 1px, bo góc <code className="font-mono text-xs">rounded-card</code>, bóng{' '}
               <code className="font-mono text-xs">shadow-card</code>.
             </p>
           </Card>

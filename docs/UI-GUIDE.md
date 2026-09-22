@@ -99,6 +99,11 @@ npm run build -w apps/web
 grep -o -- "--font-sans:[^;]*;" apps/web/.next/static/css/*.css   # phải có var(--font-be-vietnam-pro) đứng đầu
 ```
 
+**Thang cỡ chữ.** Mặc định của Tailwind (`text-xs` 12px trở lên) là đủ cho gần hết app. Một ngoại
+lệ: nhãn mono cực nhỏ (eyebrow, mã kỹ thuật, tên token) từng bị viết tay rời rạc
+`text-[11px]`/`text-[10px]` ở 7 chỗ — gom về token `--text-2xs` (11px, GĐ7a). Cần cỡ dưới `xs` thì
+dùng `text-2xs`, đừng quay lại viết `text-[Npx]` tại chỗ gọi.
+
 Hai luật màu đã kiểm chứng, đừng phá:
 
 - **Chữ trắng trên `sky-500` chỉ đạt 1.90:1 — trượt AA.** Nút primary vì thế là nền sky + chữ
@@ -144,8 +149,8 @@ Tất cả nằm ở `apps/web/src/lib/motion.tsx`.
 - Hiệu ứng **không** chạy qua `motion.*` (canvas, WebGL) phải tự hỏi `matchMedia` — xem
   `lib/celebrate.ts`.
 
-Có sẵn: `Reveal`, `StaggerList` + `StaggerItem`, `fadeUp`, `popIn`, `staggerContainer()`,
-`EASE_OUT`, `DURATION`.
+Có sẵn: `Reveal`, `StaggerList` + `StaggerItem`, `RevealOnScroll`, `StaggerOnScroll`, `fadeUp`,
+`popIn`, `staggerContainer()`, `EASE_OUT`, `DURATION`.
 
 Ba luật:
 
@@ -158,6 +163,21 @@ Ba luật:
 khiển. Đặt `style={{ transform: 'translateX(...)' }}` lên một `motion.li` thì giá trị đó bị xoá
 sạch khi animation vào chỗ — dáng zigzag của `lesson-path.tsx` biến mất đúng như vậy. Đặt offset
 tĩnh lên một `<div>` **bên trong**.
+
+**Bẫy nghiêm trọng hơn — `whileInView` có thể kẹt vĩnh viễn (2026-09-22).** `RevealOnScroll` và
+`StaggerOnScroll` **cố ý không dùng `motion.div` + `animate`/`whileInView`**, khác mọi component
+khác ở trên. Lý do đo được trực tiếp lúc dựng trang chủ: một animation kích hoạt **lúc mount**
+(`Reveal`) luôn chạy đúng, nhưng animation cần **đổi state sau khi đã mount** rồi mới chạy — đúng
+thứ `whileInView` cần — có thể kẹt tại trạng thái ban đầu **vô thời hạn** trong một số môi trường
+thực tế (đã gặp: cửa sổ trình duyệt bị che khuất/tab nền — `IntersectionObserver` không bao giờ bắn
+callback). Test trực tiếp: một `motion.div` khác trong app (`ProgressBar`, đổi giá trị qua state
+sau một cú click) cũng kẹt y hệt, trong khi một `<div>` thường đổi `style.opacity` qua CSS
+transition thì luôn chạy đúng. Vì vậy `RevealOnScroll`/`StaggerOnScroll` tự quản bằng
+`IntersectionObserver` + CSS transition thuần (Tailwind), cộng lưới an toàn ép hiện sau 1 giây —
+nội dung không bao giờ được phép kẹt vô hình. Trạng thái "ẩn" dùng `opacity-60`, không phải
+`opacity-0`, để nếu paint có kẹt ở đâu đó thì ảnh chụp màn hình vẫn đọc được nội dung. Toàn bộ chi
+tiết + cách đo nằm trong docblock ngay trên `RevealOnScroll` ở `lib/motion.tsx` — đọc trước khi
+"sửa lại cho giống code cũ" hay thêm một component `*OnScroll` mới dùng `whileInView`.
 
 ## 4b. Hình khối: bóng nhẹ, không phải viền dày
 
@@ -188,8 +208,12 @@ Hai thứ **không** đổi theo:
 
 Primitive mở rộng thêm: `Card interactive`, `CardDescription`, `LoadingState variant`
 (`card`/`list`/`text` — skeleton phải khớp hình dạng nội dung sắp hiện, nếu không bố cục nhảy một
-nhịp khi dữ liệu về), `EmptyState secondaryAction`, `ErrorState detail` (chỗ đặt requestId để người
-dùng copy khi báo lỗi).
+nhịp khi dữ liệu về), `EmptyState secondaryAction` + `EmptyState size="compact"` (mục con của một
+màn đã có nội dung khác — xem §4c), `ErrorState detail` (chỗ đặt requestId để người dùng copy khi
+báo lỗi), `InlineError` (lỗi của một *thao tác* — mutation hỏng, không phải query; nội dung xung
+quanh vẫn còn, khác `ErrorState` thay hẳn nội dung khi query hỏng), `Button variant="outline"`
+(cho nền tối — hero portfolio), `RevealOnScroll`/`StaggerOnScroll` (như `Reveal`/`StaggerList`
+nhưng đợi cuộn tới mới chạy — xem cảnh báo về `whileInView` ở §4).
 
 ## 4c. Năm trạng thái: dùng cái nào ở đâu
 

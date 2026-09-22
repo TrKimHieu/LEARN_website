@@ -27,7 +27,7 @@ export function TechnicalArchitecture() {
           {LAYERS.map((layer, li) => (
             <div key={li}>
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-sky-400">
+                <p className="mb-3 font-mono text-2xs font-bold uppercase tracking-[0.14em] text-sky-400">
                   {layer.label[lang]}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -37,7 +37,7 @@ export function TechnicalArchitecture() {
                       className="rounded-lg border border-white/10 bg-navy-900/60 p-3"
                     >
                       <p className="text-sm font-semibold text-surface-100">{c.name}</p>
-                      <p className="font-mono text-[11px] text-sky-400">{c.code}</p>
+                      <p className="font-mono text-2xs text-sky-400">{c.code}</p>
                       <p className="mt-1 text-xs text-surface-100/65">
                         {lang === 'vi' ? c.vi : c.en}
                       </p>

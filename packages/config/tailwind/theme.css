@@ -97,4 +97,11 @@
   --shadow-card: 0 1px 2px rgb(15 23 32 / 0.04), 0 2px 8px rgb(15 23 32 / 0.04);
   --shadow-raised: 0 2px 4px rgb(15 23 32 / 0.06), 0 8px 24px rgb(15 23 32 / 0.08);
   --shadow-overlay: 0 4px 8px rgb(15 23 32 / 0.08), 0 16px 48px rgb(15 23 32 / 0.14);
+
+  /* Cỡ chữ dưới `text-xs` (12px) cho nhãn mono cực nhỏ (eyebrow, mã kỹ thuật, tên
+     token) — trước khi có token này, `text-[11px]`/`text-[10px]` bị viết tay rời
+     rạc ở 7 chỗ (rà soát GĐ7a). `text-2xs`, không phải giá trị arbitrary, để mọi
+     nhãn mono cực nhỏ cùng một cỡ và không lặp `text-[Npx]` thêm lần nào nữa. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }

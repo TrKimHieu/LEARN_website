@@ -8,7 +8,6 @@ import type {
   ProgressOverview,
   ProgressCourse,
   HistoryItem,
-  CourseProgress,
   PatchLessonInput,
 } from '@learn/contracts';
 import { apiFetch } from './api-client';
@@ -126,13 +125,5 @@ export function useProgressHistory(limit: number) {
   return useQuery({
     queryKey: ['progress', 'history', limit],
     queryFn: () => apiFetch<{ items: HistoryItem[] }>(`/api/v1/progress/history?limit=${limit}`),
-  });
-}
-
-export function useCourseProgress(courseId: string) {
-  return useQuery({
-    queryKey: ['progress', 'course', courseId],
-    queryFn: () => apiFetch<CourseProgress>(`/api/v1/progress/course/${courseId}`),
-    enabled: Boolean(courseId),
   });
 }
