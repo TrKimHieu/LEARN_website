@@ -31,7 +31,15 @@ export function TargetUsers() {
           <div className="rounded-panel border border-surface-200 bg-surface-100 p-6 sm:p-8">
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="text-2xl font-bold text-ink-900">{primary.name[lang]}</h3>
-              <span className="inline-block rounded-pill bg-sky-500/10 px-2.5 py-1 text-xs font-bold text-sky-700">
+              {/* `bg-sky-500/10` (thay vì token `-50` sẵn có) khiến axe-core báo sai
+                  vi phạm tương phản: Tailwind v4 dựng alpha qua `oklab(... / 0.1)`,
+                  và axe không giải đúng màu nền đã hoà trộn qua alpha đó — tính tay
+                  ra 5.06:1 (đạt AA), nhưng công cụ báo "trượt". Đổi sang `bg-sky-50`
+                  (đặc, không alpha) — cùng một hiệu ứng thị giác, khớp quy ước badge
+                  còn lại trong app (`StatusBadge`, `Badge`) đều dùng nền `-50` đặc
+                  chứ không alpha, và không còn phụ thuộc vào việc công cụ audit có
+                  giải đúng oklab hay không. */}
+              <span className="inline-block rounded-pill bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-700">
                 {primary.badge[lang]}
               </span>
             </div>
@@ -55,7 +63,9 @@ export function TargetUsers() {
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-semibold text-ink-900">{group.name[lang]}</h3>
                 </div>
-                <span className="mt-1 inline-block rounded-pill bg-surface-200 px-2 py-0.5 text-xs font-medium text-ink-500">
+                {/* `ink-500` trượt AA trên nền có pha màu (UI-GUIDE §10) — `surface-200`
+                    là nền pha màu, nên chữ trên nó phải là `ink-700`. */}
+                <span className="mt-1 inline-block rounded-pill bg-surface-200 px-2 py-0.5 text-xs font-medium text-ink-700">
                   {group.badge[lang]}
                 </span>
                 <p className="mt-2.5 text-sm text-ink-500">{group.description[lang]}</p>

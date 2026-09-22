@@ -66,6 +66,22 @@ async function scan(page, route, results) {
     .catch(() => {});
   await page.waitForTimeout(600);
 
+  // Trang chủ có section dùng `RevealOnScroll`/`StaggerOnScroll` (lib/motion.tsx) —
+  // chờ IntersectionObserver thật hoặc lưới an toàn 1s mới hiện, chứ không hiện
+  // ngay lúc mount. Một trang không cuộn qua sẽ bị axe chấm cả những section đó ở
+  // trạng thái "ẩn" (`opacity-60`) — tương phản thấp không phải vì màu sai, mà vì
+  // nội dung đang cố ý mờ đi chờ cuộn tới. Cuộn hết trang mô phỏng đúng một người
+  // dùng thật đã xem hết, rồi mới audit.
+  await page.evaluate(async () => {
+    const step = Math.max(window.innerHeight, 400);
+    for (let y = 0; y < document.body.scrollHeight; y += step) {
+      window.scrollTo(0, y);
+      await new Promise((r) => setTimeout(r, 80));
+    }
+    window.scrollTo(0, 0);
+  });
+  await page.waitForTimeout(1200);
+
   const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   for (const v of violations) {
     results.push({
