@@ -1,0 +1,81 @@
+<section class="chapter">
+<h1><span class="num">3.</span> Thiết kế Dữ liệu <span class="en">(Data &amp; Database Design)</span></h1>
+
+<h2>3.1 Sơ đồ thực thể kết hợp <span class="en">(ERD)</span></h2>
+<p>CSDL PostgreSQL gồm <b>22 bảng</b> và <b>13 enum</b>, định nghĩa trong <code>packages/db/prisma/schema.prisma</code>. ID là chuỗi UUID; ứng dụng luôn cấp <b>uuidv7</b> (<code>newId()</code>) để khoá chính sắp xếp được theo thời gian. Dữ liệu chia thành năm cụm:</p>
+<table class="compact">
+<caption>Các cụm dữ liệu</caption>
+<colgroup><col style="width:22%"><col style="width:34%"><col></colgroup>
+<thead><tr><th>Cụm</th><th>Bảng</th><th>Vai trò</th></tr></thead>
+<tbody>
+<tr><td><b>Identity &amp; Auth</b></td><td>User, RefreshToken, PasswordResetToken, AuditLog</td><td>Tài khoản, phiên đăng nhập, đặt lại mật khẩu, nhật ký hành động nhạy cảm</td></tr>
+<tr><td><b>Content</b></td><td>Course, CourseMember, Document, DocumentChunk, Lesson, Exercise, Question, AnswerOption</td><td>Cây nội dung: Course → Document → Chunk và Course → Lesson → Exercise → Question → Option</td></tr>
+<tr><td><b>AI Processing</b></td><td>AIJob, GenerationRun</td><td>Tác vụ AI bất đồng bộ và từng lượt gọi LLM (chi phí, token, độ trễ)</td></tr>
+<tr><td><b>Learning Activity</b></td><td>LearningProgress, Submission, SubmissionAnswer</td><td>Tiến trình theo Lesson, lượt nộp bài và kết quả chấm từng câu</td></tr>
+<tr><td><b>Billing &amp; Quota</b></td><td>Plan, Subscription, Payment, PaymentEvent, UsageCounter</td><td>Gói dịch vụ, gói hiện hành, thanh toán, sự kiện webhook, bộ đếm hạn mức</td></tr>
+</tbody></table>
+
+<p><b>Những quan hệ cần lưu ý:</b></p>
+<ul>
+<li><b>Ownership đi qua Course.</b> Mọi Document, Lesson, AIJob truy ngược về đúng một Course, và Course thuộc đúng một <code>ownerId</code>. Không có dữ liệu "mồ côi". Repository lọc theo <code>ownerId</code> trong cùng câu query.</li>
+<li><b>Soft delete</b> trên User, Course, Lesson (<code>deletedAt</code>). Lesson đã xoá bị đẩy <code>orderIndex</code> sang giá trị âm để không đụng <code>@@unique(courseId, orderIndex)</code>. Document xoá cứng cả dòng và object trên storage.</li>
+<li><b>Cascade</b>: xoá Course/Document/Lesson kéo theo con cháu (Chunk, Exercise, Question, Option). <code>AIJob.documentId</code> dùng <code>SetNull</code>; <code>AuditLog.actorId</code> dùng <code>SetNull</code> để giữ lịch sử khi user bị xoá.</li>
+<li><b>FK chỉ ở mức logic</b> (không có ràng buộc DB): <code>Lesson.documentId</code>, <code>Lesson.aiJobId</code>, <code>Question.sourceChunkId</code>, <code>CourseMember.courseId/userId</code>. <code>Lesson.sourceChunkIds</code> là mảng ID — tầng validation 3 kiểm các ID này tồn tại thật.</li>
+<li><b>Unique chống trùng</b>: <code>(userId, exerciseId, attemptNo)</code> cho Submission; <code>(provider, eventId)</code> cho PaymentEvent (webhook idempotent); <code>(userId, period, metric)</code> cho UsageCounter; <code>(userId, lessonId)</code> cho LearningProgress. Trùng checksum Document trong Course được chặn ở tầng ứng dụng (có index <code>(courseId, checksumSha256)</code>).</li>
+<li><b>Dữ liệu nhạy cảm không rời server</b>: <code>Question.correctAnswer</code>, <code>AnswerOption.isCorrect</code> (trước khi nộp), <code>User.passwordHash</code>, <code>*.tokenHash</code>.</li>
+</ul>
+
+<figure class="w90"><img src="diagrams/png/04-erd-overview.png"><figcaption>ERD tổng quan — quan hệ giữa các thực thể nghiệp vụ chính (bảng Identity/Quota vẽ riêng ở hình sau)</figcaption></figure>
+<figure class="w80"><img src="diagrams/png/05-erd-identity.png"><figcaption>ERD chi tiết — Identity &amp; Auth</figcaption></figure>
+<figure><img src="diagrams/png/05b-erd-billing.png"><figcaption>ERD chi tiết — Billing &amp; Quota</figcaption></figure>
+<figure><img src="diagrams/png/06-erd-content.png"><figcaption>ERD chi tiết — Content (Course, Document, Lesson, Exercise, Question)</figcaption></figure>
+<figure><img src="diagrams/png/07-erd-learning-ai.png"><figcaption>ERD chi tiết — AI Processing &amp; Learning Activity</figcaption></figure>
+
+<h2>3.2 Từ điển dữ liệu <span class="en">(Data Dictionary)</span></h2>
+<p>Các bảng dưới đây được <b>sinh tự động từ <code>schema.prisma</code></b> mỗi lần build tài liệu, nên cột Field / Type / Not Null / Key luôn khớp DB; chỉ phần mô tả được viết tay. Ký hiệu: <b>PK</b> khoá chính · <b>FK</b> khoá ngoại · <b>UQ</b> unique; "✓" ở cột Not Null nghĩa là bắt buộc.</p>
+<!-- DATA_DICTIONARY -->
+
+<h2>3.3 Máy trạng thái <span class="en">(State Machines)</span></h2>
+<p>Các chuyển trạng thái quan trọng đều dùng <b>update có điều kiện</b> (<code>UPDATE … WHERE status = &lt;trạng thái mong đợi&gt;</code>): 0 dòng bị ảnh hưởng nghĩa là tiến trình khác đã xử lý, và bên thua phải bỏ qua thay vì ghi đè (NFR-PERF-03).</p>
+<div class="grid2">
+<figure><img src="diagrams/png/08-state-document.png"><figcaption>State diagram — Document</figcaption></figure>
+<figure><img src="diagrams/png/10-state-progress.png"><figcaption>State diagram — LearningProgress</figcaption></figure>
+</div>
+<figure class="w80"><img src="diagrams/png/09-state-aijob.png"><figcaption>State diagram — AIJob (retry và huỷ)</figcaption></figure>
+<figure class="w90"><img src="diagrams/png/11-state-subscription.png"><figcaption>State diagram — Subscription</figcaption></figure>
+
+<table class="compact">
+<caption>Tóm tắt trạng thái và quy tắc chuyển</caption>
+<colgroup><col style="width:17%"><col style="width:36%"><col></colgroup>
+<thead><tr><th>Entity</th><th>Chuỗi trạng thái</th><th>Quy tắc</th></tr></thead>
+<tbody>
+<tr><td>Course</td><td><code>DRAFT → READY → ARCHIVED</code></td><td>Đổi qua <code>PATCH /courses/:id</code>.</td></tr>
+<tr><td>Document</td><td><code>PENDING → UPLOADED → EXTRACTING → EXTRACTED | FAILED</code></td><td>Quota trừ ở <code>confirm</code>, không trừ khi bỏ dở ở PENDING. Không xoá được khi đang <code>EXTRACTING</code> (409).</td></tr>
+<tr><td>AIJob</td><td><code>QUEUED → RUNNING → SUCCEEDED | FAILED | CANCELLED</code></td><td><code>attempt</code> tăng khi worker claim; BullMQ retry tối đa 3 lần; admin chỉ retry job FAILED.</td></tr>
+<tr><td>Lesson</td><td><code>DRAFT | PUBLISHED</code>; confidence <code>UNKNOWN | HIGH | LOW</code></td><td>Confidence gán một lần khi AI sinh; sửa tay không đổi confidence.</td></tr>
+<tr><td>LearningProgress</td><td><code>NOT_STARTED → IN_PROGRESS → COMPLETED</code></td><td>Không lùi; <code>bestScore</code> chỉ tăng.</td></tr>
+<tr><td>Subscription</td><td><code>TRIALING → ACTIVE ⇄ PAST_DUE → CANCELED</code></td><td>Demo chỉ dùng ACTIVE/CANCELED; <code>cancelAtPeriodEnd</code> giữ ACTIVE tới cuối kỳ.</td></tr>
+</tbody></table>
+
+<h2>3.4 Quy tắc nghiệp vụ trên dữ liệu <span class="en">(Business Rules)</span></h2>
+<table>
+<caption>Business rules không suy ra được từ tên field</caption>
+<colgroup><col style="width:9%"><col style="width:55%"><col style="width:16%"><col></colgroup>
+<thead><tr><th>ID</th><th>Quy tắc</th><th>Áp dụng</th><th>Nguồn</th></tr></thead>
+<tbody>
+<tr><td>BR-01</td><td>Document trùng checksum SHA-256 với một Document đã xác nhận trong cùng Course bị từ chối (409).</td><td>Document</td><td>FR-DOC-07</td></tr>
+<tr><td>BR-02</td><td><code>correctAnswer</code> / <code>isCorrect</code> không bao giờ có trong response trước khi nộp bài.</td><td>Question, AnswerOption</td><td>NFR-SEC-05</td></tr>
+<tr><td>BR-03</td><td>Lesson có dưới 50% thuật ngữ lấy mẫu khớp chunk nguồn vẫn được lưu nhưng gắn <code>confidence = LOW</code>.</td><td>Lesson</td><td>NFR-AI-02</td></tr>
+<tr><td>BR-04</td><td>AI Job dừng sinh node mới khi chi phí cộng dồn ≥ <code>AI_JOB_MAX_COST_USD</code>.</td><td>AIJob</td><td>NFR-AI-04</td></tr>
+<tr><td>BR-05</td><td>Quota được kiểm và ghi nhận trong <b>một transaction giữ advisory lock theo (userId, metric)</b>; không có kiểm-rồi-ghi hai bước.</td><td>UsageCounter</td><td>FR-SUB-03, NFR-PERF-04</td></tr>
+<tr><td>BR-06</td><td>COURSES_CREATED đếm trực tiếp số Course chưa xoá (xoá Course trả lại suất); DOCUMENTS_UPLOADED và AI_JOBS_RUN cộng dồn theo tháng (không trả lại); PAGES_PROCESSED chặn theo từng tài liệu ở worker.</td><td>UsageCounter</td><td>HANDBOOK §11.3</td></tr>
+<tr><td>BR-07</td><td>Refresh token đã revoke bị dùng lại → revoke toàn bộ <code>familyId</code>.</td><td>RefreshToken</td><td>NFR-SEC-03</td></tr>
+<tr><td>BR-08</td><td>Lesson hoàn thành khi <b>mọi</b> Exercise của nó có ít nhất một lượt đạt <code>passScore</code> riêng; nộp lại trượt không hạ cấp.</td><td>LearningProgress</td><td>FR-LESSON-11</td></tr>
+<tr><td>BR-09</td><td>Tiêu đề Lesson không trùng nhau trong cùng Course (so sánh không phân biệt hoa thường).</td><td>Lesson</td><td>HANDBOOK §8.4</td></tr>
+<tr><td>BR-10</td><td>Giá và hạn mức luôn đọc từ bảng Plan; request checkout chỉ nhận <code>planCode</code>.</td><td>Plan, Payment</td><td>NFR-SEC-09</td></tr>
+<tr><td>BR-11</td><td>Gói có <code>isFutureExtension = true</code> (TEAM) hiển thị nhưng không cho mua (403).</td><td>Plan</td><td>FR-SUB-01</td></tr>
+<tr><td>BR-12</td><td>PaymentEvent là duy nhất theo <code>(provider, eventId)</code>; sự kiện trùng không gây tác dụng phụ.</td><td>PaymentEvent</td><td>NFR-REL-04</td></tr>
+<tr><td>BR-13</td><td>Token đặt lại mật khẩu dùng một lần; phát token mới vô hiệu các token cũ; đặt lại xong thu hồi mọi phiên.</td><td>PasswordResetToken</td><td>FR-AUTH-07</td></tr>
+<tr><td>BR-14</td><td>Hành động admin (retry AI Job) và sự kiện đặt lại mật khẩu ghi AuditLog kèm actor, entity, metadata.</td><td>AuditLog</td><td>FR-ADMIN-03</td></tr>
+</tbody></table>
+</section>

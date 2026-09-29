@@ -2,68 +2,94 @@
 
 import Link from 'next/link';
 import { cn } from './cn';
+import { Icon } from './icon';
 
 /**
- * Nút.
+ * Nút — ADR 012.
  *
- * Ngôn ngữ thị giác: **bóng nhẹ thay cho viền dày**. Bản trước dùng `border-b-4` + lún
- * xuống khi bấm (`active:translate-y-1`) và chữ `uppercase` — ngôn ngữ của app game.
- * Nay dùng đường viền 1px, `shadow-card`, bo `rounded-lg` và chuyển động 200ms: trọng
- * lượng thị giác đến từ *độ tương phản của màu nền*, không phải từ độ dày của cạnh.
+ * `primary` là navy đặc + chữ trắng (18:1) ở tông sáng, sky-400 + chữ navy (11:1) ở tông
+ * tối. Không gradient, không quầng sáng: trọng lượng đến từ độ tương phản của nền. Sky
+ * không còn là màu nút — nó là điểm nhấn (tiến độ, mục đang chọn, vòng focus), nên khi nó
+ * xuất hiện thì mắt biết đó là tín hiệu.
  *
- * Màu giữ nguyên `[SPEC]` §14.2: biến thể `primary` là nền sky + chữ navy-900 (tương phản
- * 9.86:1). Chữ trắng trên sky chỉ 1.90:1 nên **không** có biến thể đó — xem docs/UI-GUIDE.md §2.
+ * Mỗi màn chỉ một `primary`. Còn lại: `secondary` (nền panel, viền), `ghost`, `link`
+ * (hành động bậc ba — chữ gạch chân, không khung), `danger`. Nhấn nút lún `scale(0.98)`.
  */
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+type Variant = 'primary' | 'secondary' | 'soft' | 'ghost' | 'danger' | 'outline' | 'link';
 type Size = 'sm' | 'md' | 'lg';
 
-// Vòng focus nằm TRONG từng biến thể, không phải BASE dùng chung: `outline` sống
-// trên nền navy nên cần `focus-ring-dark` (sky-500), còn lại dùng `focus-ring`
-// (sky-600) — hai class CSS riêng, gộp ở BASE thì cả hai cùng áp và cạnh tranh
-// theo thứ tự nạp stylesheet thay vì theo variant nào đang dùng.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-sky-500 text-navy-900 shadow-card hover:bg-sky-400 active:bg-sky-600 focus-ring',
+  primary: 'bg-primary text-primary-fg hover:bg-primary-hover focus-ring',
   secondary:
-    'bg-white text-ink-700 border border-surface-300 shadow-card ' +
-    'hover:border-surface-400 hover:text-ink-900 active:bg-surface-100 focus-ring',
-  ghost: 'bg-transparent text-ink-700 hover:bg-surface-200 hover:text-ink-900 focus-ring',
-  danger:
-    'bg-danger-700 text-white shadow-card hover:bg-danger-500 active:bg-danger-700 focus-ring',
-  // Viền mảnh trên nền tối — dùng ở hero (navy-900). Chữ `surface-100` giữ đúng
-  // luật "chữ trắng trên sky chỉ 1.90:1 không tồn tại": đây không phải nền sky.
-  outline:
-    'border border-white/25 text-surface-100 hover:bg-white/5 active:bg-white/10 focus-ring-dark',
+    'bg-panel text-fg border border-line-strong hover:bg-muted hover:border-line-input focus-ring',
+  soft: 'bg-muted text-fg hover:bg-line focus-ring',
+  ghost: 'bg-transparent text-fg-muted hover:bg-muted hover:text-fg focus-ring',
+  danger: 'bg-panel text-fg border-2 border-fg hover:bg-muted focus-ring',
+  outline: 'border border-white/25 text-white hover:bg-white/10 focus-ring-dark',
+  link: 'h-auto px-0 text-accent underline underline-offset-4 decoration-accent/40 hover:decoration-accent focus-ring',
 };
 
-// Thang chiều cao 36/40/48 — bội số của 4 như phần còn lại của lưới.
 const SIZES: Record<Size, string> = {
-  sm: 'h-9 px-3 text-sm gap-1.5',
+  sm: 'h-8 px-3 text-[0.8125rem] gap-1.5',
   md: 'h-10 px-4 text-sm gap-2',
-  lg: 'h-12 px-6 text-base gap-2',
+  lg: 'h-11 px-5 text-[0.9375rem] gap-2',
 };
 
 const BASE =
-  'inline-flex items-center justify-center rounded-lg font-medium select-none ' +
-  'transition-all duration-200 ' +
-  'disabled:pointer-events-none disabled:opacity-50';
+  'relative inline-flex items-center justify-center rounded-control font-medium select-none ' +
+  'whitespace-nowrap cursor-pointer transition-[background-color,border-color,color,transform] ' +
+  'duration-150 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45';
 
-function classes(variant: Variant, size: Size, fullWidth: boolean, className?: string) {
-  return cn(BASE, VARIANTS[variant], SIZES[size], fullWidth && 'w-full', className);
+export function buttonClasses({
+  variant = 'primary',
+  size = 'md',
+  fullWidth = false,
+  className,
+}: {
+  variant?: Variant;
+  size?: Size;
+  fullWidth?: boolean;
+  className?: string;
+}) {
+  return cn(
+    BASE,
+    SIZES[size],
+    VARIANTS[variant],
+    variant === 'link' && 'h-auto px-0',
+    fullWidth && 'w-full',
+    className,
+  );
 }
 
 export function Button({
   variant = 'primary',
   size = 'md',
   fullWidth = false,
+  loading = false,
   className,
   type = 'button',
+  disabled,
+  children,
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;
   fullWidth?: boolean;
+  /** Hiện spinner cạnh nhãn và khoá nút — nhãn vẫn phải nói đang làm gì ("Đang lưu…"). */
+  loading?: boolean;
 }) {
-  return <button type={type} className={classes(variant, size, fullWidth, className)} {...rest} />;
+  return (
+    <button
+      type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={buttonClasses({ variant, size, fullWidth, className })}
+      {...rest}
+    >
+      {loading && <Icon name="spinner" size={16} className="animate-spin" />}
+      {children}
+    </button>
+  );
 }
 
 export function ButtonLink({
@@ -73,6 +99,7 @@ export function ButtonLink({
   fullWidth = false,
   className,
   children,
+  ...rest
 }: {
   href: string;
   variant?: Variant;
@@ -80,10 +107,40 @@ export function ButtonLink({
   fullWidth?: boolean;
   className?: string;
   children: React.ReactNode;
-}) {
+} & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'className' | 'children'>) {
   return (
-    <Link href={href} className={classes(variant, size, fullWidth, className)}>
+    <Link href={href} className={buttonClasses({ variant, size, fullWidth, className })} {...rest}>
       {children}
     </Link>
+  );
+}
+
+/** Nút chỉ có icon — bắt buộc `label` để có tên truy cập được. */
+export function IconButton({
+  icon,
+  label,
+  size = 'md',
+  className,
+  type = 'button',
+  ...rest
+}: Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
+  icon: React.ComponentProps<typeof Icon>['name'];
+  label: string;
+  size?: 'sm' | 'md';
+}) {
+  return (
+    <button
+      type={type}
+      aria-label={label}
+      className={cn(
+        'grid shrink-0 cursor-pointer place-items-center rounded-control text-fg-muted transition-colors duration-150',
+        'hover:bg-muted hover:text-fg disabled:pointer-events-none disabled:opacity-40 focus-ring',
+        size === 'sm' ? 'size-8' : 'size-10',
+        className,
+      )}
+      {...rest}
+    >
+      <Icon name={icon} size={size === 'sm' ? 16 : 18} />
+    </button>
   );
 }

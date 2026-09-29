@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AiJobSummary } from '@learn/contracts';
+import type { AiJobSummary, GenerateLessonsInput } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 
 const ACTIVE_STATUSES = new Set(['QUEUED', 'RUNNING']);
@@ -7,10 +7,10 @@ const ACTIVE_STATUSES = new Set(['QUEUED', 'RUNNING']);
 export function useGenerateLessons(courseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
+    mutationFn: (input: GenerateLessonsInput = {}) =>
       apiFetch<AiJobSummary>(`/api/v1/ai/courses/${courseId}/generate-lessons`, {
         method: 'POST',
-        body: {},
+        body: input,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses', courseId, 'lessons'] });

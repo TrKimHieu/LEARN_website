@@ -1,0 +1,773 @@
+{
+  "title": "Log in to Quizlet | Quizlet",
+  "url": "https://quizlet.com/login?redir=%2Flatest",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "documentHeight": 900,
+  "bodyFont": "hurme_no2-webfont, -apple-system, BlinkMacSystemFont, sans-serif",
+  "lang": "en-us",
+  "landmarks": [
+    {
+      "tag": "section",
+      "role": null,
+      "label": null,
+      "heading": "Smash sets in your sweats.",
+      "position": "static",
+      "sticky": false,
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "height": 900,
+      "width": 1440,
+      "padding": "0px",
+      "children": 2
+    }
+  ],
+  "headings": [
+    {
+      "level": "h1",
+      "text": "Smash sets in your sweats.",
+      "fontSize": "44px",
+      "fontWeight": "700",
+      "lineHeight": "56px",
+      "letterSpacing": "normal"
+    },
+    {
+      "level": "h3",
+      "text": "Sign up",
+      "fontSize": "24px",
+      "fontWeight": "700",
+      "lineHeight": "32px",
+      "letterSpacing": "normal"
+    },
+    {
+      "level": "h3",
+      "text": "Log in",
+      "fontSize": "24px",
+      "fontWeight": "700",
+      "lineHeight": "32px",
+      "letterSpacing": "normal"
+    }
+  ],
+  "controls": [
+    {
+      "tag": "button",
+      "role": null,
+      "text": "",
+      "width": 40,
+      "height": 40,
+      "padding": "0px",
+      "borderRadius": "50%",
+      "backgroundColor": "rgb(246, 247, 251)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "h3",
+      "role": "tab",
+      "text": "Sign up",
+      "width": 84,
+      "height": 38,
+      "padding": "0px",
+      "borderRadius": "0px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "none",
+      "fontSize": "24px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "h3",
+      "role": "tab",
+      "text": "Log in",
+      "width": 93,
+      "height": 38,
+      "padding": "0px",
+      "borderRadius": "0px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "none",
+      "fontSize": "24px",
+      "fontWeight": "700"
+    },
+    {
+      "tag": "a",
+      "role": "button",
+      "text": "Log in with Google",
+      "width": 576,
+      "height": 56,
+      "padding": "16px 32px",
+      "borderRadius": "200px",
+      "backgroundColor": "rgb(246, 247, 251)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "a",
+      "role": "button",
+      "text": "Log in with Facebook",
+      "width": 576,
+      "height": 56,
+      "padding": "16px 32px",
+      "borderRadius": "200px",
+      "backgroundColor": "rgb(246, 247, 251)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "text": "Log in with Apple",
+      "width": 576,
+      "height": 56,
+      "padding": "16px 32px",
+      "borderRadius": "200px",
+      "backgroundColor": "rgb(246, 247, 251)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "text": "Log in with WhatsApp",
+      "width": 576,
+      "height": 56,
+      "padding": "16px 32px",
+      "borderRadius": "200px",
+      "backgroundColor": "rgb(246, 247, 251)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "text": "",
+      "width": 541,
+      "height": 24,
+      "padding": "0px",
+      "borderRadius": "0px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "none",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "text": "",
+      "width": 493,
+      "height": 24,
+      "padding": "0px",
+      "borderRadius": "0px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "none",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "text": "",
+      "width": 40,
+      "height": 40,
+      "padding": "0px",
+      "borderRadius": "50%",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "400"
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "text": "Forgot password",
+      "width": 113,
+      "height": 23,
+      "padding": "0px",
+      "borderRadius": "4px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "1.6px solid",
+      "fontSize": "14px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "text": "Terms of Service",
+      "width": 112,
+      "height": 23,
+      "padding": "0px",
+      "borderRadius": "4px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "1.6px solid",
+      "fontSize": "12px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "text": "Privacy Policy",
+      "width": 95,
+      "height": 23,
+      "padding": "0px",
+      "borderRadius": "4px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "1.6px solid",
+      "fontSize": "12px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "text": "Log in",
+      "width": 576,
+      "height": 56,
+      "padding": "16px 32px",
+      "borderRadius": "200px",
+      "backgroundColor": "rgb(66, 85, 255)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "text": "New to Quizlet? Create an account",
+      "width": 576,
+      "height": 56,
+      "padding": "16px 32px",
+      "borderRadius": "200px",
+      "backgroundColor": "rgb(246, 247, 251)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "text": "Log in with magic link",
+      "width": 164,
+      "height": 27,
+      "padding": "0px",
+      "borderRadius": "4px",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "border": "1.6px solid",
+      "fontSize": "16px",
+      "fontWeight": "600"
+    }
+  ],
+  "containers": [
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 1440,
+      "classHint": null
+    },
+    {
+      "tag": "div",
+      "role": "dialog",
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 1440,
+      "classHint": "ReactModal__Content.ReactModal__Content--after-open.m1khlzip"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 1440,
+      "classHint": "n191is1l.c1g9p8ih"
+    },
+    {
+      "tag": "section",
+      "role": null,
+      "display": "grid",
+      "gridTemplateColumns": "720px 720px",
+      "flexDirection": "row",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 1440,
+      "classHint": "c1a22d1c"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "16px",
+      "width": 720,
+      "classHint": "a15w0fn3"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "normal",
+      "maxWidth": "640px",
+      "padding": "0px 32px 64px",
+      "width": 640,
+      "classHint": "a11jt2si"
+    },
+    {
+      "tag": "div",
+      "role": "tablist",
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 576,
+      "classHint": "a1t5ddux"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 576,
+      "classHint": "s1mokjjg"
+    },
+    {
+      "tag": "a",
+      "role": "button",
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "16px 32px",
+      "width": 576,
+      "classHint": "b1cnxow2.azp3ny0.x6s8tfu"
+    },
+    {
+      "tag": "a",
+      "role": "button",
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "16px 32px",
+      "width": 576,
+      "classHint": "b1cnxow2.azp3ny0.x6s8tfu"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "16px 32px",
+      "width": 576,
+      "classHint": "b1cnxow2.azp3ny0.x6s8tfu"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "16px 32px",
+      "width": 576,
+      "classHint": "b1cnxow2.azp3ny0.x6s8tfu"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 576,
+      "classHint": "d1l5a50j"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "4px",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 576,
+      "classHint": "c1nirlu7"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "8px 16px",
+      "width": 576,
+      "classHint": "AssemblyTextInput.a16m2iw6"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "column",
+      "gap": "4px",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 576,
+      "classHint": "c1nirlu7"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "8px 16px",
+      "width": 576,
+      "classHint": "AssemblyTextInput.a16m2iw6"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "16px 32px",
+      "width": 576,
+      "classHint": "b1cnxow2.a1gkh1kd.x6s8tfu"
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "display": "inline-flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "8px",
+      "maxWidth": "none",
+      "padding": "16px 32px",
+      "width": 576,
+      "classHint": "b1cnxow2.azp3ny0.x6s8tfu"
+    },
+    {
+      "tag": "div",
+      "role": null,
+      "display": "flex",
+      "gridTemplateColumns": "none",
+      "flexDirection": "row",
+      "gap": "normal",
+      "maxWidth": "none",
+      "padding": "0px",
+      "width": 576,
+      "classHint": "m2xmnx6"
+    }
+  ],
+  "tokens": {
+    "color": [
+      {
+        "value": "rgb(88, 99, 128)",
+        "count": 47
+      },
+      {
+        "value": "rgb(40, 46, 62)",
+        "count": 38
+      },
+      {
+        "value": "rgb(255, 255, 255)",
+        "count": 14
+      },
+      {
+        "value": "rgb(66, 85, 255)",
+        "count": 4
+      },
+      {
+        "value": "rgb(46, 56, 86)",
+        "count": 2
+      }
+    ],
+    "backgroundColor": [
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 94
+      },
+      {
+        "value": "rgb(246, 247, 251)",
+        "count": 8
+      },
+      {
+        "value": "rgb(66, 85, 255)",
+        "count": 2
+      },
+      {
+        "value": "rgb(255, 255, 255)",
+        "count": 1
+      }
+    ],
+    "borderColor": [
+      {
+        "value": "rgb(88, 99, 128)",
+        "count": 38
+      },
+      {
+        "value": "rgb(40, 46, 62)",
+        "count": 36
+      },
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 14
+      },
+      {
+        "value": "rgb(255, 255, 255)",
+        "count": 13
+      },
+      {
+        "value": "rgb(46, 56, 86)",
+        "count": 2
+      },
+      {
+        "value": "rgb(66, 85, 255)",
+        "count": 2
+      }
+    ],
+    "fontFamily": [
+      {
+        "value": "hurme_no2-webfont, -apple-system, BlinkMacSystemFont, sans-serif",
+        "count": 105
+      }
+    ],
+    "fontSize": [
+      {
+        "value": "16px",
+        "count": 90
+      },
+      {
+        "value": "14px",
+        "count": 8
+      },
+      {
+        "value": "24px",
+        "count": 3
+      },
+      {
+        "value": "12px",
+        "count": 3
+      },
+      {
+        "value": "44px",
+        "count": 1
+      }
+    ],
+    "fontWeight": [
+      {
+        "value": "400",
+        "count": 55
+      },
+      {
+        "value": "600",
+        "count": 46
+      },
+      {
+        "value": "700",
+        "count": 4
+      }
+    ],
+    "lineHeight": [
+      {
+        "value": "24px",
+        "count": 52
+      },
+      {
+        "value": "26px",
+        "count": 38
+      },
+      {
+        "value": "20px",
+        "count": 8
+      },
+      {
+        "value": "32px",
+        "count": 3
+      },
+      {
+        "value": "16px",
+        "count": 3
+      },
+      {
+        "value": "56px",
+        "count": 1
+      }
+    ],
+    "letterSpacing": [],
+    "borderRadius": [
+      {
+        "value": "200px",
+        "count": 6
+      },
+      {
+        "value": "4px",
+        "count": 4
+      },
+      {
+        "value": "50%",
+        "count": 2
+      },
+      {
+        "value": "8px",
+        "count": 2
+      }
+    ],
+    "boxShadow": [
+      {
+        "value": "rgba(40, 46, 62, 0.1) 0px 4px 16px 0px",
+        "count": 1
+      }
+    ],
+    "gap": [
+      {
+        "value": "8px",
+        "count": 18
+      },
+      {
+        "value": "4px",
+        "count": 2
+      }
+    ],
+    "padding": [
+      {
+        "value": "16px 32px",
+        "count": 6
+      },
+      {
+        "value": "8px 16px",
+        "count": 2
+      },
+      {
+        "value": "16px",
+        "count": 1
+      },
+      {
+        "value": "0px 32px 64px",
+        "count": 1
+      }
+    ],
+    "margin": [
+      {
+        "value": "0px 0px 16px",
+        "count": 4
+      },
+      {
+        "value": "24px 0px 0px",
+        "count": 4
+      },
+      {
+        "value": "32px 0px 0px",
+        "count": 3
+      },
+      {
+        "value": "50.4px",
+        "count": 2
+      },
+      {
+        "value": "0px 32px 0px 0px",
+        "count": 2
+      },
+      {
+        "value": "16px 0px 0px",
+        "count": 2
+      },
+      {
+        "value": "0px 0px 8px",
+        "count": 2
+      },
+      {
+        "value": "48px 16.4px 0px",
+        "count": 1
+      },
+      {
+        "value": "0px 0px 24px",
+        "count": 1
+      }
+    ],
+    "maxWidth": [
+      {
+        "value": "640px",
+        "count": 1
+      }
+    ],
+    "zIndex": [
+      {
+        "value": "1",
+        "count": 1
+      },
+      {
+        "value": "10",
+        "count": 1
+      },
+      {
+        "value": "101",
+        "count": 1
+      },
+      {
+        "value": "1100",
+        "count": 1
+      },
+      {
+        "value": "1201",
+        "count": 1
+      }
+    ],
+    "transitionDuration": [
+      {
+        "value": "0s",
+        "count": 85
+      },
+      {
+        "value": "0.12s",
+        "count": 18
+      },
+      {
+        "value": "0.1s, 0.1s",
+        "count": 2
+      }
+    ]
+  }
+}

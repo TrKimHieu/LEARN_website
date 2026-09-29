@@ -1,28 +1,41 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { motion } from 'motion/react';
 import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/contracts';
-import { useExercise, useSubmitExercise } from '@/features/learning/learning-api';
+import { useExercise, useLessons, useSubmitExercise } from '@/features/learning/learning-api';
+import { useQueryParam } from '@/lib/url-state';
 import { Mascot } from '@/components/shared/mascot';
-import { Badge, Button, Card, Icon, ProgressBar, cn } from '@/components/ui';
-import { EmptyState, ErrorState, InlineError, LoadingState } from '@/components/ui/states';
+import {
+  BackLink,
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  EmptyState,
+  ErrorState,
+  Icon,
+  InlineError,
+  LoadingState,
+  ProgressBar,
+  ProgressRing,
+  cn,
+} from '@/components/ui';
 import { ApiClientError, errorDetail, errorText } from '@/lib/api-client';
 import { celebrateSuccess } from '@/lib/celebrate';
 import { popIn } from '@/lib/motion';
-import { motion } from 'motion/react';
 
 type Answer = SubmitExerciseInput['answers'][number];
 type AnswerState = Record<string, Answer>;
 type Question = ExerciseRead['questions'][number];
 
 /**
- * Đáp án đúng chỉ tồn tại trong `SubmissionResult` — tức là chỉ sau khi nộp
- * bài `[SPEC]`. Trước khi nộp, client không hề có dữ liệu này.
+ * Đáp án đúng chỉ tồn tại trong `SubmissionResult` — tức là chỉ sau khi nộp bài `[SPEC]`.
+ * Trước khi nộp, client không hề có dữ liệu này.
  *
- * Kiểu trả về từ API là `unknown`, hình dạng thực tế do `exercises.service.ts`
- * quyết định: `{ optionId?, value?, acceptable? }`. Bóc tách phòng thủ để một
- * hình dạng lạ chỉ làm mất phần gợi ý, không làm hỏng cả màn kết quả.
+ * Kiểu trả về từ API là `unknown`, hình dạng thực tế do `exercises.service.ts` quyết
+ * định: `{ optionId?, value?, acceptable? }`. Bóc tách phòng thủ để một hình dạng lạ chỉ
+ * làm mất phần gợi ý, không làm hỏng cả màn kết quả.
  */
 function describeCorrectAnswer(question: Question, correctAnswer: unknown): string | null {
   if (correctAnswer === null || typeof correctAnswer !== 'object') return null;
@@ -59,82 +72,44 @@ function describeGivenAnswer(question: Question, answer: Answer | undefined): st
   return answer.text;
 }
 
+/** Thanh hành động dính đáy — nằm trên thanh tab mobile, sát đáy từ `lg`. */
+const STICKY_BAR =
+  'sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-10 mt-8 lg:bottom-4';
+const STICKY_PANEL =
+  'flex items-center gap-4 rounded-card border border-line bg-panel/90 shadow-overlay backdrop-blur-xl';
+
 export default function PracticePage({
   params,
 }: {
   params: Promise<{ courseId: string; lessonId: string }>;
 }) {
   const { courseId, lessonId } = use(params);
-  const exercise = useExercise(lessonId);
-  const submitExercise = useSubmitExercise(courseId, lessonId);
-  const [answers, setAnswers] = useState<AnswerState>({});
-  const [result, setResult] = useState<SubmissionResult | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  /** Câu bị đánh dấu thiếu sau một lần bấm Nộp bài hụt. */
-  const [missingId, setMissingId] = useState<string | null>(null);
-
-  function setAnswer(a: Answer) {
-    setAnswers((prev) => ({ ...prev, [a.questionId]: a }));
-    // Vừa trả lời đúng câu đang bị đánh dấu thì gỡ dấu ngay, không bắt người
-    // dùng bấm Nộp bài lần nữa mới thấy lỗi biến mất.
-    setMissingId((cur) => (cur === a.questionId ? null : cur));
-  }
-
-  /**
-   * Đưa người học tới đúng câu còn thiếu.
-   *
-   * Trước đây bấm Nộp bài khi chưa điền hết chỉ hiện một dòng chữ đỏ ở cuối
-   * trang — người dùng biết "có câu chưa trả lời" nhưng không biết là câu nào,
-   * phải tự cuộn lên dò. NN/g ("10 Design Guidelines for Reporting Errors in
-   * Forms"): thông báo lỗi phải nằm cạnh chỗ sai, và phải giúp người dùng tới
-   * được đó. Ở đây ta cuộn tới câu, focus vào nó, và đánh dấu nó luôn.
-   */
-  function goToMissing(questionId: string) {
-    setMissingId(questionId);
-    const card = document.getElementById(`question-${questionId}`);
-    if (!card) return;
-    card.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    // Ô nhập chữ focus thẳng được; với câu trắc nghiệm thì radio đầu tiên là
-    // điểm vào của nhóm, bàn phím đi tiếp bằng phím mũi tên.
-    const field = card.querySelector<HTMLElement>('input, textarea');
-    field?.focus({ preventScroll: true });
-  }
-
-  async function handleSubmit() {
-    if (!exercise.data) return;
-    setSubmitError(null);
-    const list = Object.values(answers);
-    if (list.length < exercise.data.questions.length) {
-      const first = exercise.data.questions.find((q) => !answers[q.id]);
-      const at = exercise.data.questions.findIndex((q) => !answers[q.id]) + 1;
-      setSubmitError(`Câu ${at} chưa được trả lời. Trả lời hết rồi mới nộp được.`);
-      if (first) goToMissing(first.id);
-      return;
-    }
-    setMissingId(null);
-    try {
-      const res = await submitExercise.mutateAsync({ answers: list });
-      setResult(res);
-    } catch (err) {
-      setSubmitError(errorText(err, 'Nộp bài thất bại, vui lòng thử lại.'));
-    }
-  }
-
-  function retry() {
-    setAnswers({});
-    setResult(null);
-    setSubmitError(null);
-  }
-
+  // Bài tập đang mở sống trong URL: F5 hay gửi link vẫn đúng bài tập (UX-UI-PRINCIPLES §12).
+  const [exerciseParam, setExerciseParam] = useQueryParam('exercise');
+  const exercise = useExercise(lessonId, exerciseParam);
   const backToLesson = `/courses/${courseId}/lessons/${lessonId}`;
 
-  if (exercise.isLoading) return <LoadingState rows={3} label="Đang tải bài tập" />;
+  if (exercise.isLoading) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <LoadingState rows={4} variant="card" label="Đang tải bài tập" />
+      </div>
+    );
+  }
 
   if (exercise.isError) {
     const is404 = exercise.error instanceof ApiClientError && exercise.error.status === 404;
     return (
-      <div className="space-y-4">
-        {is404 ? (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <h1 className="sr-only">Bài tập</h1>
+        <BackLink href={backToLesson} label="Quay lại bài học" />
+        {is404 && exerciseParam ? (
+          <EmptyState
+            title="Không tìm thấy bài tập này"
+            description="Đường dẫn có thể đã cũ. Mở bài tập đầu tiên của bài học để làm tiếp."
+            action={{ label: 'Mở bài tập đầu tiên', onClick: () => setExerciseParam('') }}
+          />
+        ) : is404 ? (
           <EmptyState
             title="Bài học này chưa có bài tập"
             description="Sinh bài học bằng AI sẽ tạo kèm bài tập cho từng bài."
@@ -147,13 +122,6 @@ export default function PracticePage({
             onRetry={() => void exercise.refetch()}
           />
         )}
-        <Link
-          href={backToLesson}
-          className="inline-flex items-center gap-1 text-sm font-bold text-sky-700 underline underline-offset-2 hover:no-underline"
-        >
-          <Icon name="chevron-right" size={15} className="rotate-180" />
-          Quay lại bài học
-        </Link>
       </div>
     );
   }
@@ -161,13 +129,98 @@ export default function PracticePage({
   const data = exercise.data;
   if (!data) return null;
 
+  return (
+    // `key`: đổi bài tập là một phiên làm bài mới, câu trả lời của bài trước không được sót lại.
+    <ExerciseSession
+      key={data.id}
+      courseId={courseId}
+      lessonId={lessonId}
+      data={data}
+      backToLesson={backToLesson}
+      onOpenExercise={(id) => {
+        setExerciseParam(id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }}
+    />
+  );
+}
+
+function ExerciseSession({
+  courseId,
+  lessonId,
+  data,
+  backToLesson,
+  onOpenExercise,
+}: {
+  courseId: string;
+  lessonId: string;
+  data: ExerciseRead;
+  backToLesson: string;
+  onOpenExercise: (exerciseId: string) => void;
+}) {
+  const submitExercise = useSubmitExercise(courseId, lessonId);
+  const [answers, setAnswers] = useState<AnswerState>({});
+  const [result, setResult] = useState<SubmissionResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  /** Câu bị đánh dấu thiếu sau một lần bấm Nộp bài hụt. */
+  const [missingId, setMissingId] = useState<string | null>(null);
+
+  function setAnswer(a: Answer) {
+    setAnswers((prev) => ({ ...prev, [a.questionId]: a }));
+    // Trả lời đúng câu đang bị đánh dấu thì gỡ dấu ngay.
+    setMissingId((cur) => (cur === a.questionId ? null : cur));
+  }
+
+  /**
+   * Đưa người học tới đúng câu còn thiếu: cuộn tới, focus, đánh dấu tại chỗ — NN/g
+   * "10 Design Guidelines for Reporting Errors in Forms".
+   */
+  function goToMissing(questionId: string) {
+    setMissingId(questionId);
+    const card = document.getElementById(`question-${questionId}`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const field = card.querySelector<HTMLElement>('input, textarea');
+    field?.focus({ preventScroll: true });
+  }
+
+  async function handleSubmit() {
+    setSubmitError(null);
+    const list = Object.values(answers);
+    if (list.length < data.questions.length) {
+      const first = data.questions.find((q) => !answers[q.id]);
+      const at = data.questions.findIndex((q) => !answers[q.id]) + 1;
+      setSubmitError(`Câu ${at} chưa được trả lời. Trả lời hết rồi mới nộp được.`);
+      if (first) goToMissing(first.id);
+      return;
+    }
+    setMissingId(null);
+    try {
+      const res = await submitExercise.mutateAsync({ answers: list, exerciseId: data.id });
+      setResult(res);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setSubmitError(errorText(err, 'Nộp bài thất bại, vui lòng thử lại.'));
+    }
+  }
+
+  function retry() {
+    setAnswers({});
+    setResult(null);
+    setSubmitError(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   if (result) {
     return (
       <ResultScreen
+        courseId={courseId}
+        lessonId={lessonId}
         data={data}
         result={result}
         answers={answers}
         onRetry={retry}
+        onOpenExercise={onOpenExercise}
         backToLesson={backToLesson}
       />
     );
@@ -175,65 +228,68 @@ export default function PracticePage({
 
   const answeredCount = Object.keys(answers).length;
   const total = data.questions.length;
+  const position = data.exercises.findIndex((e) => e.id === data.id);
 
   return (
     <section className="mx-auto max-w-2xl">
-      <Link
-        href={backToLesson}
-        className="inline-flex items-center gap-1 rounded-md text-sm font-bold text-ink-500 hover:text-ink-900"
-      >
-        <Icon name="chevron-right" size={15} className="rotate-180" />
-        Bài học
-      </Link>
+      <BackLink href={backToLesson} label="Về bài học" />
 
-      <h1 className="mt-3 text-2xl font-bold text-ink-900">{data.title ?? 'Bài tập'}</h1>
-      {data.instruction && <p className="mt-1 text-sm text-ink-500">{data.instruction}</p>}
+      <ExercisePicker data={data} onOpen={onOpenExercise} className="mt-6" />
 
-      <div className="mt-4 flex items-center gap-3">
-        <ProgressBar
-          value={answeredCount}
-          max={total}
-          label={`Đã trả lời ${answeredCount} trên ${total} câu`}
-        />
-        <span className="shrink-0 text-sm font-bold tabular-nums text-ink-700">
-          {answeredCount}/{total}
-        </span>
-      </div>
-
-      {data.bestSubmission && (
-        <p className="mt-2 text-xs text-ink-500">
-          Điểm cao nhất trước đó: {data.bestSubmission.score}/{data.bestSubmission.maxScore} (lần{' '}
-          {data.bestSubmission.attemptNo})
+      <header className="mt-6">
+        <p className="text-sm text-fg-subtle">
+          {data.exercises.length > 1 && position >= 0
+            ? `Bài tập ${position + 1}/${data.exercises.length}`
+            : 'Bài tập'}
+          {` · ${total} câu, cần ${data.passScore} điểm để qua`}
         </p>
-      )}
-
-      <div className="mt-6 space-y-4">
-        {data.questions.map((q, i) => (
-          <QuestionCard
-            key={q.id}
-            index={i + 1}
-            question={q}
-            value={answers[q.id]}
-            onChange={setAnswer}
-            missing={missingId === q.id}
-          />
-        ))}
-      </div>
-
-      {submitError && <InlineError className="mt-4">{submitError}</InlineError>}
-
-      <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t-2 border-surface-300 bg-surface-100/95 px-4 py-3 backdrop-blur md:-mx-8 md:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <p className="hidden text-sm font-medium text-ink-500 sm:block">
-            {answeredCount < total
-              ? `Còn ${total - answeredCount} câu chưa trả lời`
-              : 'Đã trả lời hết, sẵn sàng nộp'}
+        <h1 className="mt-1 text-[2.25rem] font-semibold leading-tight tracking-[-0.025em] text-fg">
+          {data.title ?? 'Bài tập'}
+        </h1>
+        {data.instruction && (
+          <p className="mt-2 leading-relaxed text-fg-subtle">{data.instruction}</p>
+        )}
+        {data.bestSubmission && (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-fg-subtle">
+            <Icon name="trophy" size={13} className="text-warn" />
+            Điểm cao nhất trước đó: {data.bestSubmission.score}/{data.bestSubmission.maxScore} (lần{' '}
+            {data.bestSubmission.attemptNo})
           </p>
-          <Button
-            className="ml-auto"
-            onClick={() => void handleSubmit()}
-            disabled={submitExercise.isPending}
-          >
+        )}
+      </header>
+
+      <ol className="mt-8 space-y-4">
+        {data.questions.map((q, i) => (
+          <li key={q.id}>
+            <QuestionCard
+              index={i + 1}
+              question={q}
+              value={answers[q.id]}
+              onChange={setAnswer}
+              missing={missingId === q.id}
+            />
+          </li>
+        ))}
+      </ol>
+
+      {submitError && <InlineError className="mt-5">{submitError}</InlineError>}
+
+      <div className={STICKY_BAR}>
+        <div className={cn(STICKY_PANEL, 'p-3 pl-4')}>
+          <div className="min-w-0 flex-1">
+            <p className="mb-1.5 text-xs font-semibold text-fg-subtle">
+              {answeredCount < total
+                ? `Đã trả lời ${answeredCount}/${total}, còn ${total - answeredCount} câu`
+                : 'Đã trả lời hết, sẵn sàng nộp'}
+            </p>
+            <ProgressBar
+              size="sm"
+              value={answeredCount}
+              max={total}
+              label={`Đã trả lời ${answeredCount} trên ${total} câu`}
+            />
+          </div>
+          <Button onClick={() => void handleSubmit()} loading={submitExercise.isPending}>
             {submitExercise.isPending ? 'Đang nộp…' : 'Nộp bài'}
           </Button>
         </div>
@@ -242,18 +298,67 @@ export default function PracticePage({
   );
 }
 
+/**
+ * Chọn bài tập khi bài học có nhiều bài tập. Mỗi bài tập mang dấu đạt bằng icon + chữ, không
+ * chỉ bằng màu (ADR 015). Bài học chỉ có một bài tập thì không hiện gì.
+ */
+function ExercisePicker({
+  data,
+  onOpen,
+  className,
+}: {
+  data: ExerciseRead;
+  onOpen: (exerciseId: string) => void;
+  className?: string;
+}) {
+  if (data.exercises.length < 2) return null;
+  const passedCount = data.exercises.filter((e) => e.passed).length;
+  return (
+    <nav aria-label="Các bài tập của bài học" className={className}>
+      <p className="mb-2 text-xs font-medium text-fg-subtle">
+        Đã đạt {passedCount}/{data.exercises.length} bài tập. Đạt hết để hoàn thành bài học.
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {data.exercises.map((e, i) => {
+          const current = e.id === data.id;
+          return (
+            <li key={e.id}>
+              <button
+                type="button"
+                onClick={() => !current && onOpen(e.id)}
+                aria-current={current ? 'step' : undefined}
+                title={e.title ?? undefined}
+                className={cn(
+                  'inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-sm transition-colors duration-150 focus-ring-tight',
+                  current
+                    ? 'border-fg bg-fg font-semibold text-app'
+                    : 'border-line bg-panel text-fg hover:border-line-strong',
+                )}
+              >
+                {e.passed && <Icon name="check" size={14} strokeWidth={2.75} />}
+                Bài tập {i + 1}
+                <span className="sr-only">{e.passed ? ', đã đạt' : ', chưa đạt'}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 /* ------------------------------------------------------------ làm bài */
 
 const OPTION_ROW =
-  'flex cursor-pointer items-center gap-3 rounded-lg border border-surface-300 shadow-card ' +
-  'bg-white px-4 py-3 text-sm transition-all duration-200 ' +
-  'hover:border-surface-400 hover:shadow-raised ' +
-  'has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50 has-[:focus-visible]:outline-2 ' +
-  'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-sky-600';
+  'group/opt flex min-h-12 cursor-pointer items-center gap-3 rounded-control border border-line ' +
+  'bg-panel px-4 py-3 text-[0.9375rem] transition-[border-color,background-color,box-shadow] duration-200 ' +
+  'hover:border-accent-line hover:bg-panel-2 ' +
+  'has-[:checked]:border-fg has-[:checked]:bg-muted has-[:checked]:shadow-[0_0_0_1px_var(--fg)] ' +
+  'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-fg';
 
 function LetterChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="grid size-7 shrink-0 place-items-center rounded-md border border-surface-300 text-xs font-semibold text-ink-700">
+    <span className="grid size-8 shrink-0 place-items-center rounded-md border border-line-strong bg-panel text-xs font-semibold text-fg-muted transition-colors duration-200 group-has-[:checked]/opt:border-fg group-has-[:checked]/opt:bg-fg group-has-[:checked]/opt:text-panel">
       {children}
     </span>
   );
@@ -273,26 +378,31 @@ function QuestionCard({
   /** Bị bỏ trống khi người dùng bấm Nộp bài — đánh dấu ngay tại chỗ. */
   missing?: boolean;
 }) {
+  const promptId = `prompt-${question.id}`;
   return (
     <Card
       id={`question-${question.id}`}
-      // `scroll-mt-24` chừa chỗ cho header dính đỉnh, `scroll-mb-28` chừa chỗ cho
-      // thanh nộp bài dính đáy — nếu không, cuộn tới câu nào thì câu đó nằm ngay
-      // dưới thanh và bị che (WCAG 2.2 — Focus Not Obscured).
-      className={cn('scroll-mb-28 scroll-mt-24', missing && 'border-danger-500 bg-danger-50/40')}
+      // Chừa chỗ cho header dính đỉnh và thanh nộp bài dính đáy — WCAG 2.4.11.
+      className={cn('scroll-mb-40 scroll-mt-24', missing && 'border-2 border-fg bg-bad-soft')}
     >
-      <p className="text-sm font-bold text-ink-900">
-        Câu {index}. {question.prompt}
-      </p>
+      <div className="flex gap-3">
+        <span aria-hidden className="w-5 shrink-0 pt-0.5 font-semibold tabular-nums text-fg-subtle">
+          {index}.
+        </span>
+        <p id={promptId} className="pt-0.5 font-semibold leading-relaxed text-fg">
+          <span className="sr-only">Câu {index}. </span>
+          {question.prompt}
+        </p>
+      </div>
       {missing && (
-        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger-700">
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-bad">
           <Icon name="alert" size={14} />
           Câu này chưa được trả lời.
         </p>
       )}
 
       {question.type === 'MULTIPLE_CHOICE' && (
-        <div className="mt-3 space-y-2">
+        <div role="radiogroup" aria-labelledby={promptId} className="mt-4 space-y-2">
           {question.options.map((opt) => (
             <label key={opt.id} className={OPTION_ROW}>
               <input
@@ -305,16 +415,16 @@ function QuestionCard({
                 }
               />
               <LetterChip>{opt.label}</LetterChip>
-              <span className="text-ink-900">{opt.content}</span>
+              <span className="text-fg">{opt.content}</span>
             </label>
           ))}
         </div>
       )}
 
       {question.type === 'TRUE_FALSE' && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div role="radiogroup" aria-labelledby={promptId} className="mt-4 grid grid-cols-2 gap-2">
           {[true, false].map((v) => (
-            <label key={String(v)} className={cn(OPTION_ROW, 'justify-center font-bold')}>
+            <label key={String(v)} className={cn(OPTION_ROW, 'justify-center font-semibold')}>
               <input
                 type="radio"
                 name={question.id}
@@ -322,7 +432,8 @@ function QuestionCard({
                 checked={value?.type === 'TRUE_FALSE' && value.value === v}
                 onChange={() => onChange({ type: 'TRUE_FALSE', questionId: question.id, value: v })}
               />
-              <span className="text-ink-900">{v ? 'Đúng' : 'Sai'}</span>
+              <Icon name={v ? 'check' : 'x'} size={16} className="text-fg-subtle" />
+              <span className="text-fg">{v ? 'Đúng' : 'Sai'}</span>
             </label>
           ))}
         </div>
@@ -341,7 +452,8 @@ function QuestionCard({
             }
           }}
           placeholder="Nhập câu trả lời…"
-          className="mt-3 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm outline-none transition-all duration-200 hover:border-surface-400 focus:border-sky-500 focus-ring-tight"
+          aria-labelledby={promptId}
+          className="mt-4 h-11 w-full rounded-control border border-line bg-panel px-3.5 text-[0.9375rem] text-fg outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-fg-subtle/80 hover:border-line-strong focus:border-fg focus:shadow-[0_0_0_4px_rgb(94_200_245/0.18)]"
         />
       )}
     </Card>
@@ -351,57 +463,102 @@ function QuestionCard({
 /* ----------------------------------------------------------- kết quả */
 
 function ResultScreen({
+  courseId,
+  lessonId,
   data,
   result,
   answers,
   onRetry,
+  onOpenExercise,
   backToLesson,
 }: {
+  courseId: string;
+  lessonId: string;
   data: ExerciseRead;
   result: SubmissionResult;
   answers: AnswerState;
   onRetry: () => void;
+  onOpenExercise: (exerciseId: string) => void;
   backToLesson: string;
 }) {
   const resultByQuestion = new Map(result.results.map((r) => [r.questionId, r]));
+  const correctCount = result.results.filter((r) => r.isCorrect).length;
+  const lessons = useLessons(courseId);
 
-  // Chỉ bắn khi vượt qua bài, và chỉ một lần cho mỗi lượt nộp (`attemptNo` đổi
-  // khi người học làm lại). Hàm tự bỏ qua nếu người dùng bật giảm chuyển động.
+  // Bước kế tiếp sau khi nộp: bài tập chưa đạt kế tiếp trong bài học, rồi tới bài học kế tiếp
+  // khi đã xong cả bài. Loại hẳn bài tập hiện tại khỏi ứng viên: `data.exercises` có thể chưa
+  // kịp làm mới sau lượt nộp này.
+  const position = data.exercises.findIndex((e) => e.id === data.id);
+  const nextExercise =
+    data.exercises.slice(position + 1).find((e) => !e.passed) ??
+    data.exercises.slice(0, Math.max(position, 0)).find((e) => !e.passed);
+  const lessonList = lessons.data?.lessons ?? [];
+  const lessonIndex = lessonList.findIndex((l) => l.id === lessonId);
+  const nextLesson = lessonIndex >= 0 ? lessonList[lessonIndex + 1] : undefined;
+
+  // Chỉ bắn khi qua bài, một lần mỗi lượt nộp. Tự bỏ qua nếu bật giảm chuyển động.
   useEffect(() => {
     if (result.passed) celebrateSuccess();
   }, [result.passed, result.attemptNo]);
 
   return (
     <section className="mx-auto max-w-2xl">
+      <h1 className="sr-only">Kết quả bài tập</h1>
       {/* HANDBOOK §13.2: `celebrate` khi người dùng hoàn thành bài học. */}
       <motion.div initial="hidden" animate="show" variants={popIn}>
         <Card
           className={cn(
-            'flex flex-col items-center gap-2 py-8 text-center',
-            result.passed ? 'border-success-100' : 'border-surface-300',
+            'relative overflow-hidden px-6 py-10 text-center',
+            result.passed ? 'border-ok-line' : 'border-warn-line',
           )}
         >
-          <Mascot state={result.passed ? 'celebrate' : 'confused'} size={96} />
-          <p className="text-3xl font-bold text-ink-900">
-            {result.score}/{result.maxScore} điểm
-          </p>
-          <p className="text-sm font-medium text-ink-500">
-            {result.passed
-              ? 'Bạn đã hoàn thành bài tập!'
-              : `Cần đạt ${data.passScore} điểm để qua bài.`}
-          </p>
-          <div className="mt-1">
-            <Badge
-              tone={result.passed ? 'success' : 'warning'}
-              icon={result.passed ? 'check' : 'alert'}
-            >
-              {result.passed ? 'Đạt' : 'Chưa đạt'} · Lần {result.attemptNo}
-            </Badge>
+          <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-8 sm:text-left">
+            <Mascot state={result.passed ? 'celebrate' : 'confused'} size={104} />
+            <div>
+              <Badge
+                tone={result.passed ? 'success' : 'warning'}
+                icon={result.passed ? 'check' : 'alert'}
+              >
+                {result.passed ? 'Đạt' : 'Chưa đạt'} · Lần {result.attemptNo}
+              </Badge>
+              <p className="mt-3 text-5xl font-semibold tabular-nums text-fg">
+                {result.score}
+                <span className="text-2xl text-fg-subtle"> / {result.maxScore} điểm</span>
+              </p>
+              <p className="mt-1 max-w-sm text-sm font-medium text-fg-subtle">
+                {result.passed
+                  ? `Bạn đã hoàn thành bài tập, đúng ${correctCount}/${data.questions.length} câu.`
+                  : `Cần đạt ${data.passScore} điểm để qua bài. Xem lại các câu sai bên dưới.`}
+              </p>
+              {result.lessonCompleted ? (
+                <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-fg">
+                  <Icon name="book-check" size={16} />
+                  Bạn đã hoàn thành cả bài học.
+                </p>
+              ) : (
+                result.passed &&
+                nextExercise && (
+                  <p className="mt-2 text-sm text-fg-subtle">
+                    Còn bài tập chưa đạt. Đạt hết để hoàn thành bài học.
+                  </p>
+                )
+              )}
+            </div>
+            <ProgressRing
+              className="hidden sm:inline-grid"
+              size={88}
+              stroke={8}
+              tone={result.passed ? 'success' : 'sky'}
+              value={result.score}
+              max={Math.max(result.maxScore, 1)}
+              label={`Đạt ${result.score} trên ${result.maxScore} điểm`}
+            />
           </div>
         </Card>
       </motion.div>
 
-      <div className="mt-5 space-y-4">
+      <h2 className="mb-3 mt-12 text-base font-semibold text-fg">Xem lại từng câu</h2>
+      <ol className="space-y-4">
         {data.questions.map((q, i) => {
           const r = resultByQuestion.get(q.id);
           const isCorrect = r?.isCorrect ?? false;
@@ -411,97 +568,123 @@ function ResultScreen({
           const givenText = describeGivenAnswer(q, given);
 
           return (
-            <Card key={q.id} className={isCorrect ? 'border-success-100' : 'border-danger-100'}>
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-bold text-ink-900">
-                  Câu {i + 1}. {q.prompt}
-                </p>
-                <Badge
-                  tone={isCorrect ? 'success' : 'danger'}
-                  icon={isCorrect ? 'check' : 'x'}
-                  className="shrink-0"
-                >
-                  {isCorrect ? 'Đúng' : 'Sai'}
-                </Badge>
-              </div>
+            <li key={q.id}>
+              <Card className={isCorrect ? 'border-ok-line' : 'border-bad-line'}>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold leading-relaxed text-fg">
+                    Câu {i + 1}. {q.prompt}
+                  </p>
+                  <Badge
+                    tone={isCorrect ? 'success' : 'danger'}
+                    icon={isCorrect ? 'check' : 'x'}
+                    className="shrink-0"
+                  >
+                    {isCorrect ? 'Đúng' : 'Sai'}
+                  </Badge>
+                </div>
 
-              {q.type === 'MULTIPLE_CHOICE' && (
-                <ul className="mt-3 space-y-1.5">
-                  {q.options.map((opt) => {
-                    const chosen = given?.type === 'MULTIPLE_CHOICE' && given.optionId === opt.id;
-                    const isRight = correctId === opt.id;
-                    return (
-                      <li
-                        key={opt.id}
-                        className={cn(
-                          'flex items-center gap-3 rounded-lg border px-3 py-2 text-sm',
-                          isRight
-                            ? 'border-success-500 bg-success-50'
-                            : chosen
-                              ? 'border-danger-500 bg-danger-50'
-                              : 'border-surface-300',
-                        )}
-                      >
-                        <LetterChip>{opt.label}</LetterChip>
-                        <span className="text-ink-900">{opt.content}</span>
-                        {isRight && (
-                          <span className="ml-auto flex shrink-0 items-center gap-1 text-xs font-bold text-success-700">
-                            <Icon name="check" size={13} strokeWidth={3} />
-                            Đáp án đúng
+                {q.type === 'MULTIPLE_CHOICE' && (
+                  <ul className="mt-4 space-y-2">
+                    {q.options.map((opt) => {
+                      const chosen = given?.type === 'MULTIPLE_CHOICE' && given.optionId === opt.id;
+                      const isRight = correctId === opt.id;
+                      return (
+                        <li
+                          key={opt.id}
+                          className={cn(
+                            'flex items-center gap-3 rounded-control border px-3 py-2.5 text-sm',
+                            isRight
+                              ? 'border-2 border-fg bg-ok-soft'
+                              : chosen
+                                ? 'border-dashed border-fg-subtle bg-bad-soft'
+                                : 'border-line',
+                          )}
+                        >
+                          <span className="grid size-7 shrink-0 place-items-center rounded-md border border-line-strong bg-panel text-xs font-semibold text-fg-muted">
+                            {opt.label}
                           </span>
-                        )}
-                        {chosen && !isRight && (
-                          <span className="ml-auto shrink-0 text-xs font-bold text-danger-700">
-                            Bạn chọn
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+                          <span className="text-fg">{opt.content}</span>
+                          {isRight && (
+                            <span className="ml-auto flex shrink-0 items-center gap-1 text-xs font-semibold text-ok">
+                              <Icon name="check" size={13} strokeWidth={3} />
+                              Đáp án đúng
+                            </span>
+                          )}
+                          {chosen && !isRight && (
+                            <span className="ml-auto flex shrink-0 items-center gap-1 text-xs font-semibold text-bad">
+                              <Icon name="x" size={13} strokeWidth={3} />
+                              Bạn chọn
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
 
-              {q.type !== 'MULTIPLE_CHOICE' && (
-                <dl className="mt-3 space-y-1.5 text-sm">
-                  {givenText && (
-                    <div className="flex gap-2">
-                      <dt className="shrink-0 font-medium text-ink-500">Bạn trả lời:</dt>
-                      <dd className={isCorrect ? 'text-ink-900' : 'text-danger-700'}>
-                        {givenText}
-                      </dd>
-                    </div>
-                  )}
-                  {!isCorrect && correctText && (
-                    <div className="flex gap-2">
-                      <dt className="shrink-0 font-medium text-ink-500">Đáp án đúng:</dt>
-                      <dd className="font-bold text-success-700">{correctText}</dd>
-                    </div>
-                  )}
-                </dl>
-              )}
+                {q.type !== 'MULTIPLE_CHOICE' && (
+                  <dl className="mt-4 space-y-1.5 text-sm">
+                    {givenText && (
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-medium text-fg-subtle">Bạn trả lời:</dt>
+                        <dd className={isCorrect ? 'text-fg' : 'text-bad'}>{givenText}</dd>
+                      </div>
+                    )}
+                    {!isCorrect && correctText && (
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-medium text-fg-subtle">Đáp án đúng:</dt>
+                        <dd className="font-semibold text-ok">{correctText}</dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
 
-              {r?.explanation && (
-                <p className="mt-3 rounded-xl bg-surface-100 px-3 py-2 text-sm text-ink-700">
-                  {r.explanation}
-                </p>
-              )}
-            </Card>
+                {r?.explanation && (
+                  <p className="mt-4 flex gap-2 rounded-control border border-accent-line bg-accent-soft px-3.5 py-2.5 text-sm leading-relaxed text-fg-muted">
+                    <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
+                    <span>{r.explanation}</span>
+                  </p>
+                )}
+              </Card>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
-      <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t-2 border-surface-300 bg-surface-100/95 px-4 py-3 backdrop-blur md:-mx-8 md:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <Link
-            href={backToLesson}
-            className="inline-flex items-center gap-1 rounded-md text-sm font-bold text-ink-500 hover:text-ink-900"
-          >
-            <Icon name="chevron-right" size={15} className="rotate-180" />
-            Bài học
-          </Link>
-          <Button variant="secondary" onClick={onRetry}>
-            Làm lại
-          </Button>
+      <div className={STICKY_BAR}>
+        <div className={cn(STICKY_PANEL, 'justify-between p-2 pl-4')}>
+          <BackLink href={backToLesson} label="Về bài học" />
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              variant={result.passed ? 'secondary' : 'primary'}
+              onClick={onRetry}
+              aria-label="Làm lại"
+            >
+              <Icon name="retry" size={16} />
+              {/* Có bước tiếp theo thì ở màn hẹp chỉ giữ icon, nhường chỗ cho nút đi tiếp. */}
+              <span
+                className={cn(result.passed && (nextExercise || nextLesson) && 'max-sm:sr-only')}
+              >
+                Làm lại
+              </span>
+            </Button>
+            {result.passed && nextExercise && (
+              <Button onClick={() => onOpenExercise(nextExercise.id)}>
+                Bài tập tiếp theo
+                <Icon name="arrow-right" size={16} />
+              </Button>
+            )}
+            {result.passed && !nextExercise && result.lessonCompleted && nextLesson && (
+              <ButtonLink
+                href={`/courses/${courseId}/lessons/${nextLesson.id}`}
+                className="min-w-0"
+                aria-label={`Bài học tiếp theo: ${nextLesson.title}`}
+              >
+                <span className="truncate">Bài học tiếp theo</span>
+                <Icon name="arrow-right" size={16} />
+              </ButtonLink>
+            )}
+          </div>
         </div>
       </div>
     </section>

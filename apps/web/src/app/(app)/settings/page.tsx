@@ -7,31 +7,29 @@ import {
   useCheckout,
   useCancelSubscription,
 } from '@/features/settings/subscription-api';
+import { useAuth } from '@/features/auth/auth-context';
+import { Avatar } from '@/features/shell/user-menu';
+import { ThemeSegmented } from '@/components/shared/theme-toggle';
 import {
   Badge,
   Button,
   Card,
-  CardTitle,
+  ErrorState,
   Icon,
+  InlineError,
   PageHeader,
+  PartialNotice,
   ProgressBar,
+  SectionTitle,
   Skeleton,
   cn,
 } from '@/components/ui';
-import { ErrorState, InlineError, PartialNotice } from '@/components/ui/states';
-import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { humanizeCode } from '@/lib/humanize';
 
 /**
- * Nhãn tiếng Việt cho các enum của API.
- *
- * `status` và `interval` là mã máy đọc do backend định nghĩa; đổ thẳng ra màn
- * hình thì người dùng đọc được "ACTIVE" và "$9/month" giữa một giao diện tiếng
- * Việt — NN/g gọi là vi phạm "match between the system and the real world":
- * giao diện phải nói ngôn ngữ của người dùng, không phải từ vựng nội bộ của hệ
- * thống. Không khớp thì `humanizeCode` đỡ: mã mới của backend vẫn hiện ra (biến
- * mất thì còn tệ hơn) nhưng ở dạng đọc được — `PAST_DUE` thành "Past due".
+ * Nhãn tiếng Việt cho enum của API — không đổ mã máy ("ACTIVE", "/month") ra màn hình
+ * (NN/g H2). Mã mới của backend đi qua `humanizeCode` thay vì lọt ra thô.
  */
 const STATUS_LABEL: Record<string, string> = {
   TRIALING: 'Đang dùng thử',
@@ -54,16 +52,20 @@ const METRIC_LABEL: Record<string, string> = {
   AI_JOBS_RUN: 'AI Job / tháng',
 };
 
+const ROLE_LABEL: Record<string, string> = {
+  LEARNER: 'Người học',
+  ADMIN: 'Quản trị viên',
+};
+
 export default function SettingsPage() {
+  const { user, logoutAll } = useAuth();
   const plans = usePlans();
   const subscription = useSubscription();
   const checkout = useCheckout();
   const cancelSubscription = useCancelSubscription();
   const [actionError, setActionError] = useState<string | null>(null);
   const [upgradingCode, setUpgradingCode] = useState<string | null>(null);
-  // Huỷ gói giờ xác nhận theo đúng mẫu 2 nhịp của "Xoá bài học" — trước đây bắn thẳng
-  // không hỏi, trong khi một hành động phá huỷ khác trong cùng app thì có. Hai hành
-  // động cùng mức hậu quả nên cùng một mẫu, không phải chuyện gu cá nhân của từng màn.
+  // Huỷ gói xác nhận 2 nhịp, cùng mẫu với "Xoá bài học" — cùng mức hậu quả, cùng mẫu.
   const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   async function handleUpgrade(planCode: string) {
@@ -88,171 +90,221 @@ export default function SettingsPage() {
     }
   }
 
-  if (plans.isLoading || subscription.isLoading) {
-    return (
-      <section>
-        <PageHeader title="Cài đặt" />
-        <Skeleton className="h-40" />
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-64" />
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  // Hai truy vấn độc lập — lỗi một cái không được xoá cả trang. Trước đây một cổng chung
-  // (`plans.isError || subscription.isError`) làm lỗi tải hạn mức xoá luôn cả danh mục
-  // gói, dù hai thứ không phụ thuộc nhau.
   const sub = subscription.data;
 
   return (
-    <section>
-      <PageHeader title="Cài đặt" description="Gói đăng ký và hạn mức sử dụng." />
+    <div>
+      <PageHeader title="Cài đặt" description="Hồ sơ, giao diện, gói đăng ký và hạn mức sử dụng." />
 
-      {subscription.isError || !sub ? (
-        <ErrorState
-          title="Không tải được thông tin gói hiện tại"
-          description={errorText(subscription.error, 'Vui lòng thử lại.')}
-          detail={errorDetail(subscription.error)}
-          onRetry={() => void subscription.refetch()}
-        />
-      ) : (
-        <Reveal>
-          {sub.billingMode === 'demo' && (
-            <PartialNotice>
-              <b>Chế độ demo</b> — nâng cấp gói ở đây không phát sinh giao dịch thật, chỉ để minh
-              hoạ luồng sản phẩm.
-            </PartialNotice>
-          )}
-
-          {/* ------------------------------------------------- gói hiện tại */}
-          <Card>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium text-ink-500">Gói hiện tại</p>
-                <p className="mt-1 text-2xl font-bold text-ink-900">{sub.planCode}</p>
-              </div>
-              <div className="text-right">
+      {/* ------------------------------------------- hồ sơ + giao diện */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="flex flex-col gap-5">
+          <div className="flex items-center gap-4">
+            <Avatar name={user?.displayName} className="size-14 text-xl" />
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold text-fg">{user?.displayName}</p>
+              <p className="truncate text-sm text-fg-subtle">{user?.email}</p>
+              {user?.role && (
                 <Badge
-                  tone={
-                    sub.status === 'ACTIVE' || sub.status === 'TRIALING' ? 'success' : 'warning'
-                  }
+                  tone={user.role === 'ADMIN' ? 'info' : 'neutral'}
+                  icon={user.role === 'ADMIN' ? 'shield' : 'user'}
+                  className="mt-2"
                 >
-                  {STATUS_LABEL[sub.status] ?? humanizeCode(sub.status)}
+                  {ROLE_LABEL[user.role] ?? humanizeCode(user.role)}
                 </Badge>
-                {sub.currentPeriodEnd && (
-                  <p className="mt-1.5 text-xs text-ink-500">
-                    {sub.cancelAtPeriodEnd ? 'Huỷ vào' : 'Gia hạn vào'}{' '}
-                    {new Date(sub.currentPeriodEnd).toLocaleDateString('vi-VN')}
-                  </p>
-                )}
-              </div>
+              )}
             </div>
+          </div>
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <p className="text-xs text-fg-subtle">Đăng xuất khỏi mọi trình duyệt đang đăng nhập.</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-bad hover:bg-bad-soft hover:text-bad"
+              onClick={() => void logoutAll()}
+            >
+              <Icon name="logout" size={15} />
+              Đăng xuất mọi thiết bị
+            </Button>
+          </div>
+        </Card>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {Object.entries(sub.usage).map(([metric, u]) => {
-                const atLimit = u.limit !== null && u.used >= u.limit;
-                return (
-                  <div key={metric}>
-                    <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-                      <span className="font-medium text-ink-700">
-                        {METRIC_LABEL[metric] ?? metric}
-                      </span>
-                      <span
-                        className={cn(
-                          'text-xs font-bold tabular-nums',
-                          atLimit ? 'text-danger-700' : 'text-ink-500',
-                        )}
-                      >
-                        {u.used}
-                        {u.limit !== null ? ` / ${u.limit}` : ' (không giới hạn)'}
-                      </span>
+        <Card>
+          <h2 className="text-base font-semibold text-fg">Giao diện</h2>
+          <p className="mt-1 text-sm text-fg-subtle">
+            &quot;Tự động&quot; theo chế độ sáng/tối của thiết bị. Lựa chọn được lưu trên trình
+            duyệt này.
+          </p>
+          <ThemeSegmented className="mt-4" />
+        </Card>
+      </div>
+
+      {/* ------------------------------------------------- gói hiện tại */}
+      <section aria-labelledby="plan-title" className="mt-12">
+        <SectionTitle id="plan-title">Gói hiện tại</SectionTitle>
+
+        {subscription.isLoading && <Skeleton className="h-48 rounded-card" />}
+
+        {/* Hai truy vấn độc lập — lỗi một cái không xoá cả trang. */}
+        {!subscription.isLoading && (subscription.isError || !sub) && (
+          <ErrorState
+            title="Không tải được thông tin gói hiện tại"
+            description={errorText(subscription.error, 'Vui lòng thử lại.')}
+            detail={errorDetail(subscription.error)}
+            onRetry={() => void subscription.refetch()}
+          />
+        )}
+
+        {sub && (
+          <>
+            {sub.billingMode === 'demo' && (
+              <PartialNotice className="mb-4">
+                <b>Chế độ demo:</b> nâng cấp gói ở đây không phát sinh giao dịch thật, chỉ để minh
+                hoạ luồng sản phẩm.
+              </PartialNotice>
+            )}
+
+            <Card padded={false} className="overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-6 py-5">
+                <div>
+                  <p className="text-sm text-fg-subtle">Gói của bạn</p>
+                  <p className="mt-0.5 text-3xl font-semibold text-fg">{sub.planCode}</p>
+                </div>
+                <div className="text-right">
+                  <Badge
+                    tone={
+                      sub.status === 'ACTIVE' || sub.status === 'TRIALING' ? 'success' : 'warning'
+                    }
+                    icon={sub.status === 'ACTIVE' ? 'check' : undefined}
+                  >
+                    {STATUS_LABEL[sub.status] ?? humanizeCode(sub.status)}
+                  </Badge>
+                  {sub.currentPeriodEnd && (
+                    <p className="mt-1.5 text-xs text-fg-subtle">
+                      {sub.cancelAtPeriodEnd ? 'Huỷ vào' : 'Gia hạn vào'}{' '}
+                      {new Date(sub.currentPeriodEnd).toLocaleDateString('vi-VN')}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-5 p-6 sm:grid-cols-2">
+                {Object.entries(sub.usage).map(([metric, u]) => {
+                  const atLimit = u.limit !== null && u.used >= u.limit;
+                  const name = METRIC_LABEL[metric] ?? humanizeCode(metric);
+                  return (
+                    <div key={metric}>
+                      <div className="mb-1.5 flex items-baseline justify-between gap-2 text-sm">
+                        <span className="font-semibold text-fg-muted">{name}</span>
+                        <span
+                          className={cn(
+                            'text-xs font-semibold tabular-nums',
+                            atLimit ? 'text-bad' : 'text-fg-subtle',
+                          )}
+                        >
+                          {u.used}
+                          {u.limit !== null ? ` / ${u.limit}` : ' · không giới hạn'}
+                        </span>
+                      </div>
+                      {u.limit !== null ? (
+                        <ProgressBar
+                          size="sm"
+                          value={u.used}
+                          max={u.limit}
+                          label={`${name}: ${u.used} trên ${u.limit}`}
+                        />
+                      ) : (
+                        <div className="h-2 rounded-pill bg-[repeating-linear-gradient(90deg,var(--track)_0_6px,transparent_6px_10px)]" />
+                      )}
+                      {atLimit && (
+                        <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-bad">
+                          <Icon name="alert" size={12} />
+                          Đã chạm hạn mức
+                        </p>
+                      )}
                     </div>
-                    {u.limit !== null && (
-                      <ProgressBar
-                        size="sm"
-                        value={u.used}
-                        max={u.limit}
-                        label={`${METRIC_LABEL[metric] ?? metric}: ${u.used} trên ${u.limit}`}
-                      />
-                    )}
-                    {atLimit && (
-                      <p className="mt-1 flex items-center gap-1 text-xs font-medium text-danger-700">
-                        <Icon name="alert" size={12} />
-                        Đã chạm hạn mức
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {sub.planCode !== 'FREE' && !sub.cancelAtPeriodEnd && (
-              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-surface-200 pt-4">
-                {!confirmingCancel ? (
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmingCancel(true)}>
-                    Huỷ gói (hiệu lực cuối kỳ)
-                  </Button>
-                ) : (
-                  <>
-                    <span className="text-sm font-medium text-ink-700">Huỷ gói này?</span>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => void handleCancel()}
-                      disabled={cancelSubscription.isPending}
-                    >
-                      {cancelSubscription.isPending ? 'Đang huỷ…' : 'Xác nhận huỷ'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setConfirmingCancel(false)}
-                      disabled={cancelSubscription.isPending}
-                    >
-                      Không huỷ
-                    </Button>
-                  </>
-                )}
+                  );
+                })}
               </div>
-            )}
-            {sub.cancelAtPeriodEnd && (
-              <p className="mt-5 border-t border-surface-200 pt-4 text-sm text-ink-500">
-                Gói sẽ huỷ ở cuối kỳ hiện tại.
-              </p>
-            )}
-          </Card>
 
-          {actionError && <InlineError className="mt-4">{actionError}</InlineError>}
-        </Reveal>
-      )}
+              {sub.planCode !== 'FREE' && !sub.cancelAtPeriodEnd && (
+                <div className="flex flex-wrap items-center gap-2 border-t border-line px-6 py-4">
+                  {!confirmingCancel ? (
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmingCancel(true)}>
+                      Huỷ gói (hiệu lực cuối kỳ)
+                    </Button>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold text-fg">Huỷ gói này?</span>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => void handleCancel()}
+                        loading={cancelSubscription.isPending}
+                      >
+                        {cancelSubscription.isPending ? 'Đang huỷ…' : 'Xác nhận huỷ'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmingCancel(false)}
+                        disabled={cancelSubscription.isPending}
+                      >
+                        Không huỷ
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+              {sub.cancelAtPeriodEnd && (
+                <p className="border-t border-line px-6 py-4 text-sm text-fg-subtle">
+                  Gói sẽ huỷ ở cuối kỳ hiện tại.
+                </p>
+              )}
+            </Card>
+          </>
+        )}
+
+        {actionError && <InlineError className="mt-4">{actionError}</InlineError>}
+      </section>
 
       {/* ------------------------------------------------------ các gói */}
-      <h2 className="mb-3 mt-10 text-lg font-bold text-ink-900">Các gói</h2>
-      {plans.isError || !plans.data ? (
-        <ErrorState
-          title="Không tải được danh sách gói"
-          description={errorText(plans.error, 'Vui lòng thử lại.')}
-          detail={errorDetail(plans.error)}
-          onRetry={() => void plans.refetch()}
-        />
-      ) : (
-        <Reveal delay={0.08}>
-          <div className="grid gap-4 sm:grid-cols-3">
+      <section aria-labelledby="plans-title" className="mt-12">
+        <SectionTitle id="plans-title">Các gói</SectionTitle>
+
+        {plans.isLoading && (
+          <div className="grid gap-4 md:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-80 rounded-card" />
+            ))}
+          </div>
+        )}
+
+        {!plans.isLoading && (plans.isError || !plans.data) && (
+          <ErrorState
+            title="Không tải được danh sách gói"
+            description={errorText(plans.error, 'Vui lòng thử lại.')}
+            detail={errorDetail(plans.error)}
+            onRetry={() => void plans.refetch()}
+          />
+        )}
+
+        {plans.data && (
+          <div className="grid gap-4 md:grid-cols-3">
             {plans.data.map((plan) => {
-              // `sub` có thể là `undefined` nếu truy vấn subscription lỗi trong khi plans vẫn
-              // tải được — khi đó không tô "gói hiện tại" cho gói nào, đúng với thực tế là ta
-              // không biết.
+              // `sub` có thể chưa có khi truy vấn subscription lỗi — khi đó không tô gói nào.
               const current = sub ? plan.code === sub.planCode : false;
               return (
                 <Card
                   key={plan.code}
-                  className={cn('flex flex-col', current && 'border-sky-500 bg-sky-50/40')}
+                  className={cn(
+                    'relative flex flex-col',
+                    current && 'border-fg ring-1 ring-fg',
+                    plan.isFutureExtension && 'border-dashed',
+                  )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle>{plan.name}</CardTitle>
+                    <h3 className="text-base font-semibold text-fg">{plan.name}</h3>
                     {plan.isFutureExtension && <Badge tone="neutral">Mở rộng tương lai</Badge>}
                     {current && !plan.isFutureExtension && (
                       <Badge tone="info" icon="check">
@@ -261,50 +313,52 @@ export default function SettingsPage() {
                     )}
                   </div>
 
-                  {/* Gói "mở rộng tương lai" có priceCents = 0 làm chỗ giữ chỗ, không
-                  phải vì nó miễn phí — hiện "Miễn phí" ở đây là nói sai. */}
-                  <p className="mt-2 text-3xl font-bold text-ink-900">
+                  {/* Gói "mở rộng tương lai" có priceCents = 0 làm chỗ giữ chỗ, không phải
+                      vì miễn phí — hiện "Miễn phí" là nói sai. */}
+                  <p className="mt-3 text-4xl font-semibold text-fg">
                     {plan.isFutureExtension ? (
-                      <span className="text-2xl text-ink-500">Chưa công bố</span>
+                      <span className="text-3xl text-fg-subtle">Chưa công bố</span>
                     ) : (
                       <>
                         {plan.priceCents === 0
                           ? 'Miễn phí'
                           : `$${(plan.priceCents / 100).toFixed(0)}`}
-                        {/* ink-500 ở đây chỉ đạt 4.49:1 trên nền thẻ gói nổi bật —
-                        dưới ngưỡng AA 4.5:1 (đo bằng axe). ink-700 = 9.77:1. */}
                         {plan.priceCents > 0 && (
-                          <span className="text-sm font-bold text-ink-700">
-                            /{INTERVAL_LABEL[plan.interval] ?? humanizeCode(plan.interval)}
+                          <span className="font-sans text-sm font-medium text-fg-muted">
+                            {' '}
+                            / {INTERVAL_LABEL[plan.interval] ?? humanizeCode(plan.interval)}
                           </span>
                         )}
                       </>
                     )}
                   </p>
 
-                  <ul className="mt-4 space-y-1.5 text-sm text-ink-700">
+                  <ul className="mt-5 space-y-2.5 border-t border-line pt-5 text-sm text-fg-muted">
                     {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2">
-                        <span className="mt-0.5 shrink-0 text-success-700">
-                          <Icon name="check" size={14} strokeWidth={3} />
-                        </span>
+                      <li key={f} className="flex items-start gap-2.5">
+                        <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
                         {f}
                       </li>
                     ))}
                   </ul>
 
-                  <div className="mt-auto pt-5">
+                  <div className="mt-auto pt-6">
                     {current ? (
-                      <p className="text-center text-sm font-bold text-ink-700">Gói hiện tại</p>
+                      <p className="flex h-10 items-center justify-center gap-1.5 rounded-control bg-accent-soft text-sm font-semibold text-accent">
+                        <Icon name="check" size={15} />
+                        Gói hiện tại
+                      </p>
                     ) : plan.isFutureExtension ? (
                       <Button variant="secondary" fullWidth disabled>
                         Chưa mở bán
                       </Button>
                     ) : (
                       <Button
+                        variant={plan.priceCents > 0 ? 'primary' : 'secondary'}
                         fullWidth
                         onClick={() => void handleUpgrade(plan.code)}
-                        disabled={upgradingCode !== null}
+                        loading={upgradingCode === plan.code}
+                        disabled={upgradingCode !== null && upgradingCode !== plan.code}
                       >
                         {upgradingCode === plan.code ? 'Đang xử lý…' : 'Chọn gói này'}
                       </Button>
@@ -314,8 +368,8 @@ export default function SettingsPage() {
               );
             })}
           </div>
-        </Reveal>
-      )}
-    </section>
+        )}
+      </section>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { newId } from '@learn/db';
+import { resolveUploadMime } from '@learn/contracts';
 import type {
   UploadUrlInput,
   UploadUrlResponse,
@@ -12,8 +13,6 @@ import { env } from '../../environment';
 import { UsageService } from '../subscriptions/usage.service';
 import { CourseRepository } from '../courses/course.repository';
 import { DocumentRepository } from './document.repository';
-
-const ALLOWED_MIME = new Set(['application/pdf', 'text/plain', 'text/markdown']);
 
 @Injectable()
 export class DocumentsService {
@@ -31,7 +30,10 @@ export class DocumentsService {
     input: UploadUrlInput,
   ): Promise<UploadUrlResponse> {
     await this.ownedCourse(courseId, userId);
-    if (!ALLOWED_MIME.has(input.mimeType)) throw ApiError.unsupportedFile(input.mimeType);
+    // MIME theo đuôi file, không tin `File.type` của trình duyệt (rỗng với .md trên Windows).
+    const resolved = resolveUploadMime(input.filename, input.mimeType);
+    if (!resolved.ok) throw ApiError.unsupportedFile(resolved.reason);
+    const mimeType = resolved.mime;
     if (input.sizeBytes > env.DOCUMENT_MAX_SIZE)
       throw ApiError.payloadTooLarge('Tài liệu vượt giới hạn dung lượng tải lên.');
 
@@ -56,14 +58,14 @@ export class DocumentsService {
       uploaderId: userId,
       courseId,
       filename: safeName,
-      mimeType: input.mimeType,
+      mimeType,
       sizeBytes: input.sizeBytes,
       checksumSha256: input.checksumSha256,
       storageKey: key,
       status: 'PENDING',
     });
 
-    const uploadUrl = await this.s3.putUploadUrl(key, input.mimeType, input.sizeBytes);
+    const uploadUrl = await this.s3.putUploadUrl(key, mimeType, input.sizeBytes);
     return { documentId: document.id, uploadUrl, expiresInSec: env.S3_PUT_URL_EXPIRES_SEC };
   }
 

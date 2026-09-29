@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Param, Query, Res, Req, Header } from '@ne
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { generateLessonsSchema, type GenerateLessonsInput } from '@learn/contracts';
-import { zodParam, ApiError } from '../../common/errors';
+import { zodBody, zodParam, ApiError } from '../../common/errors';
 import { Auth, CurrentUser, type UserContext } from '../../common/security';
 import { AiService } from './ai.service';
 import { RedisService } from '../../common/services';
@@ -21,7 +21,10 @@ export class AiController {
   async generateLessons(
     @CurrentUser() user: UserContext,
     @Param('courseId', zodParam(idSchema)) courseId: string,
-    @Body(generateLessonsSchema) body: GenerateLessonsInput,
+    // Phải bọc `zodBody()`: truyền thẳng schema Zod làm pipe thì Nest gọi `schema.transform(body)`
+    // — hàm TẠO schema mới của Zod, không phải kiểm tra — nên body thành một object schema và
+    // mọi tham số (documentIds, language, difficulty) bị bỏ qua âm thầm.
+    @Body(zodBody(generateLessonsSchema)) body: GenerateLessonsInput,
   ) {
     return this.ai.generateLessons(user.userId, courseId, body);
   }

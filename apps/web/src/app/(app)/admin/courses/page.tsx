@@ -35,10 +35,11 @@ export default function AdminCoursesPage() {
             <Input
               id="course-search"
               type="search"
+              icon="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Tìm theo tên khóa học…"
-              className="w-64"
+              className="w-full sm:w-72"
             />
           </>
         }
@@ -86,7 +87,7 @@ export default function AdminCoursesPage() {
               <Tbody>
                 {courses.data.courses.map((c) => (
                   <tr key={c.id}>
-                    <Td className="font-medium text-ink-900">{c.title}</Td>
+                    <Td className="font-medium text-fg">{c.title}</Td>
                     <Td>{c.ownerEmail}</Td>
                     <Td>
                       <StatusChip status={c.status} />
@@ -97,7 +98,7 @@ export default function AdminCoursesPage() {
                     <Td align="right" className="tabular-nums">
                       {c.lessonCount}
                     </Td>
-                    <Td className="whitespace-nowrap text-ink-500">
+                    <Td className="whitespace-nowrap text-fg-subtle">
                       {new Date(c.updatedAt).toLocaleDateString('vi-VN')}
                     </Td>
                   </tr>

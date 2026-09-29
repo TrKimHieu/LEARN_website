@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { prisma, newId } from '@learn/db';
-import { chunkDocument } from '@learn/ai';
+import { chunkPages } from '@learn/ai';
 import { S3Service } from '../common/s3';
 import {
   extractText,
@@ -96,8 +96,12 @@ export class DocumentExtractProcessor {
         }
       }
 
-      const chunks = result.pages.flatMap((page) =>
-        chunkDocument(page.text, { pageFrom: page.pageNumber, pageTo: page.pageNumber }),
+      // Cắt theo mục (heading) trên cả tài liệu, không từng trang rời nhau: heading ở trang 3
+      // vẫn là ngữ cảnh của đoạn ở trang 4 (FR-AI-10).
+      // Tài liệu không có trang cố định (TXT/MD, DOCX) thì chunk không mang số trang — hiện
+      // "trang 1" cho một file Markdown là sai.
+      const chunks = chunkPages(result.pages).map((c) =>
+        result.pageCount === null ? { ...c, pageFrom: undefined, pageTo: undefined } : c,
       );
 
       await prisma.$transaction(async (tx) => {

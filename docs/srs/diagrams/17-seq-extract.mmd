@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  participant R as Redis (BullMQ)
+  participant K as Worker (DocumentExtractProcessor)
+  participant D as PostgreSQL
+  participant S as Object storage
+  R->>K: job document-extract { documentId }
+  K->>D: UPDATE status = EXTRACTING WHERE status = UPLOADED
+  alt 0 dòng (worker khác đã nhận / đã xử lý)
+    K-->>R: bỏ qua (idempotent)
+  end
+  K->>S: GET object theo storageKey
+  K->>K: kiểm magic bytes khớp mimeType
+  K->>K: trích text theo loại: pdfjs (PDF) · mammoth (DOCX) · jszip (PPTX) · đọc thẳng (TXT/MD)
+  alt PDF không có lớp text
+    K->>D: FAILED · SCANNED_PDF_UNSUPPORTED
+  else pageCount > 300 hoặc > hạn mức trang của gói
+    K->>D: FAILED · EXTRACTION_FAILED / PAGE_QUOTA_EXCEEDED
+  else hợp lệ
+    K->>K: chuẩn hoá · nhận diện heading · chunk (1.200 token, overlap 150, min 100)
+    rect rgb(244, 244, 245)
+      Note over K,D: transaction
+      K->>D: INSERT DocumentChunk[] (index, pageFrom, pageTo, headingPath)
+      K->>D: UPDATE Document SET status = EXTRACTED, pageCount, extractedAt
+    end
+  end

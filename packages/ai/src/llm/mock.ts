@@ -45,7 +45,9 @@ export class MockLlmProvider implements LlmProvider {
     const contents: string[] = [];
     for (let i = 1; i < parts.length; i += 2) {
       chunkIds.push(parts[i] as string);
-      contents.push((parts[i + 1] as string).trim());
+      // Chunk cuối kéo theo phần đuôi prompt (từ lesson@2, JSON Schema nằm SAU các chunk) — cắt
+      // ở dòng chỉ dẫn trả về, bằng không mock chép cả schema vào nội dung bài học.
+      contents.push((parts[i + 1] as string).split(/\n\s*Trả về DUY NHẤT/)[0]?.trim() ?? '');
     }
     const body = contents.join('\n\n').slice(0, 2000);
 
@@ -105,7 +107,15 @@ export class MockLlmProvider implements LlmProvider {
       return JSON.stringify(lesson);
     }
 
-    const title = chunkIds[0] ? `Bài học từ tài liệu (${chunkIds[0].slice(0, 4)})` : 'Bài học';
+    // Tiêu đề theo mục outline đang soạn. Bản trước lấy 4 ký tự đầu của chunk id — id là uuidv7
+    // (tiền tố là thời gian) nên mọi chunk tạo cùng lúc trùng tiền tố, mọi bài trùng tiêu đề và
+    // bị tầng 2 loại vì "trùng bài đã có": tài liệu 6 mục chỉ ra 1 bài ở chế độ mock.
+    const nodeTitle = /Bài học cần soạn: "([^"]+)"/.exec(prompt)?.[1]?.split(' > ').at(-1);
+    const title = nodeTitle
+      ? nodeTitle.slice(0, 200).padEnd(5, '.')
+      : chunkIds[0]
+        ? `Bài học từ tài liệu (${chunkIds[0].slice(-6)})`
+        : 'Bài học';
     const lesson = {
       title,
       summary: `${title}. Nội dung biên soạn bám theo tài liệu gốc ở chế độ mock.`,

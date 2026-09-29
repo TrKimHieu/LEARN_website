@@ -1,0 +1,64 @@
+erDiagram
+  Course {
+    string id PK
+  }
+  User {
+    string id PK
+  }
+  Exercise {
+    string id PK
+  }
+  AIJob {
+    string id PK
+    string courseId FK
+    string documentId FK "nullable"
+    string requestedById FK
+    enum type
+    enum status
+    int progress "0-100"
+    int attempt
+    string idempotencyKey UK
+    json inputParams
+    json error
+  }
+  GenerationRun {
+    string id PK
+    string aiJobId FK
+    string step "outline | lesson"
+    string model
+    string promptVersion
+    int inputTokens
+    int outputTokens
+    decimal costUsd
+    int latencyMs
+  }
+  LearningProgress {
+    string id PK
+    string userId FK "UK (userId, lessonId)"
+    string courseId FK
+    string lessonId
+    enum status
+    int bestScore
+  }
+  Submission {
+    string id PK
+    string userId FK "UK (userId, exerciseId, attemptNo)"
+    string exerciseId FK
+    int attemptNo
+    int score
+  }
+  SubmissionAnswer {
+    string id PK
+    string submissionId FK "UK (submissionId, questionId)"
+    string questionId FK
+    json rawAnswer
+    bool isCorrect
+  }
+  Course ||--o{ AIJob : targets
+  User ||--o{ AIJob : requests
+  AIJob ||--o{ GenerationRun : logs
+  User ||--o{ LearningProgress : tracks
+  Course ||--o{ LearningProgress : aggregates
+  User ||--o{ Submission : submits
+  Exercise ||--o{ Submission : receives
+  Submission ||--o{ SubmissionAnswer : has

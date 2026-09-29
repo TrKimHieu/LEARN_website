@@ -1,4 +1,5 @@
 import sanitizeHtml from 'sanitize-html';
+import { sanitizeMarkdown } from './sanitize-markdown';
 import { LessonOutput } from '../schemas/output';
 import type { LessonOutputT } from '../schemas/output';
 import { estimateTokens } from '../chunker';
@@ -116,28 +117,9 @@ export function sanitizeLessonOutput(raw: LessonOutputT): LessonOutputT {
     ...raw,
     title: clean(raw.title, 200),
     summary: clean(raw.summary, 500),
-    contentMd: sanitizeHtml(raw.contentMd, {
-      allowedTags: [
-        'h1',
-        'h2',
-        'h3',
-        'p',
-        'ul',
-        'ol',
-        'li',
-        'strong',
-        'em',
-        'code',
-        'pre',
-        'blockquote',
-        'a',
-        'br',
-      ],
-      allowedAttributes: { a: ['href'] },
-      allowedSchemes: ['http', 'https', 'mailto'],
-    })
-      .replace(/\r\n/g, '\n')
-      .slice(0, 12000),
+    // Markdown đi qua bộ vệ sinh riêng: `sanitize-html` escape `<`/`>`/`&` và xoá `<T>` như thẻ,
+    // làm hỏng code trong bài (xem sanitize-markdown.ts).
+    contentMd: sanitizeMarkdown(raw.contentMd).slice(0, 12000),
     exercises: raw.exercises.map((ex) => ({
       ...ex,
       title: clean(ex.title ?? '', 200),

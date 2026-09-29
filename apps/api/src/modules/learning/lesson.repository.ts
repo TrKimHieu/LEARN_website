@@ -27,6 +27,37 @@ export class LessonRepository {
     return db.lesson.findFirst({ where: { id: lessonId, courseId, deletedAt: null } });
   }
 
+  /**
+   * Chunk nguồn của một bài học. Lọc theo `document.courseId` **và** chủ sở hữu khoá học ngay
+   * trong truy vấn: `sourceChunkIds` là dữ liệu LLM trả về, không được tin là chỉ trỏ vào tài
+   * liệu của chính khoá học này (chống IDOR, AGENTS.md).
+   */
+  findSourceChunks(
+    courseId: string,
+    ownerId: string,
+    chunkIds: string[],
+    db: Db = this.prisma.client,
+  ) {
+    if (chunkIds.length === 0) return Promise.resolve([]);
+    return db.documentChunk.findMany({
+      where: {
+        id: { in: chunkIds },
+        document: { courseId, course: { ownerId, deletedAt: null } },
+      },
+      select: {
+        id: true,
+        documentId: true,
+        index: true,
+        content: true,
+        pageFrom: true,
+        pageTo: true,
+        headingPath: true,
+        document: { select: { filename: true } },
+      },
+      orderBy: [{ documentId: 'asc' }, { index: 'asc' }],
+    });
+  }
+
   listIds(courseId: string, db: Db = this.prisma.client) {
     return db.lesson.findMany({
       where: { courseId, deletedAt: null },

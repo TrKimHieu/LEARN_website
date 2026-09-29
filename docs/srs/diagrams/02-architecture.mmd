@@ -1,0 +1,36 @@
+flowchart LR
+  user(["Learner / Admin<br/>Browser"])
+
+  subgraph FE["Presentation"]
+    web["<b>apps/web</b><br/>Next.js 15 · React 19<br/>Portfolio (public)<br/>Learning app (protected)"]
+  end
+
+  subgraph BE["Application — NestJS 11"]
+    api["<b>apps/api</b> · REST /api/v1<br/>Auth · Courses · Documents<br/>AI Jobs · Learning<br/>Subscriptions · Admin"]
+    worker["<b>apps/worker</b><br/>document-extract<br/>lesson-generate"]
+  end
+
+  subgraph DATA["Data"]
+    pg[("PostgreSQL 16")]
+    redis[("Redis 7<br/>BullMQ · pub/sub")]
+    s3[("Object storage<br/>S3 API · MinIO")]
+  end
+
+  subgraph EXT["Third-party"]
+    llm["LLM provider<br/>Anthropic · Gemini<br/>OpenAI-compatible"]
+    smtp["SMTP"]
+    stripe["Stripe<br/><i>Đã lên kế hoạch</i>"]
+  end
+
+  user -- HTTPS --> web
+  web -- "REST + JWT" --> api
+  user -. "PUT presigned URL" .-> s3
+  api --> pg
+  api -- "enqueue" --> redis
+  api -- "presign" --> s3
+  api -- "reset mail" --> smtp
+  stripe -. webhook .-> api
+  redis -- job --> worker
+  worker --> pg
+  worker -- "đọc file" --> s3
+  worker -- "prompt / JSON" --> llm

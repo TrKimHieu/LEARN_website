@@ -20,12 +20,23 @@ export const progressCourseSchema = z.object({
 
 export const historyItemSchema = z.object({
   id: z.string(),
+  /** Đủ để bấm vào một dòng lịch sử là tới đúng bài tập đã làm (FR-PROGRESS-05). */
+  courseId: z.string(),
+  lessonId: z.string(),
+  exerciseId: z.string(),
+  passed: z.boolean(),
   lessonTitle: z.string(),
   courseTitle: z.string(),
   exerciseTitle: z.string().nullable(),
   score: z.number().int(),
   maxScore: z.number().int(),
   createdAt: z.string(),
+});
+
+/** Trang lịch sử — cursor là id lượt nộp cuối trang trước (FR-PROGRESS-06, NFR-PERF-02). */
+export const historyPageSchema = z.object({
+  items: z.array(historyItemSchema),
+  nextCursor: z.string().nullable(),
 });
 
 export const courseProgressSchema = z.object({
@@ -43,4 +54,5 @@ export const courseProgressSchema = z.object({
 export type ProgressOverview = z.infer<typeof progressOverviewSchema>;
 export type ProgressCourse = z.infer<typeof progressCourseSchema>;
 export type HistoryItem = z.infer<typeof historyItemSchema>;
+export type HistoryPage = z.infer<typeof historyPageSchema>;
 export type CourseProgress = z.infer<typeof courseProgressSchema>;

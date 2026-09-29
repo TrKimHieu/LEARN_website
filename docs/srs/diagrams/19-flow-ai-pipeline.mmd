@@ -1,0 +1,13 @@
+flowchart TB
+  S(["Worker nhận job lesson-generate"]) --> C1["Claim: UPDATE SET RUNNING WHERE status = QUEUED<br/>0 dòng → bỏ qua (worker khác đã nhận)"]
+  C1 --> L["Tải DocumentChunk của Document EXTRACTED<br/>không có chunk → FAILED · NO_EXTRACTED_CONTENT"]
+  L --> O["<b>Giai đoạn A — Outline</b> (outline@2, 1 lượt gọi)<br/>đầu vào: headingPath + 200 ký tự đầu mỗi chunk<br/>retry khi sai schema · lập lại 1 lần nếu sót > 25% chunk"]
+  O --> G["<b>Giai đoạn B — mỗi node outline</b> (song song ≤ 3)<br/>checkpoint: bị huỷ → CANCELLED · quá 15 phút / vượt trần chi phí → node lỗi"]
+  G --> B["Sinh Lesson + 1–5 Exercise (lesson@3, kèm difficulty)"]
+  B --> V["<b>Validate 4 tầng</b><br/>1 Schema (Zod) · 2 Luật nghiệp vụ<br/>3 Bám nguồn → HIGH / LOW · 4 Sanitize Markdown<br/>lỗi tầng 1–2 hết lượt retry → node lỗi (partialFailures)"]
+  V --> R{"Số Lesson<br/>hợp lệ"}
+  R -- "0" --> F2[/"FAILED · ALL_LESSONS_FAILED<br/>không ghi gì vào DB"/]
+  R -- "≥ 1" --> P["1 transaction · 4 lệnh createMany<br/>Lesson → Exercise → Question → AnswerOption"]
+  P --> OK[/"SUCCEEDED (+ error.partialFailures nếu thiếu)"/]
+  O -. "mỗi lượt gọi" .-> GR[("GenerationRun<br/>token · costUsd · latency")]
+  B -.-> GR

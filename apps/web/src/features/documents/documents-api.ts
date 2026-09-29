@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { UploadUrlResponse } from '@learn/contracts';
+import { DOCUMENT_TYPES, mimeFromFilename, type UploadUrlResponse } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 
 async function sha256Hex(file: File): Promise<string> {
@@ -15,6 +15,14 @@ export function useUploadDocument(courseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (file: File) => {
+      // MIME theo đuôi, không theo `file.type`: Chrome trên Windows để rỗng cho .md.
+      // Kéo-thả bỏ qua thuộc tính `accept`, nên kiểm ở đây trước khi băm cả tệp.
+      const mimeType = mimeFromFilename(file.name);
+      if (!mimeType) {
+        throw new Error(
+          `Chưa hỗ trợ loại tệp này. Chỉ nhận ${DOCUMENT_TYPES.map((t) => t.label).join(', ')}.`,
+        );
+      }
       const checksumSha256 = await sha256Hex(file);
       const { documentId, uploadUrl } = await apiFetch<UploadUrlResponse>(
         `/api/v1/courses/${courseId}/documents/upload-url`,
@@ -22,14 +30,19 @@ export function useUploadDocument(courseId: string) {
           method: 'POST',
           body: {
             filename: file.name,
-            mimeType: file.type || 'application/octet-stream',
+            mimeType,
             sizeBytes: file.size,
             checksumSha256,
           },
         },
       );
 
-      const putRes = await fetch(uploadUrl, { method: 'PUT', body: file });
+      // Presigned URL được ký kèm Content-Type; gửi đúng giá trị đó, không để trình duyệt tự đặt.
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': mimeType },
+      });
       if (!putRes.ok) {
         throw new Error(`Tải file lên storage thất bại (${putRes.status}).`);
       }

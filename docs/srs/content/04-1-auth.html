@@ -1,0 +1,116 @@
+<section class="chapter">
+<h1><span class="num">4.</span> Yêu cầu chức năng chi tiết <span class="en">(Specific Functional Requirements)</span></h1>
+<p class="lead">Chương này chia theo module (epic). Mỗi module có bảng FR kèm trạng thái và route thật (đối chiếu <code>apps/api/src/modules/**/*.controller.ts</code>), sau đó đặc tả sâu các chức năng trọng yếu theo khung: <b>Mô tả logic</b> · <b>Luồng xử lý (Sequence)</b> · <b>Xử lý ngoại lệ</b>. FR là CRUD thẳng, không có logic đáng kể, chỉ nằm trong bảng FR.</p>
+
+<div class="callout"><p><b>Quy ước chung cho mọi endpoint.</b> Tiền tố <code>/api/v1</code>. Endpoint cần đăng nhập nhận header <code>Authorization: Bearer &lt;accessToken&gt;</code>; thiếu/sai → <code>401 UNAUTHENTICATED</code>. Body/param/query sai Zod schema → <code>400 VALIDATION_FAILED</code> (kèm <code>meta.fields</code>). Tài nguyên không tồn tại <b>hoặc không thuộc về người gọi</b> → <code>404 NOT_FOUND</code> (không phân biệt, để không lộ sự tồn tại của dữ liệu người khác). Lỗi không lường trước → <code>500 INTERNAL_ERROR</code> với message chung. Bảng lỗi ở từng chức năng chỉ liệt kê các trường hợp <b>đặc thù</b> ngoài quy ước này.</p></div>
+
+<h2>4.1 Module Authentication <span class="en">(FR-AUTH)</span> <span class="tag">[SPEC §6.1]</span></h2>
+<p>Đăng ký, đăng nhập, duy trì phiên, đăng xuất, hồ sơ và đặt lại mật khẩu. Access token ngắn hạn giữ trong memory của web app; refresh token dài hạn nằm trong cookie httpOnly và được xoay vòng mỗi lần dùng.</p>
+<table>
+<caption>Functional requirements — Authentication</caption>
+<colgroup><col style="width:14%"><col style="width:36%"><col style="width:17%"><col></colgroup>
+<thead><tr><th>ID</th><th>Yêu cầu</th><th>Trạng thái</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>FR-AUTH-01</td><td>Đăng ký bằng email + mật khẩu; tự gắn gói FREE</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/auth/register</code></td></tr>
+<tr><td>FR-AUTH-02</td><td>Đăng nhập, trả access token + set cookie refresh token</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/auth/login</code></td></tr>
+<tr><td>FR-AUTH-03</td><td>Đổi refresh token lấy access token mới, có xoay vòng</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/auth/refresh</code></td></tr>
+<tr><td>FR-AUTH-04</td><td>Đăng xuất phiên hiện tại và đăng xuất mọi phiên</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/auth/logout</code>, <code>/auth/logout-all</code></td></tr>
+<tr><td>FR-AUTH-05</td><td>Xem và sửa hồ sơ cơ bản (displayName, locale)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <span class="m patch">PATCH</span> <code>/auth/me</code></td></tr>
+<tr><td>FR-AUTH-06</td><td>Đổi mật khẩu khi đã đăng nhập</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/auth/change-password</code></td></tr>
+<tr><td>FR-AUTH-07</td><td>Quên mật khẩu qua email</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/auth/forgot-password</code>, <code>/auth/reset-password</code></td></tr>
+<tr><td>FR-AUTH-08</td><td>Mọi route ngoài trang public được bảo vệ (redirect nếu chưa đăng nhập)</td><td><span class="st mvp">Có trong MVP</span></td><td>Web: route group <code>(app)</code>; API: <code>AuthGuard</code></td></tr>
+</tbody></table>
+
+<div class="fn">
+<h3>4.1.1 Chức năng: Đăng ký &amp; Đăng nhập (JWT + refresh token)</h3>
+<p class="fn-meta">FR-AUTH-01, FR-AUTH-02 · NFR-SEC-01/02/03</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li><b>Đăng ký</b>: validate <code>registerSchema</code> (email ≤ 254 ký tự, chuyển chữ thường; mật khẩu 8–72 ký tự; displayName 2–100; locale vi|en). Hash mật khẩu bằng <b>argon2id</b> (memoryCost 19456, timeCost 2, parallelism 1) rồi <code>INSERT User</code>. Không "kiểm tra email rồi mới ghi": ràng buộc <code>UNIQUE(email)</code> là thứ quyết định, lỗi P2002 được bắt và trả <code>409</code> — hai request đăng ký cùng email đồng thời không gây 500. Tạo Subscription gói <b>FREE</b>, cấp token như đăng nhập, trả <code>201</code>. Rate limit 10 lần/60 giây/IP.</li>
+<li><b>Đăng nhập</b>: rate limit <b>5 lần/60 giây</b> theo IP + route (bộ đếm Redis <code>INCR</code> có TTL). Tìm user theo email và <b>luôn chạy argon2 verify</b> — khi không có user thì verify trên một hash giả — để thời gian phản hồi không tiết lộ email nào đã đăng ký. Sai email hoặc mật khẩu trả cùng một thông điệp.</li>
+<li><b>Cấp token</b>: access token là <b>JWT HS256</b> (<code>sub</code>, <code>role</code>, <code>email</code>), hạn <code>JWT_ACCESS_TTL</code> = 15 phút, thuật toán được ghim khi xác minh. Refresh token là chuỗi ngẫu nhiên <b>256-bit</b>; DB chỉ lưu <b>SHA-256</b> kèm <code>familyId</code> mới, <code>userAgent</code>, <code>ipAddress</code>, <code>expiresAt</code> = +30 ngày. Cookie <code>refresh_token</code>: <code>httpOnly</code>, <code>SameSite=Lax</code>, <code>Secure</code> ở production, <code>path=/</code>.</li>
+<li><b>Phía web</b>: access token chỉ giữ trong memory (không localStorage). Khi tải lại trang hoặc access token hết hạn, web gọi <code>/auth/refresh</code> để lấy token mới.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w90"><img src="diagrams/png/12-seq-login.png"><figcaption>Sequence — Đăng nhập</figcaption></figure>
+<div class="label">Xử lý ngoại lệ (Exception Handling)</div>
+<table class="compact">
+<caption>Mã lỗi — Đăng ký / Đăng nhập</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>Email sai định dạng, mật khẩu &lt; 8 hoặc &gt; 72 ký tự, thiếu field</td><td>Dữ liệu gửi lên không hợp lệ. (<code>meta.fields</code> theo từng field)</td></tr>
+<tr><td>401</td><td><code>UNAUTHENTICATED</code></td><td>Sai email hoặc mật khẩu (login)</td><td>Email hoặc mật khẩu không đúng.</td></tr>
+<tr><td>409</td><td><code>CONFLICT</code></td><td>Email đã được đăng ký (register)</td><td>Email đã được đăng ký.</td></tr>
+<tr><td>429</td><td><code>RATE_LIMITED</code></td><td>Vượt 5 lần login hoặc 10 lần register trong 60 giây từ một IP</td><td>Quá nhiều yêu cầu. Vui lòng thử lại sau giây lát.</td></tr>
+</tbody></table>
+</div>
+
+<div class="fn">
+<h3>4.1.2 Chức năng: Làm mới phiên (Refresh token rotation &amp; reuse detection)</h3>
+<p class="fn-meta">FR-AUTH-03, FR-AUTH-04 · NFR-SEC-03</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li>Đọc cookie <code>refresh_token</code>, tính SHA-256, tìm bản ghi. Mỗi lần refresh hợp lệ: <b>trong một transaction</b> revoke token cũ và tạo token mới <b>cùng <code>familyId</code></b>; ký access token mới; set cookie mới.</li>
+<li><b>Reuse detection</b>: nếu token tìm thấy đã có <code>revokedAt</code> (tức ai đó dùng lại một token đã được xoay), coi như token bị đánh cắp → revoke toàn bộ family, buộc đăng nhập lại.</li>
+<li>Token hết hạn bị revoke và trả 401. User đã bị xoá → 401.</li>
+<li><b>Logout</b> revoke token hiện tại và xoá cookie. <b>Logout-all</b> revoke mọi refresh token của user. Access token đã cấp vẫn sống tối đa 15 phút (không có blacklist) — chấp nhận được vì hạn ngắn.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w70"><img src="diagrams/png/13-seq-refresh.png"><figcaption>Sequence — Refresh token rotation và reuse detection</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Refresh / Logout</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>401</td><td><code>UNAUTHENTICATED</code></td><td>Không có cookie, token không tồn tại, token hết hạn, user không còn</td><td>Chưa đăng nhập hoặc phiên hết hạn.</td></tr>
+<tr><td>401</td><td><code>UNAUTHENTICATED</code></td><td>Token đã revoke bị dùng lại → revoke cả family</td><td>Phiên đã hết hạn, vui lòng đăng nhập lại.</td></tr>
+<tr><td>401</td><td><code>UNAUTHENTICATED</code></td><td>Gọi logout / logout-all thiếu Bearer token hợp lệ</td><td>Chưa đăng nhập hoặc phiên hết hạn.</td></tr>
+</tbody></table>
+</div>
+
+<div class="fn">
+<h3>4.1.3 Chức năng: Quên &amp; đặt lại mật khẩu</h3>
+<p class="fn-meta">FR-AUTH-07 · BR-13</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li><b>Bước 1 — <code>POST /auth/forgot-password</code></b>: luôn trả <code>200 { ok: true }</code> với cùng một câu dù email có tồn tại hay không. Request chỉ chờ bước tra cứu user (giống nhau ở hai nhánh); phần phát token, ghi DB và gửi thư chạy nền, để thời gian phản hồi không lộ email đã đăng ký. Giới hạn 5 request/15 phút/IP (guard) và tối đa 3 thư/giờ/email (bộ đếm Redis theo hash email).</li>
+<li>Phát token: chuỗi 256-bit, DB lưu SHA-256, hạn <code>PASSWORD_RESET_TTL_MIN</code> (30 phút). Trong một transaction: vô hiệu mọi token cũ của user rồi tạo token mới — mỗi lúc chỉ một đường dẫn còn hiệu lực. Gửi thư chứa <code>{APP_URL}/reset-password?token=…</code>. <code>MAIL_MODE=log</code> (dev) in đường dẫn ra log; <code>MAIL_MODE=smtp</code> gửi thật qua <code>SMTP_URL</code>. Ghi AuditLog <code>auth.password_reset_requested</code>.</li>
+<li><b>Bước 2 — <code>POST /auth/reset-password</code></b>: token sai, hết hạn hay đã dùng đều trả <b>cùng một lỗi</b>. Nếu hợp lệ, trong một transaction: đánh dấu <code>usedAt</code> bằng update có điều kiện (hai request cùng token chỉ một cái thắng), cập nhật <code>passwordHash</code>, vô hiệu token reset khác, <b>revoke mọi refresh token</b> (đăng xuất mọi thiết bị). Xoá cookie phiên hiện tại. Ghi AuditLog <code>auth.password_reset</code>. Giới hạn 10 request/15 phút/IP.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w90"><img src="diagrams/png/14-seq-password-reset.png"><figcaption>Sequence — Quên và đặt lại mật khẩu</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Đặt lại mật khẩu</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>200</td><td>—</td><td>Email không tồn tại hoặc vượt 3 thư/giờ (cố ý không báo lỗi)</td><td><code>{ ok: true }</code></td></tr>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>Token sai / hết hạn / đã dùng</td><td>Đường dẫn đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.</td></tr>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>Mật khẩu mới &lt; 8 hoặc &gt; 72 ký tự; token &lt; 20 ký tự</td><td>Dữ liệu gửi lên không hợp lệ.</td></tr>
+<tr><td>429</td><td><code>RATE_LIMITED</code></td><td>Vượt giới hạn theo IP</td><td>Quá nhiều yêu cầu. Vui lòng thử lại sau giây lát.</td></tr>
+</tbody></table>
+</div>
+
+<div class="fn">
+<h3>4.1.4 Chức năng: Hồ sơ &amp; đổi mật khẩu</h3>
+<p class="fn-meta">FR-AUTH-05, FR-AUTH-06</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li><code>GET /auth/me</code> trả <code>user</code> (không có passwordHash), gói hiện tại <code>plan { code, name }</code> và <code>usage</code>. <code>PATCH /auth/me</code> chỉ nhận <code>displayName</code>, <code>locale</code> (schema <code>strict</code> — field lạ bị từ chối).</li>
+<li><code>POST /auth/change-password</code> xác minh <code>currentPassword</code> bằng argon2 rồi hash mật khẩu mới.</li>
+</ul>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Hồ sơ</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>Field không cho phép, displayName ngoài 2–100 ký tự</td><td>Dữ liệu gửi lên không hợp lệ.</td></tr>
+<tr><td>401</td><td><code>UNAUTHENTICATED</code></td><td>Mật khẩu hiện tại không đúng</td><td>Mật khẩu hiện tại không đúng.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>User đã bị xoá trong khi token còn hạn</td><td>Không tìm thấy tài nguyên.</td></tr>
+</tbody></table>
+</div>
+</section>

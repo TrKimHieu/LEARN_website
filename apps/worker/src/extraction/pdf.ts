@@ -1,4 +1,5 @@
 import type * as PdfJsModule from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { layoutPdfPages, type PdfTextItem } from './pdf-layout';
 
 /**
  * pdfjs-dist v4 chỉ phân phối bản ESM (.mjs) — TypeScript compile ra CommonJS sẽ hạ `import()`
@@ -30,17 +31,33 @@ export async function extractPdfText(bytes: Buffer): Promise<PdfExtractResult> {
     standardFontDataUrl: STANDARD_FONT_DATA_URL,
   }).promise;
 
-  const pages: PdfPage[] = [];
+  const rawPages: PdfTextItem[][] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    const text = content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    pages.push({ pageNumber: i, text });
+    rawPages.push(
+      content.items.flatMap((item) => {
+        if (!('str' in item)) return [];
+        const [, , c = 0, d = 0, x = 0, y = 0] = item.transform as number[];
+        return [
+          {
+            str: item.str,
+            x,
+            y,
+            width: item.width,
+            // Một số font báo `height` = 0; cỡ chữ vẫn suy được từ ma trận biến đổi.
+            height: item.height || Math.hypot(c, d),
+            hasEOL: item.hasEOL,
+          },
+        ];
+      }),
+    );
   }
+  // Giữ dòng/đoạn/heading thay vì nối cả trang thành một dòng — xem pdf-layout.ts.
+  const pages: PdfPage[] = layoutPdfPages(rawPages).map((text, i) => ({
+    pageNumber: i + 1,
+    text,
+  }));
   await doc.destroy();
   return { pages, pageCount: doc.numPages };
 }

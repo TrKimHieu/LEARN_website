@@ -622,7 +622,7 @@ The AI agent implementing this website must:
 
 ### Suggested Visual Language
 
-- Dark navy, neutral gray, and sky blue accents (`#5EC8F5`), matching the Circle mascot palette in `CircleMascot/`. Do not introduce purple.
+- Monochrome only: tones from white to black with neutral grays in between (no hue). The Circle mascot (`CircleMascot/`) is black and white only. Do not introduce any hue, including purple. *(Changed 2026-09-28 by product-owner decision; previously dark navy + neutral gray + sky `#5EC8F5`. See `docs/adr/015-don-sac-trang-den.md`.)*
 - Rounded cards.
 - Subtle gradients.
 - Product dashboard mockups.

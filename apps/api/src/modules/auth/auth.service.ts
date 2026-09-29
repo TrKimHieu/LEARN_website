@@ -1,18 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { randomBytes, createHash } from 'crypto';
 import { newId, hashPassword, verifyPassword } from '@learn/db';
 import type { RegisterInput, LoginInput, PatchMeInput, UserPublic } from '@learn/contracts';
 import { ApiError } from '../../common/errors';
-import { SecurityService } from '../../common/security';
-import { PrismaService } from '../../common/services';
+import { AuditService, SecurityService } from '../../common/security';
+import { MailService } from '../../common/mail.service';
+import { PrismaService, RedisService } from '../../common/services';
 import { env } from '../../environment';
 import { UsageService } from '../subscriptions/usage.service';
 import { SubscriptionRepository } from '../subscriptions/subscription.repository';
 import { PlanRepository } from '../subscriptions/plan.repository';
 import { UserRepository } from './user.repository';
 import { RefreshTokenRepository } from './refresh-token.repository';
+import { PasswordResetRepository } from './password-reset.repository';
+import {
+  createResetToken,
+  hashResetToken,
+  isResetTokenUsable,
+  resetLink,
+} from './password-reset-token';
 
 const DAY_MS = 86_400_000;
+
+/** Tối đa ngần này thư đặt lại mật khẩu cho MỘT email mỗi giờ — chặn dùng form để spam hộp thư. */
+const RESET_MAIL_PER_HOUR = 3;
 
 /**
  * Hash argon2id của một mật khẩu không ai dùng, tính một lần lúc khởi động.
@@ -27,6 +38,8 @@ const dummyHashPromise = hashPassword(randomBytes(32).toString('base64url'));
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly users: UserRepository,
     private readonly refreshTokens: RefreshTokenRepository,
@@ -35,6 +48,10 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly security: SecurityService,
     private readonly usage: UsageService,
+    private readonly passwordResets: PasswordResetRepository,
+    private readonly mail: MailService,
+    private readonly redis: RedisService,
+    private readonly audit: AuditService,
   ) {}
 
   async register(input: RegisterInput, ip?: string) {
@@ -156,6 +173,101 @@ export class AuthService {
     await this.prisma.client.$transaction(async (tx) => {
       await this.users.updatePasswordHash(userId, passwordHash, tx);
       await this.refreshTokens.revokeAllForUser(userId, tx);
+    });
+  }
+
+  /**
+   * FR-AUTH-07 bước 1. Controller trả cùng một câu 200 dù email có tồn tại hay không.
+   *
+   * Thời gian phản hồi cũng phải như nhau: nhánh email thật còn ghi DB, gọi Redis và gửi thư —
+   * chờ xong mới trả thì chỉ cần đo thời gian là biết email nào đã đăng ký. Nên request chỉ chờ
+   * bước tra cứu (giống hệt ở hai nhánh), phần còn lại chạy nền.
+   */
+  async requestPasswordReset(email: string, ip?: string): Promise<void> {
+    const user = await this.users.findByEmail(email);
+    if (!user) return;
+    void this.issuePasswordReset(user, ip).catch((err: unknown) => {
+      this.logger.error(
+        `Không phát được thư đặt lại mật khẩu: ${err instanceof Error ? err.message : 'lỗi không rõ'}`,
+      );
+    });
+  }
+
+  private async issuePasswordReset(
+    user: { id: string; email: string; displayName: string },
+    ip?: string,
+  ): Promise<void> {
+    const email = user.email;
+    const { token, tokenHash } = createResetToken();
+
+    // Chặn theo email (ngoài chặn theo IP ở controller): một người không thể dùng form này để
+    // dội hàng loạt thư vào hộp thư của người khác từ nhiều IP.
+    const sent = await this.redis.incrWithTtl(`pwreset:${hashResetToken(email)}`, 3600);
+    if (sent > RESET_MAIL_PER_HOUR) return;
+
+    await this.prisma.client.$transaction(async (tx) => {
+      // Mỗi lúc chỉ một đường dẫn còn hiệu lực: thư cũ nằm trong hộp thư không còn dùng được.
+      await this.passwordResets.invalidateAllForUser(user.id, tx);
+      await this.passwordResets.create(
+        {
+          userId: user.id,
+          tokenHash,
+          expiresAt: new Date(Date.now() + env.PASSWORD_RESET_TTL_MIN * 60_000),
+        },
+        tx,
+      );
+    });
+
+    const link = resetLink(env.APP_URL, token);
+    await this.mail.send({
+      to: user.email,
+      subject: 'Đặt lại mật khẩu LEARN',
+      text: [
+        `Chào ${user.displayName},`,
+        ``,
+        `Có yêu cầu đặt lại mật khẩu cho tài khoản LEARN của bạn. Mở đường dẫn dưới đây để đặt`,
+        `mật khẩu mới (hiệu lực ${env.PASSWORD_RESET_TTL_MIN} phút, dùng được một lần):`,
+        ``,
+        link,
+        ``,
+        `Nếu bạn không yêu cầu, hãy bỏ qua thư này. Mật khẩu hiện tại vẫn giữ nguyên.`,
+      ].join('\n'),
+      secretLink: link,
+    });
+    await this.audit.log({
+      actorId: user.id,
+      action: 'auth.password_reset_requested',
+      entityType: 'User',
+      entityId: user.id,
+      ipAddress: ip,
+    });
+  }
+
+  /**
+   * FR-AUTH-07 bước 2. Token sai, hết hạn hay đã dùng đều trả CÙNG một lỗi — không cho người dò
+   * biết token từng tồn tại. Đặt lại xong thì thu hồi mọi phiên: ai đang giữ phiên cũ (có thể
+   * chính là kẻ đã chiếm tài khoản) bị đăng xuất.
+   */
+  async resetPassword(token: string, newPassword: string, ip?: string): Promise<void> {
+    const invalid = () =>
+      ApiError.badRequest('Đường dẫn đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+    const record = await this.passwordResets.findByHash(hashResetToken(token));
+    if (!record || !isResetTokenUsable(record)) throw invalid();
+
+    const passwordHash = await hashPassword(newPassword);
+    await this.prisma.client.$transaction(async (tx) => {
+      // Điều kiện nằm trong câu UPDATE: hai request cùng token chỉ một cái qua được.
+      if (!(await this.passwordResets.markUsed(record.id, tx))) throw invalid();
+      await this.users.updatePasswordHash(record.userId, passwordHash, tx);
+      await this.passwordResets.invalidateAllForUser(record.userId, tx);
+      await this.refreshTokens.revokeAllForUser(record.userId, tx);
+    });
+    await this.audit.log({
+      actorId: record.userId,
+      action: 'auth.password_reset',
+      entityType: 'User',
+      entityId: record.userId,
+      ipAddress: ip,
     });
   }
 

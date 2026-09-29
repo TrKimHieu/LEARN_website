@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  LessonSource,
   LessonSummary,
   LessonRead,
   ExerciseRead,
@@ -7,7 +8,7 @@ import type {
   SubmissionResult,
   ProgressOverview,
   ProgressCourse,
-  HistoryItem,
+  HistoryPage,
   PatchLessonInput,
 } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
@@ -25,6 +26,19 @@ export function useLesson(courseId: string, lessonId: string) {
     queryKey: ['courses', courseId, 'lessons', lessonId],
     queryFn: () => apiFetch<LessonRead>(`/api/v1/courses/${courseId}/lessons/${lessonId}`),
     enabled: Boolean(courseId && lessonId),
+  });
+}
+
+/** Đoạn tài liệu gốc của bài — chỉ tải khi người học mở khối "Nguồn" (`enabled`). */
+export function useLessonSources(courseId: string, lessonId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['courses', courseId, 'lessons', lessonId, 'sources'],
+    queryFn: () =>
+      apiFetch<{ sources: LessonSource[] }>(
+        `/api/v1/courses/${courseId}/lessons/${lessonId}/sources`,
+      ),
+    enabled: enabled && Boolean(courseId && lessonId),
+    staleTime: 5 * 60_000, // chunk không đổi sau khi trích xuất
   });
 }
 
@@ -82,10 +96,14 @@ export function useDeleteLesson(courseId: string) {
   });
 }
 
-export function useExercise(lessonId: string) {
+/** `exerciseId` rỗng = bài tập đầu tiên của bài học. */
+export function useExercise(lessonId: string, exerciseId = '') {
   return useQuery({
-    queryKey: ['lessons', lessonId, 'exercise'],
-    queryFn: () => apiFetch<ExerciseRead>(`/api/v1/lessons/${lessonId}/exercise`),
+    queryKey: ['lessons', lessonId, 'exercise', exerciseId || 'first'],
+    queryFn: () =>
+      apiFetch<ExerciseRead>(
+        `/api/v1/lessons/${lessonId}/exercise${exerciseId ? `?exerciseId=${encodeURIComponent(exerciseId)}` : ''}`,
+      ),
     enabled: Boolean(lessonId),
     retry: false, // 404 hợp lệ khi lesson chưa có exercise — không cần thử lại
   });
@@ -121,9 +139,26 @@ export function useProgressCourses() {
   });
 }
 
+/** Trang đầu của lịch sử — cho khối "Hoạt động gần đây". */
 export function useProgressHistory(limit: number) {
   return useQuery({
-    queryKey: ['progress', 'history', limit],
-    queryFn: () => apiFetch<{ items: HistoryItem[] }>(`/api/v1/progress/history?limit=${limit}`),
+    queryKey: ['progress', 'history', 'first', limit],
+    queryFn: () => apiFetch<HistoryPage>(`/api/v1/progress/history?limit=${limit}`),
+  });
+}
+
+/**
+ * Lịch sử phân trang cursor (FR-PROGRESS-06). "Xem thêm" nối trang kế vào cuối, không tải lại
+ * những dòng đã có như cách cũ (tăng `limit` rồi kéo lại từ đầu).
+ */
+export function useProgressHistoryPages(pageSize: number) {
+  return useInfiniteQuery({
+    queryKey: ['progress', 'history', 'pages', pageSize],
+    initialPageParam: '',
+    queryFn: ({ pageParam }) =>
+      apiFetch<HistoryPage>(
+        `/api/v1/progress/history?limit=${pageSize}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ''}`,
+      ),
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
 }

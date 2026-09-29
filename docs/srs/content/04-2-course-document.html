@@ -1,0 +1,117 @@
+<section class="module">
+<h2>4.2 Module Course Management <span class="en">(FR-COURSE)</span> <span class="tag">[SPEC §6.2]</span></h2>
+<p>Course là đơn vị tổ chức nội dung và là gốc của quyền sở hữu. Workspace của người dùng là danh sách Course chưa xoá, kèm tiến độ và số Document/Lesson.</p>
+<table>
+<caption>Functional requirements — Course Management</caption>
+<colgroup><col style="width:14%"><col style="width:36%"><col style="width:17%"><col></colgroup>
+<thead><tr><th>ID</th><th>Yêu cầu</th><th>Trạng thái</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>FR-COURSE-01</td><td>Tạo Course mới (áp quota COURSES_CREATED)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/courses</code></td></tr>
+<tr><td>FR-COURSE-02</td><td>Xem danh sách Course của user (workspace)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/workspace</code></td></tr>
+<tr><td>FR-COURSE-03</td><td>Xem chi tiết một Course (kèm thống kê)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/courses/:id</code></td></tr>
+<tr><td>FR-COURSE-04</td><td>Đổi tên, mô tả, trạng thái Course</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m patch">PATCH</span> <code>/courses/:id</code></td></tr>
+<tr><td>FR-COURSE-05</td><td>Xoá Course (soft delete)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m delete">DELETE</span> <code>/courses/:id</code></td></tr>
+<tr><td>FR-COURSE-06</td><td>Gắn Document với Course</td><td><span class="st mvp">Có trong MVP</span></td><td>Qua module Document (§4.3)</td></tr>
+<tr><td>FR-COURSE-07</td><td>Chia sẻ Course với thành viên khác (CourseMember)</td><td><span class="st dev">Đang phát triển</span></td><td>Chưa có route — bảng và enum đã có trong schema</td></tr>
+</tbody></table>
+
+<div class="fn">
+<h3>4.2.1 Chức năng: Tạo Course có kiểm quota</h3>
+<p class="fn-meta">FR-COURSE-01 · FR-SUB-03 · BR-05, BR-06</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li>Validate <code>createCourseSchema</code> (strict): <code>title</code> 1–200 ký tự, <code>description</code> ≤ 2000 hoặc null, <code>language</code> vi|en (mặc định vi). Message lỗi Zod bằng tiếng Việt vì hiển thị thẳng trên form.</li>
+<li>Gọi <code>UsageService.consume(userId, 'COURSES_CREATED', work)</code>: mở <b>một transaction</b>, lấy Plan của Subscription hiện hành (không có thì FREE), giữ <b>advisory lock</b> theo (userId, metric), đếm số Course chưa xoá của user; nếu <code>used ≥ limit</code> → 402; nếu còn suất → <code>INSERT Course</code> (status DRAFT, ownerId = người gọi). Lock tự nhả khi commit/rollback, nên N request đồng thời không thể cùng lọt qua suất cuối.</li>
+<li>COURSES_CREATED có window <code>total</code> và được <b>đếm trực tiếp</b> từ bảng Course: xoá một Course trả lại một suất.</li>
+<li><b>Xoá</b>: soft delete (<code>deletedAt = now()</code>), Course biến khỏi workspace và mọi truy vấn repository; con cháu không bị xoá cứng.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w80"><img src="diagrams/png/15-seq-create-course.png"><figcaption>Sequence — Tạo Course trong quota (advisory lock)</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Course</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>Thiếu tên, tên &gt; 200 ký tự, mô tả &gt; 2000, field lạ, <code>:id</code> không phải UUID</td><td>Vui lòng nhập tên khóa học. / Tên khóa học tối đa 200 ký tự. …</td></tr>
+<tr><td>402</td><td><code>QUOTA_EXCEEDED</code></td><td>Đã đủ số Course của gói (FREE: 3, PRO: 50)</td><td>Đã vượt hạn mức COURSES_CREATED. <code>meta { metric, limit, used }</code></td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Course không tồn tại, đã xoá hoặc không thuộc user (get/patch/delete)</td><td>Không tìm thấy khóa học.</td></tr>
+</tbody></table>
+</div>
+
+<h2>4.3 Module Document Management <span class="en">(FR-DOC)</span> <span class="tag">[SPEC §6.3]</span></h2>
+<p>Tải tài liệu nguồn lên, xác nhận, trích xuất text thành chunk trong worker, liệt kê, tải xuống và xoá. File không bao giờ đi qua API server.</p>
+<table>
+<caption>Functional requirements — Document Management</caption>
+<colgroup><col style="width:13%"><col style="width:38%"><col style="width:17%"><col></colgroup>
+<thead><tr><th>ID</th><th>Yêu cầu</th><th>Trạng thái</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>FR-DOC-01</td><td>Tải tài liệu lên qua presigned URL</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/courses/:courseId/documents/upload-url</code></td></tr>
+<tr><td>FR-DOC-02</td><td>Xác nhận upload, kích hoạt trích xuất</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/documents/:id/confirm</code></td></tr>
+<tr><td>FR-DOC-03</td><td>Danh sách Document của Course + trạng thái xử lý</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/courses/:courseId/documents</code></td></tr>
+<tr><td>FR-DOC-04</td><td>Hiển thị lỗi trích xuất rõ ràng</td><td><span class="st mvp">Có trong MVP</span></td><td><code>errorCode</code>, <code>errorMessage</code> trong danh sách</td></tr>
+<tr><td>FR-DOC-05</td><td>Tải xuống Document gốc</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/documents/:id/download</code></td></tr>
+<tr><td>FR-DOC-06</td><td>Xoá Document (kể cả object trên storage)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m delete">DELETE</span> <code>/documents/:id</code></td></tr>
+<tr><td>FR-DOC-07</td><td>Chặn upload trùng checksum trong cùng Course</td><td><span class="st mvp">Có trong MVP</span></td><td>Trong <code>upload-url</code></td></tr>
+<tr><td>FR-DOC-08</td><td>Trích xuất PDF có lớp text, TXT, MD</td><td><span class="st mvp">Có trong MVP</span></td><td>Worker <code>document-extract</code></td></tr>
+<tr><td>FR-DOC-09</td><td>Trích xuất DOCX (mammoth), PPTX (jszip)</td><td><span class="st mvp">Có trong MVP</span></td><td>Worker; <code>.doc</code>/<code>.ppt</code> đời cũ không hỗ trợ</td></tr>
+<tr><td>FR-DOC-10</td><td>OCR cho PDF scan</td><td><span class="st plan">Đã lên kế hoạch</span></td><td>Hiện từ chối tường minh (<code>SCANNED_PDF_UNSUPPORTED</code>)</td></tr>
+<tr><td>FR-DOC-11</td><td>Trang danh sách tài liệu độc lập (ngoài trang Course)</td><td><span class="st plan">Đã lên kế hoạch</span></td><td>—</td></tr>
+</tbody></table>
+
+<div class="fn">
+<h3>4.3.1 Chức năng: Upload qua presigned URL &amp; xác nhận</h3>
+<p class="fn-meta">FR-DOC-01, 02, 07 · NFR-SEC-07, 08</p>
+<div class="label">Mô tả logic</div>
+<ol>
+<li>Web tính <b>SHA-256</b> của file và suy MIME từ <b>đuôi file</b> (không tin <code>File.type</code> — Chrome trên Windows để rỗng với <code>.md</code>). Danh sách loại hợp lệ nằm ở một chỗ duy nhất: <code>packages/contracts/src/document-types.ts</code> (<code>.pdf .txt .md .docx .pptx</code>).</li>
+<li><code>upload-url</code>: kiểm Course thuộc user; <code>resolveUploadMime(filename, mimeType)</code> — đuôi quyết định loại, MIME client khai chỉ dùng phát hiện mâu thuẫn (ví dụ <code>a.md</code> khai <code>application/pdf</code> → 415); <code>sizeBytes ≤ 25 MB</code>; chặn trùng checksum với Document đã xác nhận trong cùng Course (bỏ qua bản PENDING bỏ dở); <b>chỉ kiểm</b> quota DOCUMENTS_UPLOADED (chưa trừ). Tạo Document <code>PENDING</code> với storage key do server sinh (<code>{userId}/documents/{uuidv7}.{tên-file-đã-làm-sạch}</code>), ký <b>presigned PUT</b> gắn <code>Content-Type</code> và <code>Content-Length = sizeBytes</code>, hạn 15 phút.</li>
+<li>Trình duyệt <b>PUT file thẳng lên storage</b>. Bucket không public.</li>
+<li><code>confirm</code>: Document phải đang <code>PENDING</code>. Trong transaction <code>consume(DOCUMENTS_UPLOADED)</code>: trừ quota tháng và chuyển <code>UPLOADED</code>. <b>Sau khi commit</b> mới enqueue job <code>document-extract</code> (jobId <code>extract-{id}</code>, 3 attempts, backoff mũ từ 5 giây) — không bao giờ có job trỏ tới bản ghi bị rollback. Quota trừ ở bước này để người dùng bỏ dở giữa chừng không mất suất.</li>
+<li><code>download</code> trả presigned GET hạn ngắn; <code>DELETE</code> xoá dòng (chunk cascade) rồi xoá object (best-effort) — bị chặn khi đang <code>EXTRACTING</code>.</li>
+</ol>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure><img src="diagrams/png/16-seq-upload.png"><figcaption>Sequence — Upload tài liệu qua presigned URL</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Upload / Document</caption>
+<colgroup><col style="width:12%"><col style="width:22%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>Checksum không đủ 64 ký tự, sizeBytes ≤ 0 hoặc &gt; 26.214.400, filename rỗng</td><td>Dữ liệu gửi lên không hợp lệ.</td></tr>
+<tr><td>402</td><td><code>QUOTA_EXCEEDED</code></td><td>Đã dùng hết số tài liệu/tháng (FREE 5, PRO 100)</td><td>Đã vượt hạn mức DOCUMENTS_UPLOADED.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Course/Document không tồn tại hoặc không thuộc user</td><td>Không tìm thấy khóa học. / Không tìm thấy tài liệu.</td></tr>
+<tr><td>409</td><td><code>CONFLICT</code></td><td>Trùng nội dung với tài liệu đã có trong Course</td><td>Tài liệu này đã tồn tại trong khóa học (trùng nội dung với "…").</td></tr>
+<tr><td>409</td><td><code>CONFLICT</code></td><td>Confirm một Document không còn PENDING</td><td>Tài liệu đã được xác nhận.</td></tr>
+<tr><td>409</td><td><code>CONFLICT</code></td><td>Xoá Document đang EXTRACTING</td><td>Tài liệu đang được xử lý, vui lòng thử lại sau khi xong.</td></tr>
+<tr><td>413</td><td><code>PAYLOAD_TOO_LARGE</code></td><td>sizeBytes &gt; <code>DOCUMENT_MAX_SIZE</code></td><td>Tài liệu vượt giới hạn dung lượng tải lên.</td></tr>
+<tr><td>415</td><td><code>UNSUPPORTED_FILE_TYPE</code></td><td>Đuôi không hỗ trợ hoặc MIME khai mâu thuẫn với đuôi</td><td>Loại file không được hỗ trợ. Chỉ nhận PDF, TXT, Markdown, Word (DOCX), PowerPoint (PPTX).</td></tr>
+</tbody></table>
+</div>
+
+<div class="fn">
+<h3>4.3.2 Chức năng: Trích xuất &amp; chia chunk (worker)</h3>
+<p class="fn-meta">FR-DOC-04, 08, 09, 10 · FR-AI-10 · NFR-SEC-07</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li><b>Claim</b>: <code>UPDATE Document SET EXTRACTING WHERE id AND status = UPLOADED</code>; 0 dòng → bỏ qua (job lặp hoặc worker khác đã nhận).</li>
+<li>Tải object, <b>kiểm magic bytes</b> khớp loại khai báo (không tin đuôi file ở bước này), rồi trích text theo loại: PDF qua <code>pdfjs-dist</code> (giữ số trang, nhận heading theo cỡ chữ thật — <code>pdf-layout.ts</code>); DOCX qua <code>mammoth</code> (style Heading → heading Markdown; số trang lấy từ <code>docProps/app.xml</code> nếu có); PPTX qua <code>jszip</code> (mỗi slide một trang, tiêu đề slide → heading, đúng thứ tự trình chiếu); MD theo <code>#</code>; TXT theo mẫu "Chương 2", "2.1 …".</li>
+<li><b>Chặn</b>: PDF không có lớp text → <code>SCANNED_PDF_UNSUPPORTED</code> (OCR <span class="st plan">Đã lên kế hoạch</span>); số trang &gt; <code>UPLOAD_MAX_PAGES</code> (300) → lỗi; số trang &gt; hạn mức <code>PAGES_PROCESSED</code> của gói (FREE 50, PRO 300 trang/tài liệu) → <code>PAGE_QUOTA_EXCEEDED</code>.</li>
+<li><b>Chunking</b> (<code>packages/ai/src/chunker.ts</code>): mục tiêu 1.200 token, chồng lấn 150, tối thiểu 100 (nhỏ hơn thì gộp); ranh giới ưu tiên heading &gt; đoạn &gt; câu; chunk không vắt qua hai mục; mỗi chunk giữ <code>headingPath</code> ("Cha &gt; Con") và khoảng trang.</li>
+<li>Ghi chunk và chuyển <code>EXTRACTED</code> (kèm <code>pageCount</code>, <code>extractedAt</code>) trong một transaction. Mọi lỗi → <code>FAILED</code> với <code>errorCode</code> + <code>errorMessage</code> hiển thị cho người dùng.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w80"><img src="diagrams/png/17-seq-extract.png"><figcaption>Sequence — Trích xuất tài liệu trong worker</figcaption></figure>
+<div class="label">Xử lý ngoại lệ (lưu vào Document, hiển thị trong danh sách)</div>
+<table class="compact">
+<caption>Mã lỗi trích xuất (<code>Document.errorCode</code>)</caption>
+<colgroup><col style="width:28%"><col style="width:36%"><col></colgroup>
+<thead><tr><th>errorCode</th><th>Trường hợp</th><th>Message</th></tr></thead>
+<tbody>
+<tr><td><code>UNSUPPORTED_FILE</code></td><td>Magic bytes không khớp / định dạng không đọc được</td><td>Định dạng tài liệu không được hỗ trợ: {mimeType}</td></tr>
+<tr><td><code>SCANNED_PDF_UNSUPPORTED</code></td><td>PDF không có lớp text</td><td>Tài liệu là PDF scan (không có lớp text) — OCR chưa được hỗ trợ ở phiên bản này.</td></tr>
+<tr><td><code>PAGE_QUOTA_EXCEEDED</code></td><td>Số trang vượt hạn mức trang/tài liệu của gói</td><td>Tài liệu có N trang, vượt hạn mức M trang/tài liệu của gói hiện tại. Nâng cấp gói để xử lý tài liệu dài hơn.</td></tr>
+<tr><td><code>EXTRACTION_FAILED</code></td><td>Vượt 300 trang, lỗi parser, lỗi storage</td><td>Tài liệu có N trang, vượt giới hạn 300 trang. / thông điệp lỗi gốc</td></tr>
+</tbody></table>
+</div>
+</section>

@@ -1,0 +1,34 @@
+erDiagram
+  User {
+    string id PK
+    string email UK
+    string passwordHash "argon2id"
+    string displayName
+    enum role "LEARNER | ADMIN"
+    datetime deletedAt "soft delete"
+  }
+  RefreshToken {
+    string id PK
+    string userId FK
+    string tokenHash UK "SHA-256"
+    string familyId "rotation chain"
+    datetime expiresAt
+    datetime revokedAt
+  }
+  PasswordResetToken {
+    string id PK
+    string userId FK
+    string tokenHash UK
+    datetime expiresAt
+    datetime usedAt
+  }
+  AuditLog {
+    string id PK
+    string actorId FK "nullable, SetNull"
+    string action
+    string entityType
+    string entityId
+  }
+  User ||--o{ RefreshToken : has
+  User ||--o{ PasswordResetToken : has
+  User |o--o{ AuditLog : acts

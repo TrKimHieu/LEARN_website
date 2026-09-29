@@ -1,4 +1,9 @@
-import type { LlmGenerateParams, LlmGenerationResult, LlmProvider } from './provider';
+import {
+  LlmUnavailableError,
+  type LlmGenerateParams,
+  type LlmGenerationResult,
+  type LlmProvider,
+} from './provider';
 
 const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -24,7 +29,32 @@ interface GeminiResponseBody {
   };
   modelVersion?: string;
   promptFeedback?: { blockReason?: string };
-  error?: { message?: string; status?: string };
+  error?: {
+    message?: string;
+    status?: string;
+    details?: Array<{
+      '@type'?: string;
+      retryDelay?: string;
+      violations?: Array<{ quotaId?: string }>;
+    }>;
+  };
+}
+
+/**
+ * Hết quota theo ngày (free tier: vd 20 request/ngày cho gemini-3.8-flash). API vẫn trả RetryInfo
+ * ~30s nhưng chờ bao nhiêu trong ngày cũng không có quota mới — phải chuyển model ngay.
+ */
+function isDailyQuotaExhausted(body: GeminiResponseBody): boolean {
+  return (body.error?.details ?? []).some((d) =>
+    d.violations?.some((v) => v.quotaId?.includes('PerDay')),
+  );
+}
+
+/** Thời gian chờ Google yêu cầu trong `google.rpc.RetryInfo` (dạng "37s"), đổi ra ms. */
+function serverRetryDelayMs(body: GeminiResponseBody): number | undefined {
+  const info = body.error?.details?.find((d) => d['@type']?.endsWith('google.rpc.RetryInfo'));
+  const seconds = info?.retryDelay ? Number.parseFloat(info.retryDelay) : Number.NaN;
+  return Number.isFinite(seconds) ? Math.ceil(seconds * 1000) : undefined;
 }
 
 export interface GeminiProviderOptions {
@@ -34,8 +64,14 @@ export interface GeminiProviderOptions {
   responseJson?: boolean;
   /** Số lần thử lại khi API trả 429/503. Mặc định 2 (tổng 3 lần gọi). */
   maxRetries?: number;
-  /** Chờ cơ sở giữa các lần thử, nhân đôi sau mỗi lần. */
+  /** Chờ cơ sở giữa các lần thử, nhân đôi sau mỗi lần — dùng khi API không nói phải chờ bao lâu. */
   retryDelayMs?: number;
+  /**
+   * Trần thời gian chờ theo `RetryInfo` của API. Free tier giới hạn request/phút nên API thường
+   * đòi chờ ~30–60s; đòi lâu hơn trần (hết quota ngày) thì ném ngay để tầng trên chuyển model.
+   * Mặc định 60s — hai lần chờ vẫn nằm trong timeout 120s/lần gọi của worker.
+   */
+  maxServerRetryDelayMs?: number;
   /** Tiêm fetch giả trong test. */
   fetchImpl?: typeof fetch;
   /** Tiêm hàm chờ trong test để không phải ngủ thật. */
@@ -58,6 +94,7 @@ export class GeminiLlmProvider implements LlmProvider {
   private readonly responseJson: boolean;
   private readonly maxRetries: number;
   private readonly retryDelayMs: number;
+  private readonly maxServerRetryDelayMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly sleepImpl: (ms: number) => Promise<void>;
 
@@ -69,6 +106,7 @@ export class GeminiLlmProvider implements LlmProvider {
     this.responseJson = options.responseJson ?? true;
     this.maxRetries = options.maxRetries ?? 2;
     this.retryDelayMs = options.retryDelayMs ?? 1000;
+    this.maxServerRetryDelayMs = options.maxServerRetryDelayMs ?? 60_000;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.sleepImpl =
       options.sleepImpl ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
@@ -146,11 +184,13 @@ export class GeminiLlmProvider implements LlmProvider {
       if (res.ok) return json;
 
       const status = json.error?.status ? ` ${json.error.status}` : '';
-      lastError = new Error(
-        `Gemini ${res.status}${status}: ${json.error?.message ?? (raw.slice(0, 200) || 'lỗi không rõ')}`,
-      );
-      if (!RETRYABLE_STATUS.has(res.status) || attempt === this.maxRetries) throw lastError;
-      await this.sleepImpl(this.retryDelayMs * 2 ** attempt);
+      const message = `Gemini ${res.status}${status}: ${json.error?.message ?? (raw.slice(0, 200) || 'lỗi không rõ')}`;
+      if (!RETRYABLE_STATUS.has(res.status)) throw new Error(message);
+      lastError = new LlmUnavailableError(message, res.status);
+      if (attempt === this.maxRetries || isDailyQuotaExhausted(json)) throw lastError;
+      const serverDelay = serverRetryDelayMs(json);
+      if (serverDelay !== undefined && serverDelay > this.maxServerRetryDelayMs) throw lastError;
+      await this.sleepImpl(serverDelay ?? this.retryDelayMs * 2 ** attempt);
     }
 
     throw lastError;

@@ -6,6 +6,7 @@ export * from './common';
 export * from './auth';
 export * from './course';
 export * from './document';
+export * from './document-types';
 export * from './lesson';
 export * from './exercise';
 export * from './progress';

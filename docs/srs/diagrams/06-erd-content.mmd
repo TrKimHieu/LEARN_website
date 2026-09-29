@@ -1,0 +1,65 @@
+erDiagram
+  Course {
+    string id PK
+    string ownerId FK
+    string title
+    string language "vi | en"
+    enum status "DRAFT | READY | ARCHIVED"
+    datetime deletedAt "soft delete"
+  }
+  CourseMember {
+    string id PK
+    string courseId "UK (courseId, userId)"
+    string userId
+    enum role "OWNER | EDITOR | VIEWER"
+  }
+  Document {
+    string id PK
+    string courseId FK
+    string uploaderId FK
+    string storageKey UK
+    string checksumSha256
+    int pageCount
+    enum status
+  }
+  DocumentChunk {
+    string id PK
+    string documentId FK "UK (documentId, index)"
+    int index
+    text content
+    int tokenCount
+    string headingPath
+  }
+  Lesson {
+    string id PK
+    string courseId FK "UK (courseId, orderIndex)"
+    int orderIndex
+    text contentMd
+    string_list sourceChunkIds
+    enum confidence "UNKNOWN | HIGH | LOW"
+  }
+  Exercise {
+    string id PK
+    string lessonId FK
+    enum difficulty
+    int passScore "default 70"
+  }
+  Question {
+    string id PK
+    string exerciseId FK
+    enum type
+    json correctAnswer "server-only"
+  }
+  AnswerOption {
+    string id PK
+    string questionId FK
+    string content
+    bool isCorrect "server-only"
+  }
+  Course ||--o{ Document : contains
+  Course ||..o{ CourseMember : "shared via"
+  Document ||--o{ DocumentChunk : "split into"
+  Course ||--o{ Lesson : contains
+  Lesson ||--o{ Exercise : has
+  Exercise ||--o{ Question : has
+  Question ||--o{ AnswerOption : has

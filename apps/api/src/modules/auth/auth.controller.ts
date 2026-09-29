@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Body, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, HttpCode, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { HttpStatus } from '@nestjs/common';
 import { zodBody, ApiError } from '../../common/errors';
@@ -14,6 +14,10 @@ import {
   loginSchema,
   patchMeSchema,
   changePasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  type ForgotPasswordInput,
+  type ResetPasswordInput,
   type RegisterInput,
   type LoginInput,
   type PatchMeInput,
@@ -54,6 +58,34 @@ export class AuthController {
     const result = await this.auth.login(body, req.headers['user-agent'] ?? undefined, req.ip);
     attachRefreshCookie(res, result.refreshToken);
     return res.json({ user: result.user, accessToken: result.accessToken });
+  }
+
+  /** FR-AUTH-07. Công khai (NFR-SEC-11). Cùng một câu trả lời cho mọi email. */
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RateLimitGuard)
+  @Throttle(5, 900)
+  async forgotPassword(
+    @Body(zodBody(forgotPasswordSchema)) body: ForgotPasswordInput,
+    @Req() req: Request,
+  ) {
+    await this.auth.requestPasswordReset(body.email, req.ip);
+    return { ok: true };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RateLimitGuard)
+  @Throttle(10, 900)
+  async resetPassword(
+    @Body(zodBody(resetPasswordSchema)) body: ResetPasswordInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.auth.resetPassword(body.token, body.newPassword, req.ip);
+    // Mọi phiên đã bị thu hồi ở server; xoá luôn cookie của trình duyệt đang dùng.
+    res.clearCookie(REFRESH_COOKIE, cookieOptions());
+    return { ok: true };
   }
 
   @Post('refresh')

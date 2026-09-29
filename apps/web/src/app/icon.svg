@@ -1,21 +1,11 @@
 <!--
-  Favicon = logo = nhân vật Circle. Giữ đồng bộ thủ công với
-  apps/web/src/features/shell/logo-mark.tsx (tone="dark"); file này là SVG tĩnh nên
-  không dùng lại được component React.
-
-  Dùng tông sáng (cầu sky, mặt navy) vì thanh tab của trình duyệt có thể sáng
-  hoặc tối tuỳ theme hệ điều hành — khối cầu navy sẽ chìm trên tab tối.
+  Favicon = logo = nhân vật Circle, chỉ trắng và đen (ADR 015). Giữ đồng bộ thủ công với
+  apps/web/src/features/shell/logo-mark.tsx; file này là SVG tĩnh nên không dùng lại được
+  component React. Thân đen + viền trắng mảnh để vẫn thấy được trên thanh tab tối.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="g" x1="1" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#a9e2fa" />
-      <stop offset="55%" stop-color="#5ec8f5" />
-      <stop offset="100%" stop-color="#1b87b8" />
-    </linearGradient>
-  </defs>
-  <circle cx="50" cy="50" r="50" fill="url(#g)" />
-  <ellipse cx="35.5" cy="43" rx="6.5" ry="9.5" fill="#0b1220" />
-  <ellipse cx="64.5" cy="43" rx="6.5" ry="9.5" fill="#0b1220" />
-  <path d="M36 63 Q50 72 64 63" fill="none" stroke="#0b1220" stroke-width="5.5" stroke-linecap="round" />
+  <circle cx="50" cy="50" r="48" fill="#111111" stroke="#ffffff" stroke-width="4" />
+  <ellipse cx="35.5" cy="43" rx="6.5" ry="9.5" fill="#ffffff" />
+  <ellipse cx="64.5" cy="43" rx="6.5" ry="9.5" fill="#ffffff" />
+  <path d="M36 63 Q50 72 64 63" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" />
 </svg>

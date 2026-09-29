@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  actor U as Learner
+  participant W as Web
+  participant A as API (DocumentsService)
+  participant D as PostgreSQL
+  participant S as Object storage
+  participant R as Redis (BullMQ)
+  U->>W: chọn file
+  W->>W: tính SHA-256, suy MIME từ đuôi file
+  W->>A: POST /courses/:courseId/documents/upload-url { filename, mimeType, sizeBytes, checksumSha256 }
+  A->>D: Course thuộc userId? (repository lọc ownerId)
+  A->>A: resolveUploadMime · sizeBytes ≤ 25 MB
+  A->>D: trùng checksum trong Course (bỏ qua bản PENDING)?
+  A->>A: assertNotExceeded(DOCUMENTS_UPLOADED) — chỉ kiểm, chưa trừ
+  A->>D: INSERT Document (PENDING, storageKey ngẫu nhiên)
+  A->>S: ký presigned PUT (Content-Type, Content-Length = sizeBytes, 15 phút)
+  A-->>W: 200 { documentId, uploadUrl, expiresInSec }
+  W->>S: PUT file trực tiếp (không đi qua API)
+  S-->>W: 200
+  W->>A: POST /documents/:id/confirm { sizeBytes }
+  A->>D: consume(DOCUMENTS_UPLOADED) + status = UPLOADED (transaction)
+  A->>R: add document-extract (jobId extract-{id}, attempts 3, backoff mũ)
+  A-->>W: 200 Document (UPLOADED)
+  W->>A: GET /courses/:courseId/documents (invalidate query sau confirm)
+  A-->>W: danh sách kèm status, pageCount, chunkCount, errorMessage

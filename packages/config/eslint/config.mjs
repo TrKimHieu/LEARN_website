@@ -91,12 +91,10 @@ export default tseslint.config(
         'error',
         {
           allow: {
-            // `shell` là chrome của app (AppShell, SideRail) nên được đọc provider của
-            // feature khác để gọi `useAuth`/`useSubscription` — không phải tái dùng UI nội bộ.
+            // `shell` là chrome của app (AppShell, UserMenu, PlanUsage) nên được đọc hook dữ
+            // liệu của feature khác — `useAuth`/`useSubscription` —
+            // không phải tái dùng UI nội bộ của chúng.
             shell: ['auth', 'settings'],
-            // Landing `portfolio` (trang chủ marketing) tái dùng `LogoMark` của `shell`.
-            // Logo dùng chung nên sau này nên chuyển lên `components/shared/`.
-            portfolio: ['shell'],
           },
         },
       ],

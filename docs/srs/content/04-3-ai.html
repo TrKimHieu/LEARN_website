@@ -1,0 +1,109 @@
+<section class="module">
+<h2>4.4 Module AI Lesson Generation <span class="en">(FR-AI)</span> <span class="tag">[SPEC §6.4]</span></h2>
+<p>Biến các Document đã trích xuất của một Course thành Lesson + Exercise bằng LLM, chạy bất đồng bộ trong worker, có tiến độ, huỷ, retry, giới hạn chi phí và kiểm soát chất lượng 4 tầng.</p>
+<table>
+<caption>Functional requirements — AI Lesson Generation</caption>
+<colgroup><col style="width:12%"><col style="width:40%"><col style="width:17%"><col></colgroup>
+<thead><tr><th>ID</th><th>Yêu cầu</th><th>Trạng thái</th><th>Route / nơi xử lý</th></tr></thead>
+<tbody>
+<tr><td>FR-AI-01</td><td>Tạo AI Job sinh bài học từ Document đã trích xuất</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/ai/courses/:courseId/generate-lessons</code></td></tr>
+<tr><td>FR-AI-02</td><td>Pipeline extract → chunk → outline → lesson → exercise → validate 4 tầng → lưu</td><td><span class="st mvp">Có trong MVP</span></td><td>Worker <code>lesson-generate</code></td></tr>
+<tr><td>FR-AI-03</td><td>Hiển thị tiến độ AI Job gần thời gian thực</td><td><span class="st mvp">Có trong MVP</span></td><td>Polling 2 giây <span class="m get">GET</span> <code>/ai/jobs/:id</code></td></tr>
+<tr><td>FR-AI-04</td><td>Kênh SSE cho tiến độ AI Job</td><td><span class="st dev">Đang phát triển</span></td><td><span class="m get">GET</span> <code>/ai/jobs/:id/stream</code> — backend có; web chưa dùng vì <code>EventSource</code> không gửi được header Authorization</td></tr>
+<tr><td>FR-AI-05</td><td>Huỷ AI Job đang chờ hoặc đang chạy</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/ai/jobs/:id/cancel</code></td></tr>
+<tr><td>FR-AI-06</td><td>Retry AI Job thất bại, tối đa 3 lần</td><td><span class="st mvp">Có trong MVP</span></td><td>BullMQ attempts 3; admin retry (§4.8)</td></tr>
+<tr><td>FR-AI-07</td><td>Lưu một phần khi chỉ một số Lesson lỗi (partialFailures)</td><td><span class="st mvp">Có trong MVP</span></td><td>Worker</td></tr>
+<tr><td>FR-AI-08</td><td>Đổi LLM provider qua biến môi trường</td><td><span class="st mvp">Có trong MVP</span></td><td><code>LLM_PROVIDER</code> = anthropic | google | openai</td></tr>
+<tr><td>FR-AI-09</td><td>Chế độ mock cho test/CI, không gọi LLM thật</td><td><span class="st mvp">Có trong MVP</span></td><td><code>LLM_MODE=mock</code> (mặc định)</td></tr>
+<tr><td>FR-AI-10</td><td>Nhận diện heading thật khi chunk</td><td><span class="st mvp">Có trong MVP</span></td><td>Worker extraction + chunker (§4.3.2)</td></tr>
+<tr><td>FR-AI-11</td><td>Job định kỳ dọn AI Job treo, dead-letter queue</td><td><span class="st plan">Đã lên kế hoạch</span></td><td>Queue <code>maintenance</code> đã khai báo, chưa có processor</td></tr>
+<tr><td>FR-AI-12</td><td>Chọn độ khó bài tập (EASY/MEDIUM/HARD)</td><td><span class="st mvp">Có trong MVP</span></td><td>Tham số <code>difficulty</code>, vào prompt <code>lesson@3</code></td></tr>
+<tr><td>—</td><td>Liệt kê AI Job của user (lọc theo Course)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/ai/jobs?courseId=</code></td></tr>
+</tbody></table>
+
+<div class="fn">
+<h3>4.4.1 Chức năng: Tạo AI Job sinh bài học</h3>
+<p class="fn-meta">FR-AI-01, FR-AI-12 · FR-SUB-03 · NFR-OPS-03</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li>Body (Zod <code>generateLessonsSchema</code>, strict, mặc định <code>{}</code>): <code>documentIds?</code> (UUID[], ≥ 1 nếu có), <code>language?</code> (vi|en, mặc định theo Course), <code>difficulty?</code> (mặc định MEDIUM).</li>
+<li>Kiểm Course thuộc user. Nếu có <code>documentIds</code>: mọi ID phải thuộc <b>đúng Course này</b> và do user tải lên (so với tập ID đã khử trùng) — chặn việc sinh bài cho Course A từ nội dung Course B.</li>
+<li><b>Chống bấm hai lần</b>: nếu đã có job <code>QUEUED/RUNNING</code> cùng Course, user và cùng tham số → trả lại job đó, không tạo mới, không trừ quota. Job cũ đã kết thúc thì lượt mới là hợp lệ.</li>
+<li>Tạo job trong <code>consume(AI_JOBS_RUN)</code>: kiểm quota tháng + <code>INSERT AIJob</code> (QUEUED, <code>idempotencyKey</code> duy nhất, <code>inputParams</code>) trong một transaction có advisory lock. <b>Sau commit</b> mới đẩy vào BullMQ: jobId <code>gen-{aiJobId}</code>, <code>attempts: 3</code>, backoff mũ 5 giây.</li>
+<li>Web theo dõi bằng <code>GET /ai/jobs/:id</code> mỗi 2 giây khi job còn QUEUED/RUNNING; hiển thị %, nhãn bước (<code>progressLabel</code>, ví dụ "Đã sinh 2/3 bài học"), nút Huỷ, và trạng thái partial khi job thành công một phần.</li>
+</ul>
+<div class="callout warn"><p><b>Khác biệt với yêu cầu:</b> NFR-OPS-03 yêu cầu header <code>Idempotency-Key</code> cho POST tạo AI Job. Hiện chống trùng bằng truy vấn job đang chờ/chạy như trên; header chưa được đọc. Xem Phụ lục C.</p></div>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w90"><img src="diagrams/png/18-seq-generate.png"><figcaption>Sequence — Tạo AI Job và theo dõi tiến độ</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Tạo / xem AI Job</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>documentIds không phải UUID, difficulty sai giá trị, field lạ; <code>courseId</code> query sai định dạng</td><td>Dữ liệu gửi lên không hợp lệ. / Tham số không hợp lệ.</td></tr>
+<tr><td>402</td><td><code>QUOTA_EXCEEDED</code></td><td>Hết số AI Job/tháng (FREE 10, PRO 200)</td><td>Đã vượt hạn mức AI_JOBS_RUN.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Course không thuộc user</td><td>Không tìm thấy khóa học.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Có documentId không thuộc Course/user</td><td>Có tài liệu không thuộc khóa học của bạn.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Xem job không tồn tại hoặc của người khác</td><td>Không tìm thấy job.</td></tr>
+</tbody></table>
+</div>
+
+<div class="fn">
+<h3>4.4.2 Chức năng: Pipeline sinh bài học (worker)</h3>
+<p class="fn-meta">FR-AI-02, 06, 07, 08, 09 · NFR-AI-01…05 · ADR 003</p>
+<div class="label">Mô tả logic</div>
+<ol>
+<li><b>Claim</b> job bằng <code>UPDATE … SET RUNNING, startedAt, attempt + 1 WHERE status = QUEUED</code>; job không còn QUEUED (đã huỷ, đã chạy) → bỏ qua (idempotent). Đặt hạn chót = now + <code>AI_JOB_TIMEOUT_MS</code> (15 phút).</li>
+<li>Nạp mọi <code>DocumentChunk</code> của Document <code>EXTRACTED</code> trong Course (lọc theo <code>documentIds</code> nếu có). Không có chunk → FAILED <code>NO_EXTRACTED_CONTENT</code>.</li>
+<li><b>Giai đoạn A — Outline</b> (1 lượt gọi, prompt <code>outline@2</code>): chỉ gửi <code>headingPath</code> + 200 ký tự đầu mỗi chunk. Trả danh sách node (tiêu đề, mô tả, <code>chunkIds</code>). Sai schema → retry kèm mô tả lỗi; nếu outline bỏ sót &gt; 25% chunk thì lập lại một lần kèm danh sách mục bị sót — hết lượt vẫn nhận (thiếu vài mục tốt hơn job thất bại).</li>
+<li><b>Giai đoạn B — Lesson + Exercise</b> (prompt <code>lesson@3</code>, kèm <code>difficulty</code>): mỗi node một lượt gọi với <b>toàn văn</b> chunk của node, song song tối đa <code>AI_MAX_CONCURRENT_CALLS</code> = 3. Kết quả ghi theo <b>chỉ số node</b> trong outline (không theo thứ tự về đích) để <code>orderIndex</code> giữ đúng trình tự sư phạm. Trước mỗi node kiểm: job bị huỷ → dừng toàn bộ; quá hạn chót hoặc chi phí cộng dồn ≥ <code>AI_JOB_MAX_COST_USD</code> → node đó lỗi.</li>
+<li><b>Validate 4 tầng</b> (<code>packages/ai/src/validator</code>) cho từng node:
+<ul>
+<li><b>Tầng 1 — Schema</b>: parse bằng Zod (title 5–200, summary 20–500, contentMd 200–12.000, estimatedMinutes 1–60, <code>sourceChunkIds</code> ≥ 1, exercises 1–5; MULTIPLE_CHOICE đúng 4 phương án). Lỗi → retry tối đa 2 lần kèm thông báo lỗi.</li>
+<li><b>Tầng 2 — Luật nghiệp vụ</b>: đúng một đáp án đúng; không trùng phương án; độ dài phương án tương đương; không có "Tất cả các đáp án trên"; <code>explanation</code> không lặp nguyên văn <code>prompt</code>; tiêu đề không trùng Lesson hiện có trong Course. Lỗi → retry 1 lần kèm luật bị vi phạm.</li>
+<li><b>Tầng 3 — Bám nguồn</b>: <code>sourceChunkIds</code> phải tồn tại thật; lấy mẫu 2 thuật ngữ chuyên môn trong <code>contentMd</code> đối chiếu với chunk đã khai; dưới 50% khớp → <code>confidence = LOW</code> (vẫn lưu), ngược lại <code>HIGH</code>.</li>
+<li><b>Tầng 4 — Vệ sinh</b>: sanitize Markdown (loại HTML/script), cắt độ dài quá mức, chuẩn hoá khoảng trắng.</li>
+</ul></li>
+<li><b>Kết thúc</b>: 0 Lesson hợp lệ → FAILED <code>ALL_LESSONS_FAILED</code>, <b>không ghi gì vào DB</b>. ≥ 1 Lesson → ghi trong <b>một transaction</b> bằng 4 lệnh <code>createMany</code> theo thứ tự phụ thuộc (Lesson → Exercise → Question → AnswerOption, ID sinh sẵn), rồi SUCCEEDED; node lỗi được liệt kê trong <code>AIJob.error.partialFailures</code>.</li>
+<li><b>Quan sát</b>: mỗi lượt gọi LLM ghi một <code>GenerationRun</code> (step, model thực tế, promptVersion, token vào/ra, <code>costUsd</code>, latency, attempt). Tiến độ được cập nhật vào AIJob và publish lên Redis channel <code>job:{id}</code> (cho SSE).</li>
+<li><b>LLM provider</b>: <code>LLM_PROVIDER</code> chọn adapter Anthropic, Google Gemini hoặc OpenAI-compatible (<code>LLM_BASE_URL</code>); mỗi lượt gọi timeout 120 giây. Nếu có <code>LLM_MODEL_FALLBACK</code>, adapter tự chuyển sang model dự phòng cùng provider khi model chính trả 429/503/529 (ADR 009). <code>LLM_MODE=mock</code> dùng fixture cố định — CI không bao giờ gọi LLM thật.</li>
+<li><b>Retry cấp job</b>: lỗi không bắt được làm job BullMQ fail và được thử lại tối đa 3 attempts (backoff mũ); hết lượt thì AIJob ở FAILED với <code>error { code, message }</code>.</li>
+</ol>
+<div class="label">Luồng xử lý (Activity)</div>
+<figure class="w80 tall"><img src="diagrams/png/19-flow-ai-pipeline.png"><figcaption>Activity diagram — Pipeline sinh bài học trong worker</figcaption></figure>
+<div class="label">Xử lý ngoại lệ (lưu vào <code>AIJob.error</code>)</div>
+<table class="compact">
+<caption>Kết cục lỗi của pipeline</caption>
+<colgroup><col style="width:28%"><col style="width:17%"><col></colgroup>
+<thead><tr><th>Code</th><th>Trạng thái job</th><th>Trường hợp</th></tr></thead>
+<tbody>
+<tr><td><code>NO_EXTRACTED_CONTENT</code></td><td>FAILED</td><td>Course chưa có Document nào trích xuất xong (hoặc documentIds chỉ gồm tài liệu chưa xong).</td></tr>
+<tr><td><code>ALL_LESSONS_FAILED</code></td><td>FAILED</td><td>Mọi node đều lỗi validate, timeout hoặc vượt trần chi phí. <code>detail.failures</code> liệt kê node + lỗi.</td></tr>
+<tr><td><code>partialFailures</code></td><td>SUCCEEDED</td><td>Một số node lỗi; phần thành công vẫn được lưu và hiển thị (trạng thái Partial của UI).</td></tr>
+<tr><td>(huỷ)</td><td>CANCELLED</td><td>Người dùng huỷ trong lúc chạy; worker dừng ở checkpoint gần nhất, không ghi Lesson.</td></tr>
+<tr><td>Lỗi LLM / hạ tầng</td><td>FAILED sau 3 attempts</td><td>Provider lỗi kéo dài, timeout lượt gọi, mất kết nối DB/Redis.</td></tr>
+</tbody></table>
+</div>
+
+<div class="fn">
+<h3>4.4.3 Chức năng: Huỷ AI Job</h3>
+<p class="fn-meta">FR-AI-05</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li>Một câu <code>UPDATE … SET status = CANCELLED WHERE id AND requestedById = userId AND status IN (QUEUED, RUNNING)</code> — lọc ownership ngay trong câu lệnh. 0 dòng → phân biệt "không tồn tại/không phải của bạn" (404) với "sai trạng thái" (409).</li>
+<li>Huỷ xong thì gỡ job khỏi BullMQ nếu worker chưa nhận (best-effort). Nếu đang chạy, worker không bị giết giữa chừng mà tự dừng ở checkpoint <code>isCancelled()</code> trước mỗi node — tránh ghi dở dữ liệu.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w90"><img src="diagrams/png/20-seq-cancel.png"><figcaption>Sequence — Huỷ AI Job</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Huỷ AI Job</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Job không tồn tại hoặc không thuộc user</td><td>Không tìm thấy job.</td></tr>
+<tr><td>409</td><td><code>CONFLICT</code></td><td>Job đã SUCCEEDED/FAILED/CANCELLED</td><td>Chỉ có thể huỷ job đang xếp hàng hoặc đang chạy.</td></tr>
+</tbody></table>
+</div>
+</section>

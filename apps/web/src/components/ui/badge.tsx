@@ -3,14 +3,16 @@ import { Icon, type IconName } from './icon';
 
 export type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 
-// Nền nhạt + vòng viền 1px cùng sắc: nhãn đọc được rõ trên cả nền trắng lẫn nền
-// surface-100 mà không cần tăng độ bão hoà (vốn sẽ phá tương phản chữ đã đo đạt AA).
+// Viên thuốc pastel, không viền — ADR 013. Chữ thường 12px (không in hoa giãn chữ:
+// tiếng Việt có dấu viết hoa ở cỡ nhỏ khó đọc). Mọi cặp chữ/nền đã đo ≥ 4.98:1.
 const TONES: Record<BadgeTone, string> = {
-  neutral: 'bg-surface-100 text-ink-700 ring-surface-300',
-  info: 'bg-sky-50 text-sky-700 ring-sky-100',
-  success: 'bg-success-50 text-success-700 ring-success-100',
-  warning: 'bg-warning-50 text-warning-700 ring-warning-100',
-  danger: 'bg-danger-50 text-danger-700 ring-danger-100',
+  neutral: 'bg-muted text-fg-muted',
+  info: 'bg-accent-soft text-accent',
+  success: 'bg-ok-soft text-ok',
+  warning: 'bg-warn-soft text-warn',
+  // Đơn sắc (ADR 015): lỗi là khối đảo màu (nền chữ chính, chữ nền) — độ tương phản thay
+  // vai trò của màu đỏ, nên nhãn lỗi vẫn nổi hẳn so với các nhãn xám nhạt còn lại.
+  danger: 'bg-fg text-app',
 };
 
 /** Nhãn trạng thái. `icon` để trạng thái không chỉ được phân biệt bằng màu. */
@@ -28,12 +30,12 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-xs font-medium',
         TONES[tone],
         className,
       )}
     >
-      {icon && <Icon name={icon} size={13} strokeWidth={2.5} />}
+      {icon && <Icon name={icon} size={12} strokeWidth={2.75} />}
       {children}
     </span>
   );

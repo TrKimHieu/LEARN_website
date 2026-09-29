@@ -1,0 +1,114 @@
+<section class="module">
+<h2>4.5 Module Interactive Learning <span class="en">(FR-LESSON)</span> <span class="tag">[SPEC §6.5]</span></h2>
+<p>Đọc Lesson, xem nguồn tài liệu gốc, sửa/sắp xếp/xoá Lesson, làm Exercise và chấm điểm tại server. Đáp án đúng không bao giờ rời server trước khi nộp.</p>
+<table>
+<caption>Functional requirements — Interactive Learning</caption>
+<colgroup><col style="width:14%"><col style="width:36%"><col style="width:17%"><col></colgroup>
+<thead><tr><th>ID</th><th>Yêu cầu</th><th>Trạng thái</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>FR-LESSON-01</td><td>Danh sách Lesson của Course theo thứ tự, kèm tiến trình</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/courses/:courseId/lessons</code></td></tr>
+<tr><td>FR-LESSON-02</td><td>Mở một Lesson, hiển thị <code>contentMd</code></td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/courses/:courseId/lessons/:lessonId</code></td></tr>
+<tr><td>FR-LESSON-03</td><td>Bắt đầu học (IN_PROGRESS), idempotent</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>…/lessons/:lessonId/start</code></td></tr>
+<tr><td>FR-LESSON-04</td><td>Sửa nội dung Lesson do AI sinh</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m patch">PATCH</span> <code>…/lessons/:lessonId</code></td></tr>
+<tr><td>FR-LESSON-05</td><td>Sắp xếp lại thứ tự Lesson</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m patch">PATCH</span> <code>/courses/:courseId/lessons/reorder</code></td></tr>
+<tr><td>FR-LESSON-06</td><td>Xoá Lesson (soft delete)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m delete">DELETE</span> <code>…/lessons/:lessonId</code></td></tr>
+<tr><td>FR-LESSON-07</td><td>Cảnh báo LOW_CONFIDENCE khi Lesson có thể lệch tài liệu gốc</td><td><span class="st mvp">Có trong MVP</span></td><td>Trường <code>confidence</code> trong read/summary</td></tr>
+<tr><td>FR-LESSON-08</td><td>Xem Exercise, không lộ đáp án trước khi nộp</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/lessons/:lessonId/exercise[?exerciseId=]</code></td></tr>
+<tr><td>FR-LESSON-09</td><td>Nộp câu trả lời Exercise</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m post">POST</span> <code>/lessons/:lessonId/exercise/submit</code></td></tr>
+<tr><td>FR-LESSON-10</td><td>Chấm tự động, trả đúng/sai + giải thích (4 loại câu hỏi)</td><td><span class="st mvp">Có trong MVP</span></td><td>Trong response submit</td></tr>
+<tr><td>FR-LESSON-11</td><td>Đánh dấu Lesson hoàn thành</td><td><span class="st mvp">Có trong MVP</span></td><td>Tự động khi mọi Exercise đạt</td></tr>
+<tr><td>FR-LESSON-12</td><td>Xem đoạn tài liệu gốc của Lesson (file, trang, mục)</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>…/lessons/:lessonId/sources</code></td></tr>
+<tr><td>FR-LESSON-13</td><td>Làm mọi Exercise của Lesson (1–5), điều hướng giữa chúng</td><td><span class="st mvp">Có trong MVP</span></td><td><code>exercises[]</code> trong ExerciseRead</td></tr>
+</tbody></table>
+
+<div class="fn">
+<h3>4.5.1 Chức năng: Làm bài &amp; chấm điểm</h3>
+<p class="fn-meta">FR-LESSON-08…11, 13 · NFR-SEC-05 · BR-02, BR-08</p>
+<div class="label">Mô tả logic — lấy bài tập</div>
+<ul>
+<li>Kiểm Lesson thuộc Course của user (repository). Lấy Exercise theo <code>exerciseId</code> (bỏ trống = Exercise đầu tiên theo <code>orderIndex</code>). Response <code>ExerciseRead</code> gồm câu hỏi và phương án <b>đã loại <code>correctAnswer</code>, <code>isCorrect</code>, <code>explanation</code></b>, lượt nộp tốt nhất, và danh sách mọi Exercise của Lesson (<code>exercises[]</code>: độ khó, số câu, passScore, bestScore, passed) để điều hướng.</li>
+</ul>
+<div class="label">Mô tả logic — nộp và chấm</div>
+<ul>
+<li>Body: <code>answers[]</code> là discriminated union theo <code>type</code> — <code>MULTIPLE_CHOICE { optionId }</code>, <code>TRUE_FALSE { value }</code>, <code>SHORT_ANSWER { text ≤ 2000 }</code>, <code>FILL_BLANK { text ≤ 500 }</code>; không được trả lời trùng <code>questionId</code>; <code>durationMs</code> ≤ 1 giờ. Mọi <code>questionId</code> phải thuộc Exercise đang nộp (chống gian lận).</li>
+<li><b>Chấm tại server</b> (<code>gradeSubmission</code>, hàm thuần có unit test): MULTIPLE_CHOICE đúng khi option chọn có <code>isCorrect</code>; TRUE_FALSE so với <code>correctAnswer.value</code>; SHORT_ANSWER/FILL_BLANK đúng khi câu trả lời sau <b>chuẩn hoá</b> (bỏ dấu tiếng Việt, đ→d, chữ thường, gộp khoảng trắng, bỏ dấu câu cuối) khớp một phần tử trong <code>correctAnswer.acceptable[]</code>. Điểm = round(điểm đạt / tổng điểm × 100); <code>passed</code> khi điểm ≥ <code>passScore</code> (mặc định 70).</li>
+<li><b>Ghi trong một transaction</b>: <code>Submission</code> (<code>attemptNo</code> = lượt kế tiếp, tính trong transaction; đụng unique do nộp song song → thử lại để nhận số kế tiếp thay vì 500) + <code>SubmissionAnswer[]</code>; tính điểm cao nhất của từng Exercise trong Lesson; <code>isLessonComplete</code> = mọi Exercise có best ≥ passScore riêng; upsert <code>LearningProgress</code> (<code>bestScore</code> = max, <code>attempts</code> + 1, trạng thái không lùi; COMPLETED khi hoàn thành).</li>
+<li>Response <code>Submission</code>: điểm, <code>passed</code>, <code>lessonCompleted</code>, và <code>results[]</code> — <b>lúc này mới</b> kèm <code>correctAnswer</code> và <code>explanation</code> từng câu.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w70"><img src="diagrams/png/21-seq-exercise.png"><figcaption>Sequence — Lấy bài tập, nộp và chấm điểm</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Exercise</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>answers rỗng, sai hình dạng theo type, trả lời trùng câu</td><td>Không được trả lời trùng câu hỏi / Dữ liệu gửi lên không hợp lệ.</td></tr>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>questionId không thuộc Exercise</td><td>Câu hỏi không thuộc bài tập.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Lesson không thuộc user / đã xoá</td><td>Không tìm thấy bài học.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>exerciseId không thuộc Lesson, hoặc Lesson không có Exercise</td><td>Không có bài tập này trong bài học.</td></tr>
+</tbody></table>
+</div>
+
+<div class="fn">
+<h3>4.5.2 Chức năng: Quản lý Lesson (sửa, sắp xếp, xoá, xem nguồn)</h3>
+<p class="fn-meta">FR-LESSON-01…07, 12</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li><b>Danh sách</b>: Lesson chưa xoá theo <code>orderIndex</code>, kèm số Exercise, <code>confidence</code>, trạng thái tiến trình và bestScore của người gọi. UI hiển thị nhãn "Cần kiểm tra" cho Lesson LOW.</li>
+<li><b>Đọc</b>: <code>LessonRead</code> gồm <code>contentMd</code>, <code>sourceChunkIds</code>, <code>confidence</code>, <code>editedByUserAt</code>, tiến trình. Web mở trang đọc thì gọi <code>start</code> nếu đang NOT_STARTED; <code>start</code> idempotent, không hạ cấp COMPLETED. Markdown được sanitize lần 2 phía client (isomorphic-dompurify) vì nội dung sửa tay không đi qua sanitize của worker.</li>
+<li><b>Nguồn</b>: <code>/sources</code> trả từng chunk nguồn (filename, pageFrom/pageTo, headingPath, excerpt cắt ngắn + cờ <code>truncated</code>). Khi Lesson LOW, khối nguồn mở sẵn và có khối cảnh báo: nội dung có thể lệch khỏi tài liệu gốc — hãy kiểm tra lại.</li>
+<li><b>Sửa</b>: <code>patchLessonSchema</code> — title 5–200, summary ≤ 500 hoặc null, contentMd 10–12.000, status DRAFT|PUBLISHED; phải có ít nhất một field. Ghi <code>editedByUserAt</code>; <b>không</b> đổi <code>confidence</code>.</li>
+<li><b>Sắp xếp</b>: <code>lessonIds</code> phải là <b>hoán vị đầy đủ</b> các Lesson chưa xoá của Course. Transaction hai lượt (đẩy tạm sang vùng chỉ số khác rồi gán 0..n-1) để không đụng <code>UNIQUE(courseId, orderIndex)</code>. Route literal <code>reorder</code> được đăng ký trước <code>:lessonId</code>.</li>
+<li><b>Xoá</b>: soft delete và dời <code>orderIndex</code> xuống giá trị âm nhỏ nhất − 1 để giải phóng vị trí.</li>
+</ul>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Lesson</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>PATCH rỗng hoặc sai giới hạn độ dài</td><td>Ít nhất một trường cần sửa / Dữ liệu gửi lên không hợp lệ.</td></tr>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>reorder thiếu/thừa/lạ Lesson</td><td>Danh sách lessonIds phải chứa đúng toàn bộ bài học hiện có của khóa học, không thiếu không thừa.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Course hoặc Lesson không thuộc user / đã xoá</td><td>Không tìm thấy khóa học. / Không tìm thấy bài học.</td></tr>
+</tbody></table>
+</div>
+
+<h2>4.6 Module Learning Progress <span class="en">(FR-PROGRESS)</span> <span class="tag">[SPEC §6.6]</span></h2>
+<p>Tổng hợp tiến trình học của người dùng: tổng quan dashboard, theo từng Course, theo từng Lesson và lịch sử nộp bài.</p>
+<table>
+<caption>Functional requirements — Learning Progress</caption>
+<colgroup><col style="width:16%"><col style="width:36%"><col style="width:17%"><col></colgroup>
+<thead><tr><th>ID</th><th>Yêu cầu</th><th>Trạng thái</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>FR-PROGRESS-01</td><td>Lưu Lesson đã hoàn thành và kết quả Exercise</td><td><span class="st mvp">Có trong MVP</span></td><td>Ghi trong submit (§4.5.1)</td></tr>
+<tr><td>FR-PROGRESS-02</td><td>Tiến trình tổng quan của user</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/progress/overview</code></td></tr>
+<tr><td>FR-PROGRESS-03</td><td>Tiến trình theo từng Course</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/progress/courses</code>, <code>/progress/course/:courseId</code></td></tr>
+<tr><td>FR-PROGRESS-04</td><td>Lịch sử học tập cơ bản</td><td><span class="st mvp">Có trong MVP</span></td><td><span class="m get">GET</span> <code>/progress/history</code></td></tr>
+<tr><td>FR-PROGRESS-05</td><td>Bấm một dòng lịch sử để tới đúng bài</td><td><span class="st mvp">Có trong MVP</span></td><td><code>courseId</code>, <code>lessonId</code>, <code>exerciseId</code> trong item</td></tr>
+<tr><td>FR-PROGRESS-06</td><td>Phân trang cursor-based cho lịch sử</td><td><span class="st mvp">Có trong MVP</span></td><td><code>?limit=&amp;cursor=</code> → <code>{ items, nextCursor }</code></td></tr>
+</tbody></table>
+
+<div class="fn">
+<h3>4.6.1 Chức năng: Tổng quan, streak &amp; lịch sử phân trang</h3>
+<p class="fn-meta">FR-PROGRESS-02…06 · NFR-PERF-02</p>
+<div class="label">Mô tả logic</div>
+<ul>
+<li><b>Overview</b> (5 truy vấn độc lập chạy song song): số Course, tổng/đã hoàn thành Lesson, điểm trung bình (làm tròn 1 chữ số, null nếu chưa nộp), <b>activeStreak</b>.</li>
+<li><b>Streak</b>: lấy các ngày có nộp bài trong khoảng nhìn lại, cắt ngày theo <code>APP_TIMEZONE</code> (mặc định Asia/Ho_Chi_Minh). Nếu hôm nay chưa học thì chuỗi vẫn sống khi hôm qua có học; đếm lùi từng ngày liên tiếp. Không học cả hôm nay lẫn hôm qua → 0.</li>
+<li><b>Theo Course</b>: <code>completed/total</code> và <code>percent</code> (làm tròn); chi tiết một Course trả trạng thái + bestScore từng Lesson.</li>
+<li><b>Lịch sử</b>: <code>limit</code> 1–100 (mặc định 20), <code>cursor</code> là ID Submission cuối trang trước. Truy vấn lấy <code>limit + 1</code> dòng theo <code>(createdAt DESC, id DESC)</code> để biết còn trang sau mà không cần COUNT. Mỗi item có tiêu đề Course/Lesson/Exercise, điểm, <code>passed</code> và ID để điều hướng.</li>
+</ul>
+<div class="label">Luồng xử lý (Sequence)</div>
+<figure class="w70"><img src="diagrams/png/22-seq-history.png"><figcaption>Sequence — Lịch sử học tập phân trang theo cursor</figcaption></figure>
+<div class="label">Xử lý ngoại lệ</div>
+<table class="compact">
+<caption>Mã lỗi — Progress</caption>
+<colgroup><col style="width:12%"><col style="width:20%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>HTTP</th><th>Code nội bộ</th><th>Trường hợp</th><th>Message trả về</th></tr></thead>
+<tbody>
+<tr><td>400</td><td><code>VALIDATION_FAILED</code></td><td>limit ngoài 1–100, cursor không phải UUID</td><td>Tham số không hợp lệ.</td></tr>
+<tr><td>404</td><td><code>NOT_FOUND</code></td><td>Course không thuộc user (progress/course/:id)</td><td>Không tìm thấy khóa học.</td></tr>
+</tbody></table>
+</div>
+</section>

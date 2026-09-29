@@ -1,108 +1,141 @@
 import {
+  ArrowCounterClockwise,
   ArrowLeft,
   ArrowRight,
+  ArrowSquareOut,
+  ArrowUpRight,
   BookOpen,
-  ChartColumn,
+  BookOpenText,
+  CaretDown,
+  CaretLeft,
+  CaretRight,
+  CaretUp,
+  ChartBar,
   Check,
-  CircleCheck,
-  CircleX,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  CheckCircle,
+  CircleNotch,
   Clock,
-  ExternalLink,
+  CloudArrowUp,
+  Cpu,
+  CreditCard,
+  CurrencyDollar,
+  DotsSixVertical,
   Eye,
-  EyeOff,
+  EyeSlash,
   FileText,
-  Flame,
-  GripVertical,
+  Fire,
+  Gear,
+  GraduationCap,
   House,
   Info,
-  Layers,
-  LoaderCircle,
+  Lightning,
+  List,
+  ListChecks,
   Lock,
-  LogOut,
-  Menu,
-  Pencil,
+  MagnifyingGlass,
+  Monitor,
+  Moon,
+  PencilSimple,
   Play,
   Plus,
-  RotateCcw,
-  Search,
-  Settings,
-  Shield,
-  Sparkles,
+  Pulse,
+  ShieldCheck,
+  SignOut,
+  Sparkle,
+  SquaresFour,
+  Stack,
   Star,
+  Sun,
   Target,
   Trash,
-  TriangleAlert,
+  TrendUp,
   Trophy,
-  Upload,
+  UploadSimple,
+  User,
+  Users,
+  Warning,
   X,
-  type LucideIcon,
-} from 'lucide-react';
+  XCircle,
+} from '@phosphor-icons/react/ssr';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react/lib';
 
 /**
- * Bộ icon. Mặt tiền (`<Icon name="..." />`) được giữ nguyên từ bản vẽ tay, chỉ
- * đổi phần ruột sang `lucide-react`.
+ * Bộ icon — mặt tiền `<Icon name="..." />`, ruột **Phosphor** (ADR 013; trước đó Lucide).
  *
- * Vì sao đổi: bộ cũ là 19 chuỗi `path` gõ tay, mỗi lần cần hình mới lại phải
- * tự vẽ — và vài hình đã sai tỉ lệ so với phần còn lại (`book`, `chart`). Lucide
- * là cùng một hệ hình học (lưới 24px, stroke 2, đầu nét bo tròn) nên thay vào
- * không đổi cảm giác thị giác, nhưng mở ra ~1600 hình đã chuẩn hoá.
+ * Vì sao đổi: nét mảnh 2px của Lucide là lựa chọn mặc định của gần như mọi giao diện sinh tự
+ * động, và ở 16px nó nhạt hơn chữ đi cạnh. Phosphor Bold có nét dày đều, đọc rõ ở cỡ nhỏ và
+ * cùng "sức nặng" với chữ Mona Sans 500–600. Dùng entry `/ssr` — không cần React context,
+ * chạy được cả trong server component lẫn client component.
  *
- * Vì sao **không** gọi thẳng component của Lucide ở call site:
- * - `IconName` là union hẹp, nên gõ sai tên hỏng typecheck ngay.
- * - `aria-hidden` + `focusable="false"` được áp ở một chỗ duy nhất. Icon ở đây
- *   luôn là trang trí; ý nghĩa phải nằm ở nhãn chữ hoặc `aria-label` phía gọi.
- *   Màu không bao giờ là tín hiệu duy nhất (HANDBOOK §14).
- * - Đổi bộ icon lần sau chỉ phải sửa một file.
+ * Mặt tiền giữ nguyên nên không call site nào phải sửa: `strokeWidth` cũ được ánh xạ sang
+ * `weight` (< 2 → Regular, còn lại → Bold), `filled` → Fill.
+ *
+ * Icon ở đây **luôn là trang trí** (`aria-hidden`) — ý nghĩa nằm ở nhãn chữ hoặc `aria-label`.
  */
 const ICONS = {
-  // — 19 tên của bản vẽ tay, giữ nguyên để không phải sửa call site —
-  check: Check,
-  lock: Lock,
-  play: Play,
-  book: BookOpen,
-  trophy: Trophy,
-  flame: Flame,
-  target: Target,
-  star: Star,
-  'chevron-right': ChevronRight,
-  'chevron-down': ChevronDown,
-  plus: Plus,
-  x: X,
-  alert: TriangleAlert,
-  home: House,
-  layers: Layers,
-  chart: ChartColumn,
-  settings: Settings,
-  shield: Shield,
-  logout: LogOut,
-
-  // — bổ sung —
-  'chevron-left': ChevronLeft,
+  activity: Pulse,
+  alert: Warning,
   'arrow-left': ArrowLeft,
   'arrow-right': ArrowRight,
-  upload: Upload,
-  file: FileText,
-  trash: Trash,
-  edit: Pencil,
-  retry: RotateCcw,
-  search: Search,
-  sparkles: Sparkles,
+  'arrow-up-right': ArrowUpRight,
+  book: BookOpen,
+  'book-check': BookOpenText,
+  chart: ChartBar,
+  check: Check,
+  'chevron-down': CaretDown,
+  'chevron-left': CaretLeft,
+  'chevron-right': CaretRight,
+  'chevron-up': CaretUp,
+  'circle-check': CheckCircle,
+  'circle-x': XCircle,
   clock: Clock,
-  'circle-check': CircleCheck,
-  'circle-x': CircleX,
-  info: Info,
+  cloud: CloudArrowUp,
+  cpu: Cpu,
+  card: CreditCard,
+  dollar: CurrencyDollar,
+  edit: PencilSimple,
+  external: ArrowSquareOut,
   eye: Eye,
-  'eye-off': EyeOff,
-  menu: Menu,
-  external: ExternalLink,
-  spinner: LoaderCircle,
-  grip: GripVertical,
-} as const satisfies Record<string, LucideIcon>;
+  'eye-off': EyeSlash,
+  file: FileText,
+  flame: Fire,
+  grad: GraduationCap,
+  grid: SquaresFour,
+  grip: DotsSixVertical,
+  home: House,
+  info: Info,
+  layers: Stack,
+  list: ListChecks,
+  lock: Lock,
+  logout: SignOut,
+  menu: List,
+  monitor: Monitor,
+  moon: Moon,
+  play: Play,
+  plus: Plus,
+  retry: ArrowCounterClockwise,
+  search: MagnifyingGlass,
+  settings: Gear,
+  shield: ShieldCheck,
+  sparkles: Sparkle,
+  spinner: CircleNotch,
+  star: Star,
+  sun: Sun,
+  target: Target,
+  trash: Trash,
+  trend: TrendUp,
+  trophy: Trophy,
+  upload: UploadSimple,
+  user: User,
+  users: Users,
+  x: X,
+  zap: Lightning,
+} as const satisfies Record<string, PhosphorIcon>;
 
 export type IconName = keyof typeof ICONS;
+
+/** Danh sách tên — cho bảng mẫu `/dev/ui`, để icon mới không thành icon mồ côi. */
+export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 
 export function Icon({
   name,
@@ -113,20 +146,15 @@ export function Icon({
 }: {
   name: IconName;
   size?: number;
+  /** Tương thích mặt tiền cũ: < 2 → Regular, còn lại → Bold. */
   strokeWidth?: number;
   className?: string;
-  /** Tô đặc bằng màu chữ hiện hành — dùng cho node đã "khoá" trên lộ trình. */
+  /** Tô đặc (Phosphor Fill). */
   filled?: boolean;
 }) {
   const Glyph = ICONS[name];
+  const weight = filled ? 'fill' : strokeWidth < 2 ? 'regular' : 'bold';
   return (
-    <Glyph
-      size={size}
-      strokeWidth={strokeWidth}
-      className={className}
-      fill={filled ? 'currentColor' : 'none'}
-      aria-hidden="true"
-      focusable="false"
-    />
+    <Glyph size={size} weight={weight} className={className} aria-hidden="true" focusable="false" />
   );
 }

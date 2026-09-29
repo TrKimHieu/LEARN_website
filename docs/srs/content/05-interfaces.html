@@ -1,0 +1,174 @@
+<section class="chapter">
+<h1><span class="num">5.</span> Yêu cầu giao tiếp <span class="en">(Interface Requirements)</span></h1>
+
+<h2>5.1 Giao diện lập trình ứng dụng <span class="en">(API / RESTful Contracts)</span></h2>
+<p>Hệ thống chưa xuất tài liệu Swagger/OpenAPI; <b>nguồn sự thật của hợp đồng API</b> là Zod schema trong <code>packages/contracts/src/*.ts</code> (dùng chung cho validate phía API và form phía web) cùng các controller trong <code>apps/api/src/modules</code>. Bảng dưới liệt kê <b>toàn bộ 54 endpoint</b>.</p>
+
+<h3>Quy ước chung</h3>
+<table class="compact kv">
+<caption>API conventions</caption>
+<thead><tr><th>Hạng mục</th><th>Quy ước</th></tr></thead>
+<tbody>
+<tr><td>Base URL</td><td><code>{API_URL}/api/v1</code> (dev: <code>http://localhost:4000/api/v1</code>). JSON UTF-8.</td></tr>
+<tr><td>Xác thực</td><td><code>Authorization: Bearer &lt;accessToken&gt;</code>. Refresh token chỉ đi qua cookie httpOnly <code>refresh_token</code>; web gọi với <code>credentials: "include"</code>. CORS chỉ cho <code>APP_URL</code> và localhost:3000.</td></tr>
+<tr><td>Public (không cần token)</td><td><code>/auth/register</code>, <code>/auth/login</code>, <code>/auth/refresh</code>, <code>/auth/forgot-password</code>, <code>/auth/reset-password</code>, <code>/plans</code>, <code>/health</code>, <code>/health/ready</code>, <code>/webhooks/stripe</code> (NFR-SEC-11).</td></tr>
+<tr><td>Validation</td><td>Body/param/query qua Zod; schema body dạng <code>strict</code> — field lạ bị từ chối. ID là UUID.</td></tr>
+<tr><td>Định dạng lỗi</td><td>RFC 7807: <code>{ type, title, status, code, detail, requestId?, meta? }</code>. <code>type = https://learn.ai/errors/{code-lowercase}</code>, suy ra từ <code>code</code> ở một chỗ cho mọi nhánh lỗi. Client so khớp bằng <code>code</code>, không bằng <code>detail</code>.</td></tr>
+<tr><td>Request ID</td><td>Mọi response có header <code>X-Request-Id</code> (lấy từ request nếu client gửi, không thì sinh UUID). Màn hình lỗi của web hiển thị requestId.</td></tr>
+<tr><td>Phân trang</td><td>Cursor-based: <code>?limit=&amp;cursor=</code> → <code>{ items, nextCursor }</code> (đang áp dụng cho lịch sử học tập). Các danh sách nhỏ trả mảng trong object bọc (<code>{ courses }</code>, <code>{ lessons }</code>…).</td></tr>
+<tr><td>Rate limit</td><td>Redis <code>INCR</code> + TTL theo userId/IP + route. Vượt → 429 <code>RATE_LIMITED</code>. Header <code>X-RateLimit-*</code>/<code>Retry-After</code> (NFR-OPS-02): <span class="st dev">Đang phát triển</span>.</td></tr>
+<tr><td>Security headers</td><td><code>helmet</code> (CSP tắt vì API thuần JSON).</td></tr>
+</tbody></table>
+
+<h3>Danh mục mã lỗi <span class="en">(Error Code Catalog)</span></h3>
+<table class="compact">
+<caption>Error codes (<code>ERROR_CODES</code> trong <code>packages/contracts/src/common.ts</code>)</caption>
+<colgroup><col style="width:28%"><col style="width:10%"><col></colgroup>
+<thead><tr><th>code</th><th class="c">HTTP</th><th>Ý nghĩa / cách client xử lý</th></tr></thead>
+<tbody>
+<tr><td><code>VALIDATION_FAILED</code></td><td class="c">400</td><td>Input sai schema; <code>meta.fields</code> map đường dẫn field → thông điệp. Hiện lỗi cạnh field.</td></tr>
+<tr><td><code>UNAUTHENTICATED</code></td><td class="c">401</td><td>Thiếu/sai/hết hạn token. Web thử <code>/auth/refresh</code> một lần rồi mới đưa về trang đăng nhập.</td></tr>
+<tr><td><code>FORBIDDEN</code></td><td class="c">403</td><td>Sai vai trò (không phải ADMIN) hoặc thao tác bị cấm (mua gói chưa bán).</td></tr>
+<tr><td><code>NOT_FOUND</code></td><td class="c">404</td><td>Không tồn tại <b>hoặc không thuộc về bạn</b> (không phân biệt, chống dò).</td></tr>
+<tr><td><code>CONFLICT</code></td><td class="c">409</td><td>Xung đột trạng thái/dữ liệu: email trùng, tài liệu trùng, sai trạng thái job, unique bị đụng (P2002), transaction quá lâu (P2028).</td></tr>
+<tr><td><code>PAYLOAD_TOO_LARGE</code></td><td class="c">413</td><td>Tài liệu vượt 25 MB.</td></tr>
+<tr><td><code>UNSUPPORTED_FILE_TYPE</code></td><td class="c">415</td><td>Loại file không hỗ trợ / MIME mâu thuẫn đuôi.</td></tr>
+<tr><td><code>QUOTA_EXCEEDED</code></td><td class="c">402</td><td>Chạm hạn mức gói; <code>meta { metric, limit, used }</code>. Web hiển thị lời mời nâng cấp.</td></tr>
+<tr><td><code>RATE_LIMITED</code></td><td class="c">429</td><td>Quá nhiều yêu cầu trong cửa sổ thời gian.</td></tr>
+<tr><td><code>AI_GENERATION_FAILED</code>, <code>AI_GENERATION_TIMEOUT</code>, <code>UPSTREAM_UNAVAILABLE</code></td><td class="c">—</td><td>Mã dự trữ cho lỗi AI/upstream; hiện lỗi pipeline được ghi trong <code>AIJob.error</code> (§4.4.2) thay vì trả HTTP.</td></tr>
+<tr><td><code>INTERNAL_ERROR</code></td><td class="c">500</td><td>Lỗi không lường trước; message chung, chi tiết chỉ trong log (theo requestId).</td></tr>
+</tbody></table>
+
+<h3>Danh sách endpoint</h3>
+<p>Auth: <b>Public</b> = không cần token · <b>User</b> = Bearer token, mọi role · <b>Admin</b> = Bearer token, role ADMIN. Mọi truy vấn dữ liệu của User đều lọc theo quyền sở hữu.</p>
+
+<table class="compact">
+<caption>API — Auth &amp; Health</caption>
+<colgroup><col style="width:9%"><col style="width:24%"><col style="width:26%"><col style="width:31%"><col></colgroup>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Request</th><th>Response</th><th>Auth</th></tr></thead>
+<tbody>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/register</code></td><td><code>{ email, password, displayName, locale? }</code></td><td>201 <code>{ user, accessToken }</code> + cookie</td><td>Public · 10/60s</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/login</code></td><td><code>{ email, password }</code></td><td>200 <code>{ user, accessToken }</code> + cookie</td><td>Public · 5/60s</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/refresh</code></td><td>cookie <code>refresh_token</code></td><td>200 <code>{ user, accessToken }</code> + cookie mới</td><td>Public</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/logout</code></td><td>cookie</td><td>200 <code>{ ok }</code>, xoá cookie</td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/logout-all</code></td><td>—</td><td>200 <code>{ ok }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/auth/me</code></td><td>—</td><td><code>{ user, plan { code, name }, usage }</code></td><td>User</td></tr>
+<tr><td><span class="m patch">PATCH</span></td><td><code>/auth/me</code></td><td><code>{ displayName?, locale? }</code></td><td>user profile</td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/change-password</code></td><td><code>{ currentPassword, newPassword }</code></td><td><code>{ ok }</code></td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/forgot-password</code></td><td><code>{ email }</code></td><td>200 <code>{ ok }</code> (luôn)</td><td>Public · 5/15'</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/auth/reset-password</code></td><td><code>{ token, newPassword }</code></td><td>200 <code>{ ok }</code>, xoá cookie</td><td>Public · 10/15'</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/health</code></td><td>—</td><td><code>{ status: "ok", uptimeSec }</code></td><td>Public</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/health/ready</code></td><td>—</td><td><code>{ status: "ready" | "degraded", checks { database, redis, storage } }</code></td><td>Public</td></tr>
+</tbody></table>
+
+<table class="compact">
+<caption>API — Course &amp; Document</caption>
+<colgroup><col style="width:9%"><col style="width:27%"><col style="width:25%"><col style="width:29%"><col></colgroup>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Request</th><th>Response</th><th>Auth</th></tr></thead>
+<tbody>
+<tr><td><span class="m get">GET</span></td><td><code>/workspace</code></td><td>—</td><td><code>{ courses: CourseSummary[] }</code> (progress, documentCount, lessonCount)</td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/courses</code></td><td><code>{ title, description?, language? }</code></td><td><code>CourseDetail</code></td><td>User · quota</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/courses/:id</code></td><td>—</td><td><code>CourseDetail</code> (+ <code>stats</code>)</td><td>User</td></tr>
+<tr><td><span class="m patch">PATCH</span></td><td><code>/courses/:id</code></td><td><code>{ title?, description?, status? }</code></td><td><code>CourseDetail</code></td><td>User</td></tr>
+<tr><td><span class="m delete">DELETE</span></td><td><code>/courses/:id</code></td><td>—</td><td><code>{ ok }</code> (soft delete)</td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/courses/:courseId/documents/upload-url</code></td><td><code>{ filename, mimeType, sizeBytes, checksumSha256 }</code></td><td><code>{ documentId, uploadUrl, expiresInSec }</code></td><td>User · quota (kiểm)</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/documents/:id/confirm</code></td><td><code>{ sizeBytes }</code></td><td><code>{ documentId, status }</code></td><td>User · quota (trừ)</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/courses/:courseId/documents</code></td><td>—</td><td><code>{ documents: [{ id, filename, mimeType, sizeBytes, status, pageCount, chunkCount, errorMessage, createdAt, downloadUrl }] }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/documents/:id/download</code></td><td>—</td><td><code>{ url }</code> (presigned GET)</td><td>User</td></tr>
+<tr><td><span class="m delete">DELETE</span></td><td><code>/documents/:id</code></td><td>—</td><td><code>{ ok }</code></td><td>User</td></tr>
+</tbody></table>
+
+<table class="compact">
+<caption>API — AI Jobs</caption>
+<colgroup><col style="width:9%"><col style="width:30%"><col style="width:24%"><col style="width:27%"><col></colgroup>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Request</th><th>Response</th><th>Auth</th></tr></thead>
+<tbody>
+<tr><td><span class="m post">POST</span></td><td><code>/ai/courses/:courseId/generate-lessons</code></td><td><code>{ documentIds?, language?, difficulty? }</code></td><td><code>AiJobSummary</code></td><td>User · quota</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/ai/jobs?courseId=</code></td><td>query <code>courseId?</code></td><td><code>{ jobs: AiJobSummary[] }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/ai/jobs/:id</code></td><td>—</td><td><code>AiJobDetail</code> (attempt, inputParams, runs[])</td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/ai/jobs/:id/cancel</code></td><td>—</td><td><code>AiJobSummary</code> (CANCELLED)</td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/ai/jobs/:id/stream</code></td><td>—</td><td><code>text/event-stream</code>: <code>{ jobId, status, progress, label, … }</code>, heartbeat 15s <span class="st dev">Đang phát triển</span></td><td>User</td></tr>
+</tbody></table>
+<p class="dd-constraints"><code>AiJobSummary = { id, courseId, documentId, type, status, progress, progressLabel, error, queuedAt, startedAt, finishedAt }</code>.</p>
+
+<table class="compact">
+<caption>API — Lesson, Exercise &amp; Progress</caption>
+<colgroup><col style="width:9%"><col style="width:31%"><col style="width:23%"><col style="width:27%"><col></colgroup>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Request</th><th>Response</th><th>Auth</th></tr></thead>
+<tbody>
+<tr><td><span class="m get">GET</span></td><td><code>/courses/:courseId/lessons</code></td><td>—</td><td><code>{ lessons: LessonSummary[] }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/courses/:courseId/lessons/:lessonId</code></td><td>—</td><td><code>LessonRead</code> (contentMd, confidence, progress)</td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/courses/:courseId/lessons/:lessonId/sources</code></td><td>—</td><td><code>{ sources: LessonSource[] }</code></td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/courses/:courseId/lessons/:lessonId/start</code></td><td>—</td><td><code>{ status }</code></td><td>User</td></tr>
+<tr><td><span class="m patch">PATCH</span></td><td><code>/courses/:courseId/lessons/reorder</code></td><td><code>{ lessonIds: uuid[] }</code></td><td><code>{ lessons }</code></td><td>User</td></tr>
+<tr><td><span class="m patch">PATCH</span></td><td><code>/courses/:courseId/lessons/:lessonId</code></td><td><code>{ title?, summary?, contentMd?, status? }</code></td><td><code>LessonRead</code></td><td>User</td></tr>
+<tr><td><span class="m delete">DELETE</span></td><td><code>/courses/:courseId/lessons/:lessonId</code></td><td>—</td><td><code>{ ok }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/lessons/:lessonId/exercise?exerciseId=</code></td><td>query <code>exerciseId?</code></td><td><code>ExerciseRead</code> — không có đáp án</td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/lessons/:lessonId/exercise/submit</code></td><td><code>{ answers[], exerciseId?, durationMs? }</code></td><td><code>Submission</code> (score, passed, lessonCompleted, results[] kèm đáp án)</td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/progress/overview</code></td><td>—</td><td><code>{ courseCount, completedLessons, totalLessons, averageScore, activeStreak }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/progress/courses</code></td><td>—</td><td><code>[{ courseId, courseTitle, completed, total, percent }]</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/progress/course/:courseId</code></td><td>—</td><td><code>{ lessons: [{ lessonId, lessonTitle, orderIndex, status, bestScore }] }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/progress/history?limit=&amp;cursor=</code></td><td>limit 1–100, cursor uuid</td><td><code>{ items: HistoryItem[], nextCursor }</code></td><td>User</td></tr>
+</tbody></table>
+
+<table class="compact">
+<caption>API — Subscription &amp; Billing</caption>
+<colgroup><col style="width:9%"><col style="width:26%"><col style="width:22%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Request</th><th>Response</th><th>Auth</th></tr></thead>
+<tbody>
+<tr><td><span class="m get">GET</span></td><td><code>/plans</code></td><td>—</td><td><code>[{ code, name, description, priceCents, currency, interval, features, isFutureExtension }]</code></td><td>Public</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/subscription</code></td><td>—</td><td><code>{ planCode, status, currentPeriodEnd, cancelAtPeriodEnd, billingMode, usage }</code></td><td>User</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/usage</code></td><td>—</td><td><code>{ METRIC: { used, limit, window } }</code></td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/subscription/checkout</code></td><td><code>{ planCode }</code></td><td><code>{ url, mode: "demo" | "live" }</code></td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/subscription/cancel</code></td><td>—</td><td><code>{ ok, message }</code></td><td>User</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/webhooks/stripe</code></td><td>raw body + <code>Stripe-Signature</code></td><td><code>{ received }</code> — <span class="st plan">Đã lên kế hoạch</span></td><td>Public (chữ ký)</td></tr>
+</tbody></table>
+
+<table class="compact">
+<caption>API — Administration</caption>
+<colgroup><col style="width:9%"><col style="width:29%"><col style="width:17%"><col style="width:36%"><col></colgroup>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Request</th><th>Response</th><th>Auth</th></tr></thead>
+<tbody>
+<tr><td><span class="m get">GET</span></td><td><code>/admin/metrics</code></td><td>—</td><td><code>{ generatedAt, totals { users, usersToday, courses, documents, aiJobs, aiJobsToday, submissions, totalCostUsd }, dailyCosts[] }</code></td><td>Admin</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/admin/users?q=</code></td><td>query <code>q?</code></td><td><code>{ users: [user + courseCount, subscriptionCode] }</code></td><td>Admin</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/admin/courses?q=</code></td><td>query <code>q?</code></td><td><code>{ courses: [CourseSummary + ownerEmail] }</code></td><td>Admin</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/admin/subscriptions</code></td><td>—</td><td><code>{ subscriptions: [{ userId, email, planCode, status, currentPeriodEnd }] }</code></td><td>Admin</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/admin/ai-jobs?status=</code></td><td>query <code>status?</code></td><td><code>{ jobs: [AiJobSummary + courseTitle, requesterEmail] }</code></td><td>Admin</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/admin/ai-jobs/:id</code></td><td>—</td><td><code>AdminAiJobDetail</code> (runs, courseTitle, requesterEmail)</td><td>Admin</td></tr>
+<tr><td><span class="m post">POST</span></td><td><code>/admin/ai-jobs/:id/retry</code></td><td>—</td><td><code>AdminAiJobDetail</code> (QUEUED)</td><td>Admin</td></tr>
+<tr><td><span class="m get">GET</span></td><td><code>/admin/ai-jobs/:id/audit-log</code></td><td>—</td><td><code>{ entries: [{ id, actorEmail, action, entityType, entityId, metadata, createdAt }] }</code></td><td>Admin</td></tr>
+</tbody></table>
+
+<h2>5.2 Tích hợp bên thứ ba <span class="en">(External Software Interfaces)</span></h2>
+<table>
+<caption>External interfaces</caption>
+<colgroup><col style="width:18%"><col style="width:42%"><col></colgroup>
+<thead><tr><th>Dịch vụ</th><th>Cách tích hợp</th><th>Yêu cầu &amp; xử lý lỗi</th></tr></thead>
+<tbody>
+<tr><td><b>Object storage</b> (S3 API; MinIO khi dev, S3/R2 khi deploy)</td><td>AWS SDK v3 (<code>@aws-sdk/client-s3</code>, <code>s3-request-presigner</code>). API ký presigned PUT (hạn <code>S3_PUT_URL_EXPIRES_SEC</code> = 900s, gắn Content-Type + Content-Length) và presigned GET; worker tải object để trích xuất; xoá object khi xoá Document. <code>requestChecksumCalculation: WHEN_REQUIRED</code> để URL ký không chứa checksum rỗng.</td><td>Bucket không public. Key do server sinh. <code>/health/ready</code> kiểm storage. Xoá object là best-effort (DB là nguồn sự thật).</td></tr>
+<tr><td><b>LLM provider</b></td><td><code>packages/ai/src/llm</code>: interface <code>LlmProvider</code> với các adapter <code>anthropic</code> (SDK chính thức), <code>gemini</code> (Google AI Studio), <code>openai</code> (Chat Completions, đổi endpoint bằng <code>LLM_BASE_URL</code>), <code>mock</code> (fixture, có thể nạp kịch bản qua <code>MOCK_FIXTURES_PATH</code>) và <code>fallback</code> (bọc model chính + model dự phòng). Chọn bằng <code>LLM_PROVIDER</code>, <code>LLM_MODE</code>, <code>LLM_MODEL_*</code>.</td><td>Timeout 120s/lượt; retry lỗi schema/luật; tự chuyển model dự phòng khi 429/503/529; mọi lượt gọi ghi GenerationRun (token, chi phí, độ trễ); chặn tổng chi phí mỗi job. Không gửi dữ liệu định danh người dùng vào prompt.</td></tr>
+<tr><td><b>SMTP</b></td><td><code>nodemailer</code> qua <code>SMTP_URL</code> khi <code>MAIL_MODE=smtp</code>; <code>MAIL_MODE=log</code> in đường dẫn ra log (dev). Người gửi <code>MAIL_FROM</code>.</td><td>Gửi nền, lỗi chỉ ghi log (không ảnh hưởng response). Production mà để <code>log</code> thì thư <b>không</b> được gửi — chỉ cảnh báo trong log.</td></tr>
+<tr><td><b>Redis / BullMQ</b> (hạ tầng nội bộ)</td><td>Queue <code>document-extract</code>, <code>lesson-generate</code> (có processor); <code>billing-sync</code>, <code>maintenance</code> (đã khai báo, chưa dùng). Pub/sub channel <code>job:{id}</code> cho tiến độ. Bộ đếm rate limit.</td><td>Job có jobId xác định (chống enqueue trùng), 3 attempts, backoff mũ. Cần bật persistence khi deploy để job không mất khi restart.</td></tr>
+<tr><td><b>Stripe</b> <span class="st plan">Đã lên kế hoạch</span></td><td>Checkout Session theo <code>Plan.providerPriceId</code>; webhook <code>/webhooks/stripe</code> xác minh chữ ký.</td><td>Webhook là nguồn sự thật; idempotent theo <code>(provider, eventId)</code>.</td></tr>
+</tbody></table>
+
+<h2>5.3 Giao diện người dùng <span class="en">(User Interface)</span></h2>
+<p>Đặc tả ở mức yêu cầu — không mô tả chi tiết thị giác vì giao diện có thể được dựng lại (hướng hiện tại: ADR 012–015, đơn sắc trắng–đen, font Hanken Grotesk).</p>
+<table class="compact">
+<caption>Bản đồ route của web app</caption>
+<colgroup><col style="width:40%"><col style="width:14%"><col></colgroup>
+<thead><tr><th>Route</th><th>Truy cập</th><th>Chức năng</th></tr></thead>
+<tbody>
+<tr><td><code>/</code></td><td>Public</td><td>Portfolio website (FR-SITE)</td></tr>
+<tr><td><code>/login</code>, <code>/register</code>, <code>/forgot-password</code>, <code>/reset-password</code></td><td>Public</td><td>FR-AUTH</td></tr>
+<tr><td><code>/dashboard</code></td><td>User</td><td>Tổng quan tiến trình, streak</td></tr>
+<tr><td><code>/courses</code>, <code>/courses/new</code></td><td>User</td><td>Workspace, tạo Course (hiển thị QuotaNotice khi 402)</td></tr>
+<tr><td><code>/courses/[courseId]</code></td><td>User</td><td>Chi tiết Course: tài liệu, upload, sinh bài học AI + tiến độ, danh sách Lesson</td></tr>
+<tr><td><code>/courses/[courseId]/lessons/[lessonId]</code></td><td>User</td><td>Đọc bài, mục lục, cảnh báo LOW_CONFIDENCE, nguồn tài liệu</td></tr>
+<tr><td><code>/courses/[courseId]/lessons/[lessonId]/practice</code></td><td>User</td><td>Làm bài tập, kết quả</td></tr>
+<tr><td><code>/progress</code></td><td>User</td><td>Tiến trình theo Course, lịch sử phân trang</td></tr>
+<tr><td><code>/settings</code></td><td>User</td><td>Hồ sơ, gói, hạn mức, nâng cấp/huỷ (băng cảnh báo demo)</td></tr>
+<tr><td><code>/admin</code>, <code>/admin/{metrics, users, courses, ai-jobs, ai-jobs/[jobId], subscriptions}</code></td><td>Admin</td><td>FR-ADMIN</td></tr>
+</tbody></table>
+<p><b>Yêu cầu trạng thái màn hình</b> (NFR-UX-01, 02): mọi màn hình có dữ liệu phải xử lý đủ 5 trạng thái — <b>Loading</b> (skeleton đúng hình dạng nội dung), <b>Empty</b> (giải thích + hành động tiếp theo), <b>Error</b> (theo <code>code</code>, nút thử lại, hiển thị <code>requestId</code>), <b>Partial</b> (ví dụ AI Job sinh 5/7 bài vẫn hiển thị 5 bài), <b>Success</b>. AI Job có thêm trạng thái <b>Running</b>: thanh tiến độ + nhãn bước + nút huỷ.</p>
+</section>

@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> PENDING : POST upload-url
+  PENDING --> UPLOADED : POST confirm (trừ quota)
+  UPLOADED --> EXTRACTING : worker claim có điều kiện
+  EXTRACTING --> EXTRACTED : ghi DocumentChunk
+  EXTRACTING --> FAILED : magic bytes sai, PDF scan, vượt trang, lỗi parser
+  PENDING --> [*] : bỏ dở, không tính quota
+  EXTRACTED --> [*] : DELETE
+  FAILED --> [*] : DELETE

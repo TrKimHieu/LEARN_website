@@ -18,6 +18,7 @@ import { ErrorState } from '@/components/ui/states';
 import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { useDebouncedQueryParam } from '@/lib/url-state';
+import { humanizeCode } from '@/lib/humanize';
 
 export default function AdminUsersPage() {
   const [q, setQ, committedQ] = useDebouncedQueryParam('q');
@@ -35,10 +36,11 @@ export default function AdminUsersPage() {
             <Input
               id="user-search"
               type="search"
+              icon="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Tìm theo email…"
-              className="w-64"
+              className="w-full sm:w-72"
             />
           </>
         }
@@ -86,21 +88,25 @@ export default function AdminUsersPage() {
               <Tbody>
                 {users.data.users.map((u) => (
                   <tr key={u.id}>
-                    <Td className="font-medium text-ink-900">{u.email}</Td>
+                    <Td className="font-medium text-fg">{u.email}</Td>
                     <Td>{u.displayName}</Td>
                     <Td>
                       <Badge
                         tone={u.role === 'ADMIN' ? 'info' : 'neutral'}
                         icon={u.role === 'ADMIN' ? 'shield' : undefined}
                       >
-                        {u.role}
+                        {u.role === 'ADMIN'
+                          ? 'Quản trị viên'
+                          : u.role === 'LEARNER'
+                            ? 'Người học'
+                            : humanizeCode(u.role)}
                       </Badge>
                     </Td>
-                    <Td className="font-medium">{u.subscriptionCode ?? '—'}</Td>
+                    <Td className="font-medium">{u.subscriptionCode ?? 'Không có'}</Td>
                     <Td align="right" className="tabular-nums">
                       {u.courseCount}
                     </Td>
-                    <Td className="whitespace-nowrap text-ink-500">
+                    <Td className="whitespace-nowrap text-fg-subtle">
                       {new Date(u.createdAt).toLocaleDateString('vi-VN')}
                     </Td>
                   </tr>

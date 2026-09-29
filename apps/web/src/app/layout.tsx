@@ -1,37 +1,23 @@
-import type { Metadata } from 'next';
-import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
 import { BRAND } from '@learn/ui';
 import { env } from '@/lib/env';
 import { AuthProvider } from '@/features/auth/auth-context';
+import { THEME_SCRIPT, ThemeProvider } from '@/lib/theme';
 import { QueryProvider } from '@/lib/query-provider';
 import { MotionProvider } from '@/lib/motion';
 import './globals.css';
 
 /**
- * Chữ — xem docs/adr/008-chu-be-vietnam-pro-jetbrains-mono.md.
+ * Chữ — ADR 014. Một họ sans duy nhất, Hanken Grotesk (variable, có subset tiếng Việt), cho
+ * cả tiêu đề lẫn giao diện; JetBrains Mono cho code. Bỏ serif cho tiêu đề.
  *
- * Be Vietnam Pro là họ **tĩnh** (không phải variable): mỗi weight × mỗi subset là một file
- * woff2 riêng. Ngân sách vì thế là 4 bậc sans — đủ cho thang 400/500/600/700 mà UX-UI-PRINCIPLES
- * §4.1 khuyến nghị (2–3 bậc đậm, tối đa 3). Thêm 800 là +3 file cho một weight chỉ dùng ở heading,
- * nên `font-extrabold` đã được gỡ khỏi toàn bộ codebase thay vì mở rộng ngân sách.
- *
- * `variable` mode để `packages/config/tailwind/theme.css` trỏ `--font-sans` vào đây. Next còn tự
- * sinh một họ fallback đã khớp metric (`__Be_Vietnam_Pro_Fallback_*`) — đó là thứ dập CLS trong
- * lúc swap, nên chuỗi thật sâu ba bậc: webfont → fallback khớp metric → stack hệ thống.
+ * Tự host qua Fontsource (npm), KHÔNG dùng `next/font/google`: bản Google tải font lúc
+ * dev/build, nên máy/CI không có mạng ra ngoài sẽ lặng lẽ rơi về font dự phòng (đã dính ở
+ * preview). File `.woff2` nằm trong `node_modules`, `@font-face` chia theo `unicode-range`
+ * nên trình duyệt chỉ tải subset cần (latin, latin-ext, vietnamese).
  */
-const sans = Be_Vietnam_Pro({
-  subsets: ['latin', 'latin-ext', 'vietnamese'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-  variable: '--font-be-vietnam-pro',
-});
-
-const mono = JetBrains_Mono({
-  subsets: ['latin', 'latin-ext', 'vietnamese'],
-  weight: ['400', '700'],
-  display: 'swap',
-  variable: '--font-jetbrains-mono',
-});
+import '@fontsource-variable/hanken-grotesk';
+import '@fontsource-variable/jetbrains-mono';
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
@@ -50,18 +36,32 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
+    { media: '(prefers-color-scheme: dark)', color: '#0e0e0e' },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // `className` phải nằm trên <html>, không phải <body>: `@theme` biên dịch thành rule `:root`,
-  // tức chính phần tử này. Đặt xuống <body> thì `--font-sans` ở `:root` trỏ vào một biến chưa
-  // được định nghĩa ở tầng đó.
+  // `suppressHydrationWarning` vì `THEME_SCRIPT` đặt `data-theme` trước khi React hydrate —
+  // lệch thuộc tính đó là cố ý.
   return (
-    <html lang="vi" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="vi" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
-        <MotionProvider>
-          <QueryProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </QueryProvider>
-        </MotionProvider>
+        <ThemeProvider>
+          <MotionProvider>
+            <QueryProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </QueryProvider>
+          </MotionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

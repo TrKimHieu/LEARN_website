@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react';
 import { Mascot } from '@/components/shared/mascot';
-import { Button, Card, ProgressBar } from '@/components/ui';
-import { PartialNotice } from '@/components/ui/states';
+import { Button, Card, Icon, PartialNotice, ProgressBar } from '@/components/ui';
 import { useAiJob, useCancelAiJob } from '@/features/ai/ai-api';
 import { partialFailuresOf } from '@/features/ai/ai-job-partial';
 import { errorText } from '@/lib/api-client';
@@ -18,7 +17,13 @@ import { errorText } from '@/lib/api-client';
  */
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <Card className="mt-6 flex flex-col items-center gap-3 py-12 text-center">{children}</Card>
+    <Card
+      role="status"
+      aria-live="polite"
+      className="relative flex flex-col items-center gap-3 overflow-hidden px-6 py-12 text-center"
+    >
+      <div className="relative flex w-full flex-col items-center gap-3">{children}</div>
+    </Card>
   );
 }
 
@@ -48,7 +53,7 @@ export function AiJobProgress({
     return (
       <Panel>
         <Mascot state="thinking" size={88} />
-        <p className="text-sm font-medium text-ink-500">Đang kết nối tới AI Job…</p>
+        <p className="text-sm font-medium text-fg-subtle">Đang kết nối tới AI Job…</p>
       </Panel>
     );
   }
@@ -57,7 +62,7 @@ export function AiJobProgress({
     return (
       <Panel>
         <Mascot state="alerting" size={88} />
-        <p className="text-sm font-medium text-ink-900">
+        <p className="text-sm font-medium text-fg">
           {errorText(job.error, 'Không theo dõi được job.')}
         </p>
         <Button variant="secondary" onClick={() => onDone({ succeeded: false })}>
@@ -73,16 +78,17 @@ export function AiJobProgress({
     const queued = j.status === 'QUEUED';
     return (
       <Panel>
-        <Mascot state={queued ? 'thinking' : 'working'} size={88} />
-        <p className="text-sm font-bold text-ink-900">
+        <Mascot state={queued ? 'thinking' : 'working'} size={96} />
+        <p className="text-sm text-fg-subtle">AI Job · {queued ? 'đang chờ' : 'đang chạy'}</p>
+        <p className="text-base font-semibold text-fg">
           {queued ? 'Đang xếp hàng…' : (j.progressLabel ?? 'Đang xử lý…')}
         </p>
-        <div className="w-full max-w-xs">
+        <div className="w-full max-w-sm">
           <ProgressBar
             value={Math.max(4, j.progress)}
             label={`Tiến độ sinh bài học: ${j.progress}%`}
           />
-          <p className="mt-1.5 text-xs font-bold tabular-nums text-ink-500">{j.progress}%</p>
+          <p className="mt-1.5 text-xs font-semibold tabular-nums text-fg-subtle">{j.progress}%</p>
         </div>
         <Button
           variant="ghost"
@@ -105,23 +111,23 @@ export function AiJobProgress({
       return (
         <Panel>
           <Mascot state="alerting" size={88} />
-          <p className="text-sm font-semibold text-ink-900">
+          <p className="text-sm font-semibold text-fg">
             Đã sinh xong, nhưng {partialFailures.length} phần không hoàn thành
           </p>
           <div className="w-full max-w-md text-left">
-            <PartialNotice>
-              Những phần dưới đây không sinh được bài học hợp lệ. Các bài còn lại đã sẵn sàng — bạn
+            <PartialNotice className="mb-3">
+              Những phần dưới đây không sinh được bài học hợp lệ. Các bài còn lại đã sẵn sàng, bạn
               có thể học ngay, rồi chạy sinh lại để bổ sung phần thiếu.
             </PartialNotice>
             <ul className="space-y-1.5">
               {partialFailures.map((f) => (
                 <li
                   key={f.node}
-                  className="rounded-lg border border-surface-300 bg-surface-100 px-3 py-2 text-xs"
+                  className="rounded-control border border-line bg-panel-2 px-3 py-2 text-xs"
                 >
-                  <span className="font-medium text-ink-900">{f.node}</span>
+                  <span className="font-medium text-fg">{f.node}</span>
                   {f.errors.length > 0 && (
-                    <span className="text-ink-500"> — {f.errors.join('; ')}</span>
+                    <span className="text-fg-subtle">: {f.errors.join('; ')}</span>
                   )}
                 </li>
               ))}
@@ -134,8 +140,11 @@ export function AiJobProgress({
 
     return (
       <Panel>
-        <Mascot state="celebrate" size={88} />
-        <p className="text-sm font-semibold text-ink-900">Hoàn tất! Bài học đã sẵn sàng.</p>
+        <Mascot state="celebrate" size={96} />
+        <p className="flex items-center gap-1.5 text-base font-semibold text-ok">
+          <Icon name="circle-check" size={18} />
+          Hoàn tất! Bài học đã sẵn sàng.
+        </p>
       </Panel>
     );
   }
@@ -146,13 +155,16 @@ export function AiJobProgress({
   return (
     <Panel>
       <Mascot state={cancelled ? 'idle' : 'alerting'} size={88} />
-      <p className="text-sm font-bold text-ink-900">
+      <p className="text-sm font-semibold text-fg">
         {cancelled ? 'Đã huỷ job.' : 'Sinh bài học thất bại.'}
       </p>
       {j.error?.message && !cancelled && (
-        <p className="max-w-sm text-xs text-ink-500">{j.error.message}</p>
+        <p className="max-w-sm text-xs text-fg-subtle">{j.error.message}</p>
       )}
-      <Button onClick={() => onDone({ succeeded: false })}>Thử lại</Button>
+      <Button onClick={() => onDone({ succeeded: false })}>
+        <Icon name="retry" size={16} />
+        Thử lại
+      </Button>
     </Panel>
   );
 }

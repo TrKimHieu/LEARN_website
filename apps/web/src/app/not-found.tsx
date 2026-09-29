@@ -2,34 +2,28 @@ import Link from 'next/link';
 import { LogoMark } from '@/features/shell/logo-mark';
 
 /**
- * 404 có thương hiệu — trước đây route này không tồn tại nên Next dùng trang mặc
- * định trần trụi của framework.
- *
- * Server component thuần, không dùng `EmptyState`/`Mascot`: mascot động nạp qua
- * `next/dynamic({ ssr: false })` (xem `components/shared/mascot.tsx`), phù hợp cho nội
- * dung sau khi đã biết người dùng đăng nhập hay chưa, nhưng 404 là trang có thể
- * là điểm chạm ĐẦU TIÊN của một phiên (gõ nhầm URL, link cũ từ nơi khác) — không
- * đáng để trang này phải đợi hydrate xong mới vẽ được logo.
+ * 404 có thương hiệu. Server component thuần, không mascot động: 404 có thể là điểm chạm
+ * ĐẦU TIÊN của một phiên (gõ nhầm URL), không đáng phải đợi hydrate mới vẽ được.
  */
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-surface-100 px-4 text-center">
-      <LogoMark size={56} tone="light" />
-      <div>
-        <p className="font-mono text-sm font-bold text-sky-700">404</p>
-        <h1 className="mt-2 text-2xl font-bold text-ink-900">Không tìm thấy trang</h1>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-ink-500">
-          Đường dẫn này không tồn tại, hoặc đã bị đổi chỗ khác.
+    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-app px-4 text-center">
+      <div className="relative">
+        <LogoMark size={64} className="mx-auto" />
+        <p className="mt-8 font-mono text-sm text-fg-subtle">Lỗi 404</p>
+        <h1 className="mt-2 text-4xl font-semibold leading-tight tracking-[-0.025em] text-fg">
+          Không tìm thấy trang
+        </h1>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-fg-subtle">
+          Đường dẫn này không tồn tại, hoặc đã được đổi sang chỗ khác.
         </p>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-3">
         <Link
           href="/dashboard"
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-sky-500 px-4 text-sm font-medium text-navy-900 transition-all duration-200 hover:bg-sky-400 focus-ring"
+          className="mt-8 inline-flex h-10 items-center justify-center rounded-control bg-primary px-4 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover focus-ring"
         >
-          Vào ứng dụng
+          Về trang tổng quan
         </Link>
       </div>
-    </div>
+    </main>
   );
 }

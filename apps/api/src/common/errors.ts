@@ -83,11 +83,11 @@ export class ApiError extends Error {
     return new ApiError(413, 'PAYLOAD_TOO_LARGE', detail);
   }
 
-  static unsupportedFile(mimeType?: string) {
+  static unsupportedFile(reason?: string) {
     return new ApiError(
       415,
       'UNSUPPORTED_FILE_TYPE',
-      mimeType ? `Loại file không được hỗ trợ: ${mimeType}.` : 'Loại file không được hỗ trợ.',
+      reason ? `Loại file không được hỗ trợ. ${reason}` : 'Loại file không được hỗ trợ.',
     );
   }
 }

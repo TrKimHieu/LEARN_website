@@ -398,7 +398,7 @@ Spec ghi rõ stack là **khuyến nghị, không bắt buộc** `[SPEC]`. Dướ
 | Tầng          | Chọn `[QĐ]`                                                            | Phiên bản | Lý do                                                                                        |
 | ------------- | ---------------------------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------- |
 | Frontend      | **Next.js (App Router) + TypeScript**                                  | 15.x      | SSR cho marketing site tốt SEO, cùng ngôn ngữ với backend                                    |
-| CSS           | **Tailwind CSS**                                                       | 4.x       | Spec khuyến nghị; token màu map thẳng từ bảng màu spec — navy, xám, sky `#5EC8F5`, không tím |
+| CSS           | **Tailwind CSS**                                                       | 4.x       | Spec khuyến nghị; token màu map thẳng từ bảng màu spec — đơn sắc trắng → đen (ADR 015; trước là navy/xám/sky) |
 | Data fetching | **TanStack Query**                                                     | 5.x       | Spec khuyến nghị; xử lý cache và polling job gọn                                             |
 | Backend       | **NestJS + TypeScript**                                                | 11.x      | Cấu trúc module rõ ràng, map 1-1 với các module trong spec                                   |
 | ORM           | **Prisma**                                                             | 6.x       | Migration tường minh, kiểu sinh tự động                                                      |
@@ -438,6 +438,7 @@ không gọi thư viện trực tiếp. Ghi ADR khi đổi.
 | Phân loại/gắn nhãn nhẹ | Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) | Rẻ, nhanh, đủ dùng cho việc đơn giản                                |
 
 Tên model đặt trong biến môi trường (`LLM_MODEL_GENERATION`, `LLM_MODEL_FAST`), **không hardcode**.
+Cấu hình đang chạy thật: OpenAI `gpt-6-luna` kèm model dự phòng `LLM_MODEL_FALLBACK` — xem ADR 009, 010.
 Adapter LLM đặt sau interface `LlmProvider` để đổi nhà cung cấp mà không sửa pipeline.
 
 ---
@@ -1538,7 +1539,7 @@ hoặc tham chiếu thẳng một file:
 **Nên**
 
 - Giữ nguyên tỉ lệ; muốn đổi kích thước thì scale cả file
-- Đặt trên nền `#F4FBFF` hoặc `#0F1720` — cả hai đã kiểm tra
+- Chỉ hai màu trắng và đen (ADR 015): thân đen + mặt trắng trên nền sáng, thân trắng + mặt đen trên nền tối
 - Chừa khoảng trống quanh mascot ít nhất 25% chiều cao
 
 **Không**
@@ -1590,7 +1591,7 @@ Menu chính: **Home · Product · How It Works · Technical · Demo · GitHub**
 **Phong cách:** AI SaaS hiện đại, cao cấp nhưng tiết chế. Bố cục sạch. Phân cấp thị giác mạnh.
 Tông portfolio kỹ sư chuyên nghiệp. Phân tách rõ nội dung marketing và nội dung kỹ thuật.
 
-**Ngôn ngữ thị giác:** navy đậm, xám trung tính, nhấn xanh sky `#5EC8F5`. Thẻ bo góc.
+**Ngôn ngữ thị giác:** đơn sắc — chỉ các tông từ trắng tới đen, xám trung tính ở giữa, không hue nào (đổi 2026-09-28 theo quyết định chủ sản phẩm, ADR 015; trước là navy + xám + sky `#5EC8F5`). Thẻ bo góc.
 Gradient nhẹ. Mockup dashboard. Sơ đồ kiến trúc có đường nối rõ ràng. Font monospace cho code
 và metadata kỹ thuật. Mascot Circle ở hero, empty state, tiến độ AI Job và trạng thái lỗi —
 **không đặt trong các section kỹ thuật.**

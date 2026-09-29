@@ -79,7 +79,12 @@ Hướng dẫn ký hiệu: `[ ]` chưa làm · `[~]` đang làm · `[x]` xong (c
       3 cột (sidebar icon + dải chỉ số + rail gói/hạn mức), tab đáy trên mobile, ẩn rail trên
       `/admin`; menu logout/logout-all giữ nguyên
 - [x] Tự động refresh khi nhận 401, thử lại request một lần — test qua browser (đăng nhập → dashboard hoạt động đúng)
-- [ ] Trang quên mật khẩu hoàn chỉnh — backend chưa có endpoint gửi email; trang hiện báo "đang phát triển"
+- [x] Trang quên mật khẩu hoàn chỉnh — 2026-09-28: `POST /auth/forgot-password` + `/auth/reset-password`,
+      bảng `PasswordResetToken` (migration `20260928150257`), `MailService` (`MAIL_MODE=log|smtp`),
+      trang `/reset-password` (token ở `#fragment`, xoá khỏi URL sau khi đọc). **Test thật trên hạ
+      tầng thật + browser**: email có/không có trả cùng một câu, token dùng lại → 400, mật khẩu cũ
+      401, mật khẩu mới đăng nhập được, refresh cookie cũ bị thu hồi, AuditLog 2 dòng. Chưa thử
+      gửi SMTP thật (không có máy chủ thư)
 
 ## 20.3 Giai đoạn 2 — Course và Document (M2) `[SPEC]` 6.2, 6.3
 
@@ -130,11 +135,15 @@ Hướng dẫn ký hiệu: `[ ]` chưa làm · `[~]` đang làm · `[x]` xong (c
       1 trang có text thật, trích đúng nội dung
 - [~] Nhận diện PDF scan và chuyển OCR — nhận diện đúng (`isLikelyScanned`, ngưỡng <100 ký tự/trang);
   **chưa làm OCR**, hiện báo lỗi rõ ràng (`ScannedPdfNotSupportedError`) thay vì xử lý
-- [~] Hỗ trợ PPTX, DOCX, TXT, MD — TXT/MD đã test thật (kể cả tiếng Việt có dấu, giữ đúng UTF-8);
-  **PPTX/DOCX chưa làm** (cần `officeparser`/`mammoth`), báo `UnsupportedFileError` rõ ràng
+- [x] Hỗ trợ PPTX, DOCX, TXT, MD — 2026-09-28: DOCX (`mammoth`) + PPTX (`jszip`) có heading thật;
+      unit test dựng file mẫu, **test thật**: tải DOCX lên MinIO → worker trích xuất → 3 chunk đúng
+      3 mục. PPTX mới qua unit test (chưa tải file PowerPoint thật lên)
 - [~] Chuẩn hoá: bỏ header/footer lặp, nối từ gạch nối, bỏ mục lục — có nối gạch nối + gộp dòng trống
   (`normalizeText()`); **chưa làm** phát hiện header/footer lặp và bỏ mục lục
-- [ ] Nhận diện heading, ghi `headingPath` — chunk vẫn có field này nhưng luôn null (chưa có heuristic)
+- [x] Nhận diện heading, ghi `headingPath` — 2026-09-28: `chunkPages()` cắt theo mục; PDF dựng lại
+      dòng/đoạn/heading theo cỡ chữ (`pdf-layout.ts` — trước đó cả trang bị nối thành một dòng).
+      **Test thật**: `sample-vi-http.md` 6 mục → 6 chunk → 6 bài (trước: 2 bài); PDF do Chromium
+      in ra → heading đúng theo cỡ chữ
 - [x] Cắt chunk 1200 token, chồng lấn 150, tôn trọng ranh giới câu — dùng `chunkDocument()` có sẵn từ
       trước, nay verify thật qua worker
 - [x] Ghi khoảng trang cho mỗi chunk — `pageFrom`/`pageTo` đúng theo trang PDF; test thật xác nhận
@@ -163,9 +172,16 @@ Hướng dẫn ký hiệu: `[ ]` chưa làm · `[~]` đang làm · `[x]` xong (c
 
 **Sinh nội dung**
 
-- [x] Interface `LlmProvider` + adapter cho nhà cung cấp — có sẵn (mock + Anthropic), worker dùng qua
-      factory `createLlmProvider()` theo `LLM_MODE`
-- [x] Prompt lưu thành file, có version — `outline@1`, `lesson@1`, ghi vào `GenerationRun.promptVersion`
+- [x] Interface `LlmProvider` + adapter cho nhà cung cấp — mock + Anthropic + Gemini, worker dùng qua
+      factory `createLlmProvider()` theo `LLM_MODE`/`LLM_PROVIDER`
+- [x] Model dự phòng khi quá tải/hết quota (ngoài spec, ADR 009) — `LLM_MODEL_FALLBACK` +
+      `FallbackLlmProvider`; cả hai adapter ném `LlmUnavailableError` cho 429/503/529; Gemini chờ theo
+      `RetryInfo` (trần 60s), hết quota ngày thì chuyển ngay. Unit test + **kiểm chứng thật 2026-09-27**
+      (3.8-flash hết quota ngày → chuyển sang 3.1-flash-lite trong 2.5s)
+- [x] Prompt lưu thành file, có version — `outline@1`, `lesson@2` (nhúng JSON Schema sinh từ Zod —
+      `lesson@1` làm 100% bài học trượt tầng 1 khi chạy LLM thật), ghi vào `GenerationRun.promptVersion`
+- [x] Chọn model bằng số liệu — `apps/worker/src/scripts/compare-models.ts` chạy đúng pipeline trên
+      tài liệu mẫu; 3.1-flash-lite và 3.5-flash-lite đều 2/2 bài qua 4 tầng ngay lần đầu (ADR 009)
 - [x] Sinh outline — một lần gọi — test thật qua mock LLM, ghi đúng `GenerationRun` step='outline'
 - [x] Sinh lesson + exercise — song song tối đa 3 — `mapLimit()` giới hạn `AI_MAX_CONCURRENT_CALLS`;
       test thật mới có 1 node nên chưa quan sát được thật sự chạy song song ≥2, cần test course nhiều chunk hơn
@@ -263,8 +279,9 @@ Hướng dẫn ký hiệu: `[ ]` chưa làm · `[~]` đang làm · `[x]` xong (c
       sau khi nộp bài (React Query invalidate)
 - [x] Dashboard: số Course, bài đã xong, điểm trung bình — test qua browser, dữ liệu thật chính xác
       (1 khóa học, 1/1 bài, điểm TB 100.0, chuỗi 1 ngày)
-- [~] Lịch sử học có phân trang — có nút "Xem thêm" (tăng `limit`); **không phải cursor-based** như
-  HANDBOOK §7.1 quy định — quyết định có chủ đích, xem STATE.md
+- [x] Lịch sử học có phân trang — 2026-09-28: cursor thật (`?limit=&cursor=` → `nextCursor`,
+      `useInfiniteQuery`); test thật qua API: 2 trang không trùng dòng, cursor của người khác
+      không lộ dữ liệu
 - [~] Test cho mọi nhánh chấm điểm — 11 unit test cho `gradeAnswer` (đủ 4 loại câu hỏi, đã có từ trước);
   **chưa có integration test** cho luồng nộp bài đầy đủ qua API thật
 
@@ -474,8 +491,8 @@ entityType:'AIJob', entityId, metadata:{previousStatus, previousError}}`; trang 
 - [x] Ô mật khẩu có nút hiện/ẩn (`PasswordInput`)
 - [x] Enum API được dịch sang tiếng Việt trước khi hiển thị
 - [x] Thời gian tương đối cho mốc gần; admin giữ mốc tuyệt đối
-- [ ] Cho bấm dòng "Hoạt động gần đây" để nhảy tới bài — cần thêm `courseId`/`lessonId` vào
-      `historyItemSchema` + API (thay đổi backend, xem next-action)
+- [x] Cho bấm dòng "Hoạt động gần đây" để nhảy tới bài — 2026-09-28, cả Tổng quan lẫn Tiến trình;
+      test thật qua browser (link đúng `courseId`/`lessonId`)
 - [ ] Đưa `scripts/audit-a11y.mjs` vào CI — cần Postgres + web/api/worker trong `ci.yml`,
       gộp chung với mục #5 (integration test tự động) vì cùng nguyên nhân
 
@@ -698,3 +715,71 @@ Chi tiết từng lỗi ở `STATE.md` mục "Đợt audit + refactor backend/fr
       — KHÔNG commit nội dung stash
 - [ ] (Sau này) Merge `refactor/feature-based-structure` → `main`, rồi quan sát CI lần đầu
 - [ ] (Quyết định) Scope worker: migrate `apps/worker/src/processors` sang repository hay giữ `prisma`
+
+
+## 20.18 Giao diện v3 (phiên 21 — 2026-09-27) — ADR 011
+
+> Ngoài spec, theo yêu cầu người dùng "xoá toàn bộ UI, tạo lại hiện đại/tương thích/nổi bật hơn".
+> Chi tiết ở STATE.md mục "Phiên 21".
+
+- [x] Token ngữ nghĩa sáng/tối, khối `[SPEC]` không đổi giá trị nào
+- [x] Chế độ tối Sáng/Tối/Hệ thống, không nháy khi tải trang
+- [x] Font Plus Jakarta Sans (variable, tiếng Việt), tắt `calt`
+- [x] Primitive + shell mới (sidebar navy, top bar, tab đáy mobile, menu tài khoản), bỏ rail phải
+- [x] Viết lại 20 route + 404/error + `/dev/ui`, đủ 5 trạng thái ở mọi màn có dữ liệu
+- [x] typecheck · eslint · build · 154 unit test xanh
+- [x] axe: 18/18 màn 0 vi phạm (sáng), 15 màn 0 serious/critical (tối); không tràn ngang ở 390px
+- [ ] Kiểm với backend thật + `audit-a11y.mjs` trên DB seed (chờ Docker)
+- [ ] Chụp lại ảnh portfolio trên giao diện v3
+- [ ] Commit (chờ người dùng)
+
+## 20.19 Giao diện v4 (phiên 21b — 2026-09-27) — ADR 012
+
+- [x] Chẩn đoán "AI slop" theo audit `redesign-skill`, loại các mẫu đã nêu ở ADR 012
+- [x] Font Mona Sans + Newsreader, nền trung tính, nút navy, sky chỉ làm tín hiệu
+- [x] Điều hướng trên cùng + menu tài khoản; Tổng quan dẫn thẳng vào bài kế tiếp
+- [x] Stepper bài học thay đồ thị sin (nút sắp xếp dùng được trên cảm ứng)
+- [x] typecheck · eslint · build · 154 unit · axe sáng 18/18 + tối 15/15 · 390px không tràn
+- [ ] Kiểm với backend thật (chờ Docker)
+
+## 20.20 Tối giản + pastel (phiên 22 — 2026-09-28) — ADR 013
+
+- [x] Nền trung tính, viền #EAEAEA, không bóng; 4 pastel trong phạm vi hue §14.2
+- [x] Icon Phosphor thay Lucide (một file), gỡ `lucide-react`
+- [x] Bìa / nhãn / số liệu pastel; khoảng trắng lớn hơn; dải số liệu ngang
+- [x] typecheck · eslint · build · 154 unit · axe sáng + tối 0 vi phạm · 390px không tràn
+
+## 20.21 Gỡ dấu hiệu "AI" + đơn sắc (phiên 22b–22c — 2026-09-28) — ADR 014, ADR 015
+
+- [x] Hanken Grotesk tự host (Fontsource), bỏ serif
+- [x] Icon đứng độc lập, không ô nền; không `—`/`–` trong chữ hiển thị
+- [x] Ẩn nút dev tools "N"
+- [x] Spec §14 + HANDBOOK §14.2/§13.4 sửa sang đơn sắc TRƯỚC khi sửa code
+- [x] Chỉ tông trắng → đen (bảng màu Tailwind mặc định bị xoá lúc build); mascot + logo đen–trắng
+- [x] typecheck · eslint · build · 154 unit · axe sáng + tối 0 vi phạm · 390px không tràn
+
+## 20.22 Hoàn thiện luồng học (phiên 23 — 2026-09-28)
+
+Spec `docs/superpowers/specs/2026-09-28-hoan-thien-luong-hoc-design.md`, kế hoạch
+`docs/superpowers/plans/2026-09-28-hoan-thien-luong-hoc.md`. Kiểm chứng: 256 unit test, typecheck,
+eslint, build web; kịch bản đầu-cuối qua API trên Postgres/Redis/MinIO + worker thật (LLM mock)
+37/37 đạt; đi lại bằng browser các màn đọc bài, luyện tập, tiến trình, quên/đặt lại mật khẩu.
+
+- [x] Tải `.md` trên Windows (MIME theo đuôi file, `document-types.ts`) — test thật: khai
+      `application/octet-stream` vẫn nhận; `.exe` → 415
+- [x] Vệ sinh Markdown không phá code (`sanitizeMarkdown`) — 16 unit test
+- [x] Cảnh báo LOW_CONFIDENCE hiện thật ở trang đọc bài + nhãn ở danh sách — test qua browser
+- [x] Nguồn của bài học (`GET …/lessons/:id/sources`) — test thật + IDOR (người khác → 404)
+- [x] Làm mọi bài tập của bài học; bài học xong khi mọi bài tập đạt — test thật qua API + browser
+- [x] "Điểm cao nhất" là điểm cao nhất thật (trước: lượt mới nhất) — test thật
+- [x] Màn kết quả chỉ ra đáp án đúng cho câu trắc nghiệm AI sinh (trước: không bao giờ) — test qua browser
+- [x] `POST /ai/courses/:id/generate-lessons` đọc được body (trước: `documentIds`/`difficulty`/
+      `language` bị bỏ qua âm thầm) + ô chọn độ khó — test thật: job chỉ dùng tài liệu được chọn
+- [x] Outline `outline@2` bao phủ + tự lập lại khi sót > 25%; lesson `lesson@3` nhận độ khó
+- [x] LLM mock: tiêu đề theo mục (trước: trùng tiêu đề, 6 mục ra 1–3 bài) và không chép JSON
+      Schema vào nội dung bài (trước: mọi bài mock bị gắn LOW vì lẫn schema)
+- [x] 320px: thanh hành động màn kết quả không cắt chữ
+- [ ] PPTX thật (file PowerPoint thật) qua toàn luồng — mới có unit test
+- [ ] Gửi thư qua SMTP thật — mới kiểm `MAIL_MODE=log`
+- [x] Quét axe các màn mới — `/reset-password` thêm vào `scripts/audit-a11y.mjs` (20/20 màn 0 vi phạm);
+      khối Nguồn, cảnh báo LOW, thanh chọn bài tập, ô độ khó, lịch sử có link: 0 vi phạm cả sáng lẫn tối

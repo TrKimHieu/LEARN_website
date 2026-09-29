@@ -4,18 +4,20 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/auth-context';
-import { cn } from '@/components/ui';
+import { Icon, cn, type IconName } from '@/components/ui';
 
-const ADMIN_NAV = [
-  { href: '/admin/metrics', label: 'Tổng quan' },
-  { href: '/admin/users', label: 'Người dùng' },
-  { href: '/admin/courses', label: 'Khóa học' },
-  { href: '/admin/ai-jobs', label: 'AI Job' },
-  { href: '/admin/subscriptions', label: 'Gói đăng ký' },
-] as const;
+const ADMIN_NAV: { href: string; label: string; icon: IconName }[] = [
+  { href: '/admin/metrics', label: 'Tổng quan', icon: 'chart' },
+  { href: '/admin/users', label: 'Người dùng', icon: 'users' },
+  { href: '/admin/courses', label: 'Khóa học', icon: 'layers' },
+  { href: '/admin/ai-jobs', label: 'AI Job', icon: 'cpu' },
+  { href: '/admin/subscriptions', label: 'Gói đăng ký', icon: 'card' },
+];
 
-/** Chặn LEARNER — HANDBOOK checklist "toàn bộ trang admin chặn LEARNER". Máy chủ đã chặn ở RolesGuard;
- * đây là lớp UX (redirect ngay, không hiện màn hình chờ 403 vô nghĩa). */
+/**
+ * Chặn LEARNER — máy chủ đã chặn ở RolesGuard; đây là lớp UX (redirect ngay, không
+ * hiện màn hình 403 vô nghĩa).
+ */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, status } = useAuth();
   const router = useRouter();
@@ -35,27 +37,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div>
       <nav
         aria-label="Điều hướng quản trị"
-        className="mb-6 flex gap-1.5 overflow-x-auto border-b-2 border-surface-300 pb-3"
+        className="-mx-4 mb-10 overflow-x-auto border-b border-line px-4 scrollbar-none sm:mx-0 sm:px-0"
       >
-        {ADMIN_NAV.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200',
-                'focus-ring',
-                active
-                  ? 'bg-sky-50 font-semibold text-sky-700'
-                  : 'text-ink-500 hover:bg-surface-200 hover:text-ink-900',
-              )}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
+        <ul className="flex min-w-max gap-6">
+          {ADMIN_NAV.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    '-mb-px flex h-10 items-center gap-2 whitespace-nowrap border-b-2 text-sm font-medium transition-colors duration-150 focus-ring',
+                    active
+                      ? 'border-fg text-fg'
+                      : 'border-transparent text-fg-subtle hover:border-line-strong hover:text-fg',
+                  )}
+                >
+                  <Icon name={item.icon} size={15} />
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </nav>
       {children}
     </div>

@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { prisma, newId, Prisma } from '@learn/db';
 import {
   outlinePrompt,
+  outlineCoverage,
+  coverageFeedback,
   OUTLINE_PROMPT_VERSION,
+  OUTLINE_PREVIEW_CHARS,
+  OUTLINE_MAX_UNCOVERED_RATIO,
   OutlineOutput,
   lessonPrompt,
   LESSON_PROMPT_VERSION,
@@ -102,7 +106,7 @@ export class LessonGenerateProcessor {
           chunks: chunks.map((c) => ({
             id: c.id,
             headingPath: c.headingPath ?? '',
-            preview: c.content.slice(0, 200),
+            preview: c.content.slice(0, OUTLINE_PREVIEW_CHARS),
           })),
         },
         runs,
@@ -160,6 +164,7 @@ export class LessonGenerateProcessor {
             nodeTitle: node.title,
             nodeDescription: node.description,
             chunks: nodeChunks,
+            difficulty: params.difficulty,
           },
           { availableChunkIds, chunkContentById, existingLessonTitles: titlesSoFar },
           runs,
@@ -297,7 +302,15 @@ export class LessonGenerateProcessor {
         continue;
       }
       const parsed = OutlineOutput.safeParse(raw);
-      if (parsed.success) return parsed.data;
+      if (parsed.success) {
+        // Outline hợp lệ về schema nhưng bỏ sót nhiều mục thì lập lại một lần nữa, kèm danh sách
+        // mục bị sót. Hết lượt thì vẫn nhận: một khoá học thiếu vài mục tốt hơn job thất bại.
+        const coverage = outlineCoverage(parsed.data, ctx.chunks);
+        if (coverage.ratio <= OUTLINE_MAX_UNCOVERED_RATIO || attempt >= 3) return parsed.data;
+        previousError = coverageFeedback(coverage);
+        this.logger.warn(`AIJob ${aiJobId} outline lần ${attempt}: ${previousError}`);
+        continue;
+      }
       previousError = parsed.error.issues
         .map((i) => `${i.path.join('.')}: ${i.message}`)
         .join('; ');
@@ -317,6 +330,7 @@ export class LessonGenerateProcessor {
       nodeTitle: string;
       nodeDescription: string;
       chunks: Array<{ id: string; content: string }>;
+      difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
     },
     validateCtx: {
       availableChunkIds: string[];

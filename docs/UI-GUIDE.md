@@ -49,14 +49,14 @@ node scripts/audit-a11y.mjs
 ```
 
 Nó quét 18 màn bằng axe-core theo bộ luật WCAG 2.2 AA và trả exit code 1 nếu có vi phạm
-serious/critical. Đây là thứ `eslint-plugin-jsx-a11y` **không** làm được: lint chỉ đọc JSX, còn
+serious/critical. Script chỉ quét **tông sáng** — đổi màu thì soát thêm tông tối (xem §2b). Đây là thứ `eslint-plugin-jsx-a11y` **không** làm được: lint chỉ đọc JSX, còn
 tương phản màu chỉ tính ra được sau khi trình duyệt đã render.
 
 ## 1. Ranh giới không được vượt
 
 | Ràng buộc                                                                | Nguồn                   |
 | ------------------------------------------------------------------------ | ----------------------- |
-| Bảng màu navy/xám/sky `#5EC8F5`, **không có tím**                        | spec §14.2 `[SPEC]`     |
+| **Đơn sắc**: chỉ trắng → đen, xám trung tính ở giữa, không hue (ADR 015) | spec §14.2 `[SPEC]`     |
 | Mascot chỉ ở hero · empty state · tiến độ AI Job · lỗi                   | HANDBOOK §13.1 `[SPEC]` |
 | `celebrate` chỉ khi người dùng hoàn thành bài học                        | HANDBOOK §13.2          |
 | Không bịa gamification (gem, tim, rương thưởng, nhiệm vụ)                | AGENTS.md               |
@@ -72,58 +72,86 @@ hạng. Dải chỉ số ở `AppShell` chỉ hiện số có thật từ `Progr
 
 ## 2. Token
 
-Nguồn duy nhất: `packages/config/tailwind/theme.css` (Tailwind v4, khai báo bằng `@theme`, không
-có `tailwind.config.js`).
+Nguồn duy nhất: `packages/config/tailwind/theme.css` (Tailwind v4, không có `tailwind.config.js`).
+Ba khối, theo thứ tự:
 
-- Khối đầu file là `[SPEC]` §14.2 — **không đổi giá trị nào**. Từ ADR 008, khối này chỉ còn
-  **màu**: hai biến `--font-*` đã chuyển xuống khối dưới, vì spec §14.2 ràng buộc màu và nói
-  "monospace cho code", chứ chưa bao giờ chỉ định font sans nào.
-- Khối sau là phần bổ sung (ADR 008): sắc độ sky 50–700, navy-500, surface-300/400, bộ màu
-  phản hồi success/danger/warning, `--radius-card`, `--radius-pill`, `--shadow-card`,
-  `--shadow-raised`, và `--font-sans` / `--font-mono`. Phần này mở rộng được.
+1. **`[SPEC]` §14.2** (ADR 015) — `white`, `black`, `mono-50…950`. Mọi màu có R = G = B. Đầu file
+   đặt `--color-*: initial` nên bảng màu mặc định của Tailwind (blue, sky…) **không tồn tại**.
+2. **Bổ sung**: bo góc `control/card/panel/pill`, `--text-2xs`, `--ease-out-quint`, `--font-*`.
+3. **Ngữ nghĩa** (ADR 011) — `@theme inline` trỏ vào biến thô, giá trị đổi theo `data-theme`:
 
-**Chữ (ADR 008).** Sans là **Be Vietnam Pro**, mono là **JetBrains Mono**, nạp bằng `next/font`
-ở `app/layout.tsx`. Hai điều dễ dính:
+| Vai trò                      | Utility                                     | Dùng cho                                                    |
+| ---------------------------- | ------------------------------------------- | ----------------------------------------------------------- |
+| Nền trang / thẻ              | `bg-app` · `bg-panel` · `bg-panel-2`        | nền body · thẻ · hover/hàng bảng                            |
+| Nền phụ                      | `bg-muted` · `bg-track`                     | skeleton, chip xám · rãnh thanh tiến độ                     |
+| Nút chính                    | `bg-primary` · `text-primary-fg` · `-hover` | ink-900 (sáng) / trắng ngà (tối)                            |
+| Viền ô nhập                  | `border-line-input`                         | ≥ 3:1 với nền (WCAG 1.4.11)                                 |
+| Xám nhạt (tên cũ `pastel-*`) | `bg-pastel-*` + `text-on-pastel-*`          | bìa khóa học — tên giữ từ ADR 013, giá trị là xám (ADR 015) |
+| Viền                         | `border-line` · `border-line-strong`        | viền thường · viền nhấn, nét đứt                            |
+| Chữ                          | `text-fg` · `text-fg-muted` · `-subtle`     | tiêu đề · thân bài · chữ phụ                                |
+| Nhấn                         | `text-accent` · `bg-accent-soft`            | link, nhãn info · nền nhạt đi kèm                           |
+| Phản hồi                     | `ok` / `bad` / `warn` (+ `-soft`/`-line`)   | đúng / sai / cảnh báo — luôn kèm icon                       |
+| Biểu đồ                      | `bg-chart-1`                                | cột biểu đồ (đã qua validator dataviz)                      |
+| Bóng                         | `shadow-card/raised/overlay/glow`           | thẻ · nổi tạm · menu · node đã xong                         |
 
-- **Chỉ 4 bậc sans được nạp: 400/500/600/700.** Be Vietnam Pro là họ tĩnh, mỗi bậc × mỗi subset là
-  một file woff2. Dùng `font-extrabold` (800) thì trình duyệt bôi đậm giả và chữ nhoè — nó đã bị gỡ
-  khỏi toàn bộ codebase, đừng đưa lại. Cần nhấn mạnh hơn `font-bold` thì đổi **màu**, không đổi
-  weight.
-- **`@theme` thường, không phải `@theme inline`.** `@theme inline` ngừng phát `--font-sans` ra
-  `:root` và làm hỏng âm thầm `body { font-family: var(--font-sans) }`. Lý do đầy đủ ở ADR 008.
+**Đơn sắc (ADR 015):** nền `#FAFAFA`, viền `#E5E5E5`, thẻ không bóng. Token `ok/bad/warn/accent` giữ
+tên nhưng là các mức xám: trạng thái phân biệt bằng **icon + chữ + độ đậm của viền**. Lỗi = viền
+đen đậm, nhãn lỗi đảo màu (nền đen chữ trắng); đáp án đúng = viền liền đậm, lựa chọn sai = viền
+đứt; nút phá huỷ = viền đen 2px (khác nút chính khối đặc); liên kết = màu chữ + gạch chân.
 
-Đổi font xong thì kiểm bằng máy, đừng tin mắt:
+**Luật:** component dùng token ngữ nghĩa. Không gradient, không glow/blur, không mảng tối giữa
+trang sáng, không màu có hue (build cũng không sinh ra được).
+
+**Chữ (ADR 014).** Một họ sans duy nhất: **Hanken Grotesk** (tiêu đề + giao diện + bài đọc 17px),
+**JetBrains Mono** cho code. **Không serif.** Tự host qua Fontsource (`@fontsource-variable/*`,
+import ở `app/layout.tsx`) — không dùng `next/font/google`, vì bản đó tải font lúc dev/build và rơi
+về font dự phòng khi không có mạng. Độ đậm 400/500/600. Bẫy còn giữ:
+
+- **`calt` tắt** (`globals.css`): Plus Jakarta Sans (v3) từng đổi "2xx" thành "2×x".
+- **`zero` tắt trong số đều** (`.tabular-nums`, `table`): tránh số 0 gạch chéo giữa câu tiếng Việt.
+- Chữ hiển thị **không có `—`/`–`**, tối đa một `·` mỗi dòng (ADR 014).
+
+Đổi font xong kiểm bằng máy:
 
 ```bash
 npm run build -w apps/web
-grep -o -- "--font-sans:[^;]*;" apps/web/.next/static/css/*.css   # phải có var(--font-be-vietnam-pro) đứng đầu
+grep -o -- "--font-sans:[^;]*;" apps/web/.next/static/css/*.css   # phải có Hanken Grotesk Variable đứng đầu
 ```
-
-**Thang cỡ chữ.** Mặc định của Tailwind (`text-xs` 12px trở lên) là đủ cho gần hết app. Một ngoại
-lệ: nhãn mono cực nhỏ (eyebrow, mã kỹ thuật, tên token) từng bị viết tay rời rạc
-`text-[11px]`/`text-[10px]` ở 7 chỗ — gom về token `--text-2xs` (11px, GĐ7a). Cần cỡ dưới `xs` thì
-dùng `text-2xs`, đừng quay lại viết `text-[Npx]` tại chỗ gọi.
 
 Hai luật màu đã kiểm chứng, đừng phá:
 
-- **Chữ trắng trên `sky-500` chỉ đạt 1.90:1 — trượt AA.** Nút primary vì thế là nền sky + chữ
-  `navy-900` (9.86:1). Không tạo biến thể chữ trắng trên sky.
-- **Màu không bao giờ là tín hiệu duy nhất.** Mọi trạng thái đúng/sai/cảnh báo phải có icon
-  hoặc nhãn chữ đi kèm (`<Badge icon="check">`).
+- **Chữ trắng trên nền đen 18.9:1, chữ đen trên nền trắng 18.9:1** — nút chính đảo theo tông.
+- **Màu không bao giờ là tín hiệu duy nhất.** Mọi trạng thái đúng/sai/cảnh báo có icon hoặc nhãn chữ.
 
-Thêm token mới thì thêm luôn một ô màu vào `/dev/ui` để nó không thành token mồ côi.
+Thêm token mới thì thêm luôn một ô màu vào `/dev/ui` (mục "Màu") để nó không thành token mồ côi.
+
+## 2b. Chế độ tối (ADR 011)
+
+- Ba lựa chọn Tự động / Sáng / Tối — `lib/theme.tsx` (`ThemeProvider`, `useTheme`) và
+  `components/shared/theme-toggle.tsx` (`ThemeSegmented`, chỉ chữ, ở Cài đặt + menu tài khoản; không
+  có công tắc trên thanh đầu). Lưu `localStorage` key `learn-theme`, mọi truy cập bọc try/catch.
+- `THEME_SCRIPT` chạy nội tuyến trong `<head>` đặt `data-theme` trước lần vẽ đầu — đừng chuyển nó
+  vào `useEffect`, sẽ nháy trắng với người dùng tông tối.
+- **Ép tông cho cây con** vẫn làm được (`data-theme="dark"` lên phần tử), nhưng ADR 012 **không
+  dùng** nó trong trang sáng — mảng tối lạc giữa trang là dấu hiệu "AI slop" đã bị loại.
+- Logo đổi theo tông bằng CSS: thân `fill-fg`, mặt `fill-app` (ADR 015).
+- `dark:` bám theo `data-theme`, không theo media query (`@custom-variant` ở `globals.css`).
+- Mascot chỉ trắng và đen (ADR 015): thân đen mặt trắng ở tông sáng, đảo lại ở tông tối — `components/shared/mascot.tsx`.
+- Soát: `node scripts/capture-ui.mjs --dark <route>`. `audit-a11y.mjs` chỉ quét tông sáng; phiên 21
+  quét tông tối riêng bằng `@axe-core/playwright` + `colorScheme: 'dark'` (15 màn, 0 vi phạm
+  serious/critical) — lặp lại khi đổi màu.
 
 ## 3. Thư viện đang dùng và lý do
 
-| Gói                       | Dùng để làm gì             | Ghi chú                                      |
-| ------------------------- | -------------------------- | -------------------------------------------- |
-| `tailwindcss` v4          | Toàn bộ style              | CSS-first, `@theme`, không có file config JS |
-| `motion`                  | Mọi chuyển động React      | Xem §4                                       |
-| `lucide-react`            | Ruột của `<Icon>`          | Không import thẳng ở call site — xem §5      |
-| `clsx` + `tailwind-merge` | Hàm `cn()`                 | Xem §6                                       |
-| `canvas-confetti`         | Pháo giấy khi qua bài tập  | Chỉ dùng qua `lib/celebrate.ts`              |
-| `eslint-plugin-jsx-a11y`  | Bắt lỗi a11y tĩnh lúc lint | Đã bật cho `apps/web/src/**/*.tsx`           |
-| `@axe-core/playwright`    | Audit a11y trên màn thật   | `scripts/audit-a11y.mjs`, xem §0             |
+| Gói                       | Dùng để làm gì              | Ghi chú                                      |
+| ------------------------- | --------------------------- | -------------------------------------------- |
+| `tailwindcss` v4          | Toàn bộ style               | CSS-first, `@theme`, không có file config JS |
+| `motion`                  | Mọi chuyển động React       | Xem §4                                       |
+| `@phosphor-icons/react`   | Ruột của `<Icon>` (ADR 013) | Không import thẳng ở call site — xem §5      |
+| `clsx` + `tailwind-merge` | Hàm `cn()`                  | Xem §6                                       |
+| `canvas-confetti`         | Pháo giấy khi qua bài tập   | Chỉ dùng qua `lib/celebrate.ts`              |
+| `eslint-plugin-jsx-a11y`  | Bắt lỗi a11y tĩnh lúc lint  | Đã bật cho `apps/web/src/**/*.tsx`           |
+| `@axe-core/playwright`    | Audit a11y trên màn thật    | `scripts/audit-a11y.mjs`, xem §0             |
 
 **Cố ý chưa cài:** Radix/shadcn component. `apps/web/components.json` đã cấu hình sẵn CLI, nên khi
 thật sự cần hành vi khó tự viết đúng (Dialog, Popover, Tooltip, Tabs — bẫy focus, `aria-*`, phím
@@ -135,7 +163,7 @@ cd apps/web && npx shadcn@latest add dialog
 
 Nhưng **phải sửa màu sau khi thêm**: component của shadcn dùng quy ước `bg-background` /
 `text-foreground`, những lớp đó **không tồn tại** trong theme LEARN. Đổi sang token LEARN
-(`bg-white`, `text-ink-900`, `border-surface-300`, `rounded-card`) rồi mới dùng, nếu không sẽ có
+(`bg-panel`, `text-fg`, `border-line`, `rounded-card` — xem §2) rồi mới dùng, nếu không sẽ có
 hai ngôn ngữ thị giác trong cùng một app.
 
 ## 4. Chuyển động
@@ -150,7 +178,12 @@ Tất cả nằm ở `apps/web/src/lib/motion.tsx`.
   `lib/celebrate.ts`.
 
 Có sẵn: `Reveal`, `StaggerList` + `StaggerItem`, `RevealOnScroll`, `StaggerOnScroll`, `fadeUp`,
-`popIn`, `staggerContainer()`, `EASE_OUT`, `DURATION`.
+`popIn`, `staggerContainer()`, `EASE_OUT`, `DURATION`. `AppShell` bọc nội dung mỗi route trong
+`<Reveal key={pathname}>` — chuyển trang mờ dần + nhích lên, không cần thêm ở từng trang.
+
+`ProgressBar`/`ProgressRing` dùng **CSS transition** (`scaleX`, `stroke-dashoffset`), không phải
+`motion` — cùng lý do với bẫy `whileInView` bên dưới: đổi giá trị sau mount qua `motion` có thể kẹt
+ở tab nền.
 
 Ba luật:
 
@@ -189,22 +222,22 @@ Luật hiện tại — **bảng màu `[SPEC]` §14.2 không đổi một giá t
 
 | Thứ           | Dùng                                             | Không dùng                     |
 | ------------- | ------------------------------------------------ | ------------------------------ |
-| Tách lớp      | `border` 1px + `shadow-card`                     | `border-2`, `border-b-4`       |
-| Nổi lên       | `shadow-raised` khi hover (`<Card interactive>`) | đổi độ dày viền, `translate-y` |
-| Bo góc        | `rounded-lg` (điều khiển), `rounded-card` (thẻ)  | `rounded-2xl` cho nút          |
-| Thứ bậc chữ   | độ đậm + màu (`ink-900` / `ink-500`)             | chỉ tăng cỡ chữ                |
+| Tách lớp      | `border border-line` + `shadow-card`             | `border-2`, `border-b-4`       |
+| Nổi lên       | `shadow-raised` + `border-accent-line` khi hover | đổi độ dày viền, `translate-y` |
+| Bo góc        | `rounded-control` (điều khiển), `rounded-card`   | `rounded-2xl` cho nút          |
+| Thứ bậc chữ   | độ đậm + màu (`fg` / `fg-subtle`)                | chỉ tăng cỡ chữ                |
 | Nhấn mạnh nút | độ tương phản của **nền**                        | `uppercase`, `font-bold`       |
 | Chuyển động   | `transition-all duration-200`                    | `duration-75`                  |
 
 Trọng lượng thị giác phải đến từ _màu nền_, không từ độ dày cạnh. Một màn đúng chuẩn chỉ có **một**
-nút `primary` nền sky; mọi thứ còn lại là `secondary` (trắng, viền mảnh) hoặc `ghost`.
+nút `primary` (khối đen ở tông sáng, trắng ngà ở tông tối); mọi thứ còn lại là `secondary` (nền panel, viền), `ghost`,
+`link` (hành động bậc ba — chữ gạch chân, dùng cho "Xem hết", "Tất cả khóa học") hoặc `danger`.
+Nhấn nút lún `scale(0.98)`. Thẻ mặc định **không bóng**, chỉ viền `line`; bóng chỉ khi nổi tạm
+(menu) hoặc khi hover thẻ bấm được. Số liệu dùng `StatCard` trong `StatStrip`, không phải thẻ icon.
+`Button loading` hiện spinner + khoá nút; nhãn vẫn phải nói đang làm gì ("Đang lưu…").
 
-Hai thứ **không** đổi theo:
-
-- **Trang portfolio** (`components/portfolio/*`) giữ phong cách editorial riêng — eyebrow
-  `font-mono uppercase tracking-[0.14em]`, hero nền navy. Đó là trang tiếp thị, không phải app.
-- **Tương phản màu** vẫn theo §2: nút primary là nền sky + chữ `navy-900`, không có biến thể chữ
-  trắng trên sky. Đã chạy lại `scripts/audit-a11y.mjs` sau khi đổi — 18/18 màn, 0 vi phạm.
+**Tương phản màu** vẫn theo §2; `audit-a11y.mjs` 18/18 màn 0 vi phạm sau ADR 015. (Trang portfolio
+`components/portfolio/*` từng có phong cách riêng đã bị gỡ khỏi repo ở commit `167bd20`.)
 
 Primitive mở rộng thêm: `Card interactive`, `CardDescription`, `LoadingState variant`
 (`card`/`list`/`text` — skeleton phải khớp hình dạng nội dung sắp hiện, nếu không bố cục nhảy một
@@ -257,65 +290,19 @@ trị), chỉ hạ xuống một hàng ngang 48px thay vì một khối centered
 _bên trong_ một trang đã có nội dung khác phía trên nó (`dashboard.tsx`, `progress.tsx`); dùng
 `size` mặc định khi `EmptyState` _là_ toàn bộ nội dung của màn.
 
-## 4d. Lộ trình bài học (`components/lesson-path.tsx`)
+## 4d. Lộ trình bài học (`features/learning/lesson-list.tsx`)
 
-Lộ trình là một **đồ thị hình sin**: `x = 50 − A·cos(πu)` với `u` là vị trí bài học. `cos(πu)`
-bằng ±1 tại mọi số nguyên, nên **mỗi bài học rơi đúng vào một điểm cực trị** — không bài nào nằm
-ở chỗ đường đang dốc nhất.
+ADR 012 thay đồ thị hình sin (`lesson-path.tsx`, đã xoá) bằng **stepper dọc**. Lý do đo được: đồ
+thị tốn 118px/bài (khóa 10 bài ≈ 1.2k px), tiêu đề bị kẹp 2 dòng trong nửa bề ngang, và nút sắp
+xếp chỉ hiện khi rê chuột — trên cảm ứng coi như không có.
 
-Đường được vẽ bằng cách **lấy mẫu chính hàm số** (24 điểm mỗi nửa chu kỳ) chứ không xấp xỉ bằng
-Bézier, nên nó đúng là hình sin.
-
-### Số node mỗi chu kỳ quyết định độ dốc
-
-Đây là chỗ đã sai hai lần. Độ dốc cực đại của đồ thị (góc so với phương thẳng đứng) bằng
-`atan( A_px · 2π / N / ROW )` với `N` là số node mỗi chu kỳ. Ở khung 448px:
-
-| N (node/chu kỳ) | Biên độ | Khoảng cách dọc | Dốc tối đa | Kết quả                                       |
-| --------------- | ------- | --------------- | ---------- | --------------------------------------------- |
-| 4               | 26%     | 132px           | —          | ✗ node xen kẽ giữa trục và đỉnh, không ra sin |
-| 2               | 16%     | 178px           | **51.8°**  | ✗ mọi node ở ±1, nhưng dốc nhất có thể        |
-| **8**           | **22%** | **118px**       | **33.3°**  | ✓ thoải, đúng cảm giác của bản tham chiếu     |
-
-Điểm mấu chốt: **đặt mọi node đúng ở ±1 là cách xếp dốc nhất có thể**, vì cả biên độ ngang phải
-đi hết trong đúng một bước dọc. Muốn thoải thì phải lấy mẫu dày hơn một nửa chu kỳ.
-
-`N = 8` lấy theo Duolingo. Đo trên ảnh chụp giao diện của họ: các node nằm ở
-x ≈ 850, 906, 937, 906, 850, 794 quanh tâm 850 — đúng các mốc `sin` tại 0, ±0.707, ±1, tức 8 mốc
-một chu kỳ. Node thứ 2 và thứ 6 mỗi chu kỳ vẫn rơi đúng đỉnh/đáy.
-
-Chỉnh biên độ hay khoảng cách dọc thì **tính lại góc dốc**; vượt quá ~40° là bắt đầu đọc ra
-đường gấp khúc thay vì sóng.
-
-### Nét đứt là kênh tín hiệu thứ hai, không phải trang trí
-
-| Đoạn      | Nét  | Màu           |
-| --------- | ---- | ------------- |
-| Đã đi qua | liền | `sky-500`     |
-| Chưa đi   | đứt  | `surface-400` |
-
-Bản trước phân biệt hai trạng thái **chỉ bằng màu**, đúng thứ §2 cấm. Nét đứt đọc được cả khi in
-đen trắng và với người loạn sắc, đồng thời đúng nghĩa thông thường của nó: phần chưa thành hình.
-
-Nét mảnh (2.5px, không phải 10px) vì đây là **đồ thị**, không phải con đường — nét dày biến biểu
-đồ thành dải băng và át mất node, vốn mới là thứ người dùng bấm vào.
-
-Mỗi đoạn là một `<path>` riêng, tô theo `progressStatus` của bài phía **trên**. Không dùng
-`stroke-dasharray` để cắt một đường liền: tiến độ có thể đứt quãng (xong bài 1, bỏ bài 2, xong
-bài 3).
-
-### Toạ độ và bố cục
-
-- **`x` theo `%`, `y` theo `px`.** SVG dùng `viewBox="0 0 100 H"` + `preserveAspectRatio="none"`,
-  nên biên độ tự hẹp lại trên màn nhỏ mà không cần đo bằng JS. Nét vẽ phải có
-  `vector-effect="non-scaling-stroke"`, nếu không cả độ dày lẫn khoảng nét đứt bị kéo méo theo
-  trục x.
-- **Nhãn nằm bên cạnh node, không nằm dưới.** Đạo hàm của cos bằng 0 tại đỉnh nên đường rời node
-  theo phương thẳng đứng — đúng chỗ dòng tiêu đề bắt đầu.
-- **Nhãn neo vào mép khung** (`left: 0` / `right: 0`), không neo vào node với bề rộng cố định:
-  trên màn 390px mỗi bên chỉ còn ~90px, neo vào node thì bị cắt chữ.
-- Phép canh tâm node (`translate(-50%, -50%)`) phải ở `<li>` thường, **không** ở phần tử
-  `motion` — cùng cái bẫy `transform` đã ghi ở §4.
+- Mỗi bài một hàng ~64px: mốc (glyph CheckCircle đặc = đã xong · số thứ tự viền đậm = đang học · số thứ tự viền xám = chưa học),
+  tiêu đề đủ chỗ, trạng thái bằng chữ + điểm cao nhất.
+- **Đường nối vẫn mang thông tin**: nét liền màu chữ khi bài phía trên đã xong, nét đứt `line-strong`
+  khi chưa — đọc được cả khi không nhìn màu (UI-GUIDE §2).
+- Cả hàng bấm được (link với `after:absolute after:inset-0`); nút lên/xuống `relative z-10` nằm trên
+  vùng bấm đó và **luôn hiện**, đủ tương phản 3:1 (không làm mờ bằng `opacity`).
+- Bài đang học có nền `accent-soft`.
 
 ### Bẫy: `npm run build` làm hỏng dev server đang chạy
 
@@ -330,18 +317,19 @@ rm -rf apps/web/.next && npm run dev:web
 
 ## 5. Icon
 
-`components/ui/icon.tsx` là mặt tiền, ruột là `lucide-react`.
+`components/ui/icon.tsx` là mặt tiền, ruột là **Phosphor** (ADR 013; trước đó Lucide).
 
 ```tsx
 <Icon name="check" size={18} />
 ```
 
-Đừng `import { Check } from 'lucide-react'` ở call site. Đi qua `<Icon>` để: `IconName` là union
-hẹp (gõ sai hỏng typecheck ngay), `aria-hidden` + `focusable="false"` áp ở một chỗ, và lần sau đổi
-bộ icon chỉ phải sửa một file. Icon ở đây **luôn là trang trí** — ý nghĩa nằm ở nhãn chữ hoặc
-`aria-label` phía gọi.
+- Import từ `@phosphor-icons/react/ssr` (chạy được trong server component); kiểu `Icon` lấy từ
+  `@phosphor-icons/react/lib`. `next.config.ts` bật `optimizePackageImports` cho gói này.
+- Trọng lượng: mặc định **Bold**; `strokeWidth < 2` → Regular (tab chưa chọn); `filled` → Fill.
+- Đừng import Phosphor ở call site. Đi qua `<Icon>` để: `IconName` là union hẹp, `aria-hidden` +
+  `focusable="false"` áp một chỗ, đổi bộ icon chỉ sửa một file. Icon **luôn là trang trí**.
 
-Cần hình mới: thêm một dòng vào `ICONS`, thêm tên vào mảng `ICON_NAMES` của `/dev/ui`.
+Cần hình mới: thêm một dòng vào `ICONS` — `/dev/ui` tự liệt kê qua `ICON_NAMES`.
 
 ## 6. `cn()`
 
@@ -349,7 +337,7 @@ Cần hình mới: thêm một dòng vào `ICONS`, thêm tên vào mảng `ICON_
 `shadow-card/raised` vì chúng không nằm trong thang mặc định của Tailwind).
 
 Nghĩa là `className` truyền từ ngoài vào **ghi đè được** lớp mặc định của primitive. Trước đây hàm
-này chỉ `join(' ')` nên `<Button className="bg-white">` vẫn ra nền sky.
+này chỉ `join(' ')` nên `<Button className="bg-white">` vẫn ra nền của biến thể mặc định.
 
 ## 7. Mascot
 
@@ -360,8 +348,8 @@ này chỉ `join(' ')` nên `<Button className="bg-white">` vẫn ra nền sky.
   header `@ts-nocheck` (phải đứng **trên** `'use client'`). Xem `docs/adr/006-...`.
 - `MascotState` cố tình hẹp hơn 40 state của thư viện — chỉ những state ứng với vị trí `[SPEC]`
   cho phép mới có mặt.
-- Thân mascot lấy gradient `sky-400 → navy-700 → navy-900` truyền từ wrapper. Bản export gốc là
-  đen tuyền (`DEFAULT_GRADIENT`), trên thẻ trắng thành một đốm đen lạc khỏi bảng màu.
+- Mascot **chỉ trắng và đen** (ADR 015), phẳng: 3 điểm dừng `gradient` cùng một màu, `effects={false}`
+  (hiệu ứng vendor chạy qua nhiều hue). Không sửa file vendor — truyền qua props của wrapper.
 - Component tự tôn trọng `prefers-reduced-motion`.
 
 ## 7b. Logo
@@ -371,7 +359,7 @@ mobile, màn đăng nhập và nav trang landing. Logo chính là nhân vật Ci
 
 ```tsx
 <LogoMark size={28} />              {/* nền sáng */}
-<LogoMark size={64} tone="dark" />  {/* nền navy */}
+<LogoMark size={64} />                {/* tự đổi theo tông, `tone` không còn tác dụng */}
 ```
 
 - Đây là **SVG tĩnh viết tay**, không phải `<Mascot>`. Lý do đầy đủ ở
@@ -384,12 +372,17 @@ mobile, màn đăng nhập và nav trang landing. Logo chính là nhân vật Ci
 
 ## 8. Bố cục — số liệu đã đo, đừng đoán lại
 
-- `AppShell` 3 cột: sidebar trái 256px · nội dung · rail phải 320px (ẩn dưới `lg`).
-- Cột giữa chỉ còn **~736px** khi có rail. Lưới thẻ vì thế chỉ trải 3–4 cột từ `2xl`; đặt ở `xl`
-  làm nhãn và tiêu đề bị cắt cụt.
-- Màn `/admin` ẩn hẳn rail (rail nói về gói của chính người xem, vô nghĩa ở khu quản trị) và nới
-  lên `max-w-7xl` cho bảng nhiều cột.
-- Dưới `md`, điều hướng chuyển xuống thanh tab đáy.
+- `AppShell` (ADR 012): **thanh điều hướng trên cùng** 56px (logo · Tổng quan · Khóa học · Tiến trình ·
+  Quản trị · nút "Khóa học mới" · menu tài khoản), cùng `max-w-6xl` (admin `max-w-7xl`) với nội
+  dung nên mép trái logo thẳng hàng mép trái tiêu đề trang. Mục đang chọn: gạch chân màu chữ 2px.
+- "Cài đặt", gói/hạn mức và chọn giao diện nằm trong **menu tài khoản** (desktop). Không có chip số
+  liệu trên thanh đầu — số liệu ở trang Tổng quan, mỗi số một lần.
+- Dưới `md`: thanh tab đáy (`min-h-14`, nhãn 12px, chừa `env(safe-area-inset-bottom)`). Thanh hành
+  động dính đáy trong trang dùng `bottom-[calc(4.5rem+env(safe-area-inset-bottom))]` dưới `lg`.
+- Trang không nên tự `mx-auto max-w-*` nhỏ hơn container (lệch mép trái so với header) — trừ màn
+  tập trung đọc/làm bài (bài học, bài tập).
+- **Lưới 2 cột cấp trang phải có `grid-cols-1`** ở mobile, nếu không trang tràn ngang (đã dính ở
+  `/dashboard`). Kiểm: ảnh `capture-ui.mjs --width 390` phải rộng đúng 780px (2×).
 
 ## 10. Luật UX đã áp dụng (và nguồn)
 
@@ -422,12 +415,11 @@ code. Đừng vô tình đảo ngược chúng.
 
 **Bậc màu nào dùng cho chữ:**
 
-- `sky-700` là bậc sky **duy nhất** được dùng cho chữ. `sky-500`/`sky-600` chỉ dùng cho nền và đồ hoạ.
-- `ink-300` là màu **viền và chữ trên nền tối**. Trên nền trắng nó chỉ đạt 2.56:1 — không bao giờ
-  dùng cho chữ nội dung. Chữ mờ trên nền sáng thì dùng `ink-500`.
-- `ink-500` đạt AA trên trắng và `surface-100`, nhưng **trượt trên nền có pha màu** (4.49:1 trên thẻ
-  gói nổi bật). Nền có pha màu thì dùng `ink-700`.
-- Chữ trắng trên `sky-500` chỉ đạt 1.90:1 — không có biến thể đó.
+- Chữ dùng token `fg` / `fg-muted` / `fg-subtle` / `accent` / `ok` / `bad` / `warn` — tất cả đã đo
+  ≥ 4.5:1 trên `panel`, `app` và `muted` ở **cả hai tông** (số đo ghi trong `theme.css`).
+- Trong cây con tông tối (sidebar, banner) dùng chính các token đó — chúng tự thành chữ sáng. Chữ
+  trắng mờ trên banner aurora: `text-white/75` trở lên.
+- Đơn sắc (ADR 015): không bậc màu nào có hue; chữ dùng `fg` / `fg-muted` / `fg-subtle`.
 
 ## 11. Cố ý KHÔNG làm
 
@@ -446,7 +438,8 @@ code. Đừng vô tình đảo ngược chúng.
 - [ ] `npx eslint apps/web/src` xanh (gồm cả luật jsx-a11y)
 - [ ] `npm run build -w apps/web` xanh
 - [ ] Xem lại ở `/dev/ui`; primitive mới đã được thêm vào trang đó
-- [ ] Thử ở `--width 390` — không vỡ bố cục, không cuộn ngang
+- [ ] Thử ở `--width 390` — không vỡ bố cục, không cuộn ngang (ảnh rộng đúng 780px)
+- [ ] Thử `--dark` — chỉ dùng token ngữ nghĩa, không `bg-white`/`text-ink-*` ở call site
 - [ ] Thử `--reduced-motion` — không còn dịch chuyển, chỉ còn mờ dần
 - [ ] Trạng thái mới có icon/nhãn chữ, không chỉ dựa vào màu
 - [ ] Màn có dữ liệu vẫn đủ 5 trạng thái

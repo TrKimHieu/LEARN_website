@@ -34,6 +34,25 @@ export const changePasswordSchema = z
   })
   .strict();
 
+/** FR-AUTH-07 — bước 1: xin thư đặt lại mật khẩu. Luôn trả 200, không lộ email có tồn tại. */
+export const forgotPasswordSchema = z
+  .object({
+    email: z
+      .string()
+      .email()
+      .max(254)
+      .transform((v) => v.toLowerCase()),
+  })
+  .strict();
+
+/** FR-AUTH-07 — bước 2: đặt mật khẩu mới bằng token trong thư. */
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(20).max(200),
+    newPassword: z.string().min(8).max(72),
+  })
+  .strict();
+
 export const userPublicSchema = z.object({
   id: z.string(),
   email: z.string().email(),
@@ -59,6 +78,8 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PatchMeInput = z.infer<typeof patchMeSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UserPublic = z.infer<typeof userPublicSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;

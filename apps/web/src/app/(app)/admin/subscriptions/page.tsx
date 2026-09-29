@@ -56,15 +56,15 @@ export default function AdminSubscriptionsPage() {
               <Tbody>
                 {subscriptions.data.subscriptions.map((s) => (
                   <tr key={s.userId}>
-                    <Td className="font-medium text-ink-900">{s.email}</Td>
+                    <Td className="font-medium text-fg">{s.email}</Td>
                     <Td className="font-medium">{s.planCode}</Td>
                     <Td>
                       <StatusChip status={s.status} />
                     </Td>
-                    <Td className="whitespace-nowrap text-ink-500">
+                    <Td className="whitespace-nowrap text-fg-subtle">
                       {s.currentPeriodEnd
                         ? new Date(s.currentPeriodEnd).toLocaleDateString('vi-VN')
-                        : '—'}
+                        : 'Không có'}
                     </Td>
                   </tr>
                 ))}

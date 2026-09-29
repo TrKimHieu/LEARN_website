@@ -1,0 +1,27 @@
+sequenceDiagram
+  autonumber
+  participant W as Web
+  participant A as API (AuthService)
+  participant D as PostgreSQL
+  W->>A: POST /auth/refresh (cookie refresh_token)
+  alt không có cookie
+    A-->>W: 401 UNAUTHENTICATED
+  end
+  A->>D: SELECT RefreshToken WHERE tokenHash = SHA-256(cookie)
+  alt không tìm thấy
+    A-->>W: 401 UNAUTHENTICATED
+  else token đã bị revoke (reuse detection)
+    A->>D: UPDATE RefreshToken SET revokedAt WHERE familyId
+    A-->>W: 401 "Phiên đã hết hạn, vui lòng đăng nhập lại"
+  else hết hạn
+    A->>D: revoke token hiện tại
+    A-->>W: 401 UNAUTHENTICATED
+  else hợp lệ
+    rect rgb(244, 244, 245)
+      Note over A,D: transaction
+      A->>D: revoke token cũ
+      A->>D: INSERT token mới cùng familyId
+    end
+    A->>A: ký access token mới
+    A-->>W: 200 { user, accessToken } + Set-Cookie token mới
+  end

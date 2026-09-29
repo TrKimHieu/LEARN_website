@@ -146,6 +146,15 @@ exports.Prisma.RefreshTokenScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.PasswordResetTokenScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tokenHash: 'tokenHash',
+  expiresAt: 'expiresAt',
+  usedAt: 'usedAt',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.CourseScalarFieldEnum = {
   id: 'id',
   ownerId: 'ownerId',
@@ -502,6 +511,7 @@ exports.CourseMemberRole = exports.$Enums.CourseMemberRole = {
 exports.Prisma.ModelName = {
   User: 'User',
   RefreshToken: 'RefreshToken',
+  PasswordResetToken: 'PasswordResetToken',
   Course: 'Course',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',

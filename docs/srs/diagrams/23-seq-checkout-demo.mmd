@@ -1,0 +1,25 @@
+sequenceDiagram
+  autonumber
+  actor U as Learner
+  participant A as API (BillingService)
+  participant D as PostgreSQL
+  U->>A: POST /subscription/checkout { planCode: "PRO" }
+  Note over A: body chỉ có planCode — giá luôn đọc từ bảng Plan
+  alt BILLING_MODE = live
+    A-->>U: 409 CONFLICT — Stripe chưa được cấu hình (Đã lên kế hoạch)
+  else BILLING_MODE = demo
+    A->>D: SELECT Plan WHERE code
+    alt không có gói
+      A-->>U: 404 NOT_FOUND
+    else isFutureExtension (TEAM)
+      A-->>U: 403 FORBIDDEN "Gói này chưa được bán"
+    else hợp lệ
+      rect rgb(244, 244, 245)
+        Note over A,D: transaction
+        A->>D: huỷ Subscription đang hiệu lực
+        A->>D: INSERT Subscription ACTIVE, kỳ 30 ngày
+        A->>D: INSERT Payment (succeeded, providerPaymentId = demo_*)
+      end
+      A-->>U: 200 { url: APP_URL/app/settings?upgraded=1, mode: "demo" }
+    end
+  end

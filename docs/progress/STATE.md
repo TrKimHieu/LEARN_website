@@ -10,7 +10,7 @@
 | **Mốc hiện tại**      | **M0, M1, M5 — Hoàn TẤT** ✅. **M2, M3 core đã chạy thật end-to-end qua browser** ✅. **M4 — Hoàn TẤT** ✅. **M6 — nội dung/component/ADR/ảnh chụp UI/Lighthouse/demo CTA đều xong 2026-09-15** ✅, chỉ còn video demo (ngoài phạm vi công cụ hiện có). **Redesign frontend toàn diện 7/7 giai đoạn — Hoàn TẤT 2026-09-19** ✅ (xem mục riêng bên dưới). **Hạ tầng vibe-code giao diện + đợt cải tiến — 2026-09-19** ✅ (`docs/UI-GUIDE.md`, `/dev/ui`, motion/lucide/confetti). **Đợt hoàn thiện UX + a11y — 2026-09-19** ✅ (audit 18 màn thật bằng axe-core: 0 vi phạm WCAG 2.2 AA, từ 85 vi phạm). **Logo đổi sang nhân vật Circle — 2026-09-19** ✅ (ADR 007; còn chờ xác nhận ranh giới logo/mascot của §13.1). **Đợt nâng cấp giao diện 2026-09-22 (branch `redesign/upgrade-2026-09`) — Hoàn TẤT 7/7 giai đoạn** ✅ (xem mục riêng bên dưới; audit-a11y 18/18 màn 0 vi phạm, ảnh portfolio đã chụp lại trên giao diện mới, chưa merge vào `main`). |
 | **Tần xuất cập nhật** | Mỗi lần xong 1 mục checklist                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **Blocker**           | Không có blocker. **CI đã xanh trở lại 2026-09-19**: 34 lỗi typecheck trong `packages/ai/src/__tests__/` đã sửa (helper `at()` cho `noUncheckedIndexedAccess`), `npm run typecheck` toàn workspace exit 0. Docker Desktop: đã sửa, root cause đầy đủ ở mục "Docker Desktop" bên dưới.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **Git**               | `main` đã có commit. Đợt nâng cấp giao diện 2026-09-22 làm trên branch riêng `redesign/upgrade-2026-09` (6 commit, chưa merge — xem mục riêng bên dưới). `main` đang có việc dở của người khác chưa commit (`packages/ai/src/llm/gemini.ts` + liên quan) — **đừng đụng vào**, không phải của đợt này.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Git**               | `main` đã có commit. Đợt nâng cấp giao diện 2026-09-22 làm trên branch riêng `redesign/upgrade-2026-09` (6 commit, chưa merge — xem mục riêng bên dưới). Việc Gemini đã vào `main` ở commit `167bd20 rebuild`. **Phiên 20 (2026-09-27) — chọn model + model dự phòng cho AI worker: CHƯA commit**, xem mục cuối file. **Phiên 21 (2026-09-27) — dựng lại toàn bộ giao diện (v3, ADR 011) rồi thiết kế lại theo phản hồi người dùng (v4, ADR 012): CHƯA commit**, nằm chung working tree với việc phiên 20 trên `main` — xem mục cuối file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Lộ trình tổng thể (HANDBOOK §19)
 
@@ -928,7 +928,7 @@ kia thì phải sửa spec trước rồi mới giữ thay đổi này.
 ## Việc kế tiếp (next-actions)
 
 1. Commit lần đầu (git) sau khi có xác nhận.
-   1b. **Cho bấm dòng "Hoạt động gần đây" để nhảy tới bài học** — cần thêm `courseId` + `lessonId` vào
+   1b. ~~**Cho bấm dòng "Hoạt động gần đây" để nhảy tới bài học**~~ — **Đã xong 2026-09-28 (phiên 23)**. Ghi chép cũ: cần thêm `courseId` + `lessonId` vào
    `historyItemSchema` (`packages/contracts/src/progress.ts`) và vào truy vấn lịch sử ở API. Hiện
    mỗi dòng ghi đúng tên bài và tên khóa nhưng bấm vào không đi đâu được, buộc người dùng phải tự
    tìm lại qua menu Khóa học. Là thay đổi backend nên cố ý tách khỏi đợt dọn giao diện 2026-09-19.
@@ -959,7 +959,7 @@ kia thì phải sửa spec trước rồi mới giữ thay đổi này.
    comment đầu file test auth để tái dùng đúng cách, tránh lặp lại vấn đề rate-limit/DI đã gặp).
 6. ~~Test reuse detection của refresh token~~ — **Đã xong 2026-09-15**, xem mục "M1 (tiếp tục) —
    Test reuse detection refresh token" phía trên. Logic hoạt động đúng như thiết kế.
-7. Sớm: trang quên mật khẩu hiện dừng ở thông báo "đang phát triển" (backend chưa có endpoint gửi
+7. ~~Trang quên mật khẩu~~ — **Đã xong 2026-09-28 (phiên 23)**, `MAIL_MODE=log|smtp`. Ghi chép cũ: trang quên mật khẩu hiện dừng ở thông báo "đang phát triển" (backend chưa có endpoint gửi
    email). Màn đã dựng lại 2026-09-19 nhưng vẫn giữ đúng nhãn "đang phát triển", không giả vờ đã làm.
 8. Ghi chú bảo mật: npm audit còn 13 lỗi transitive (multer không dùng, next/postcss, vitest, esbuild,
    prisma/deepmerge-ts) — fix đều là breaking, hoãn; theo dõi khi lên version mới.
@@ -1002,7 +1002,8 @@ kia thì phải sửa spec trước rồi mới giữ thay đổi này.
     audit log, nút chạy lại) và panel `AiJobProgress` mới chỉ qua typecheck, chưa nhìn tận mắt vì DB
     chưa có job nào. Chạy một job mock (`LLM_MODE=mock` đã bật sẵn) sẽ kiểm chứng cả cụm — lưu ý nó
     sinh thêm bài học vào khóa demo dùng để chụp ảnh portfolio.
-18. **Lỗi RFC 7807: `type` sai cho mọi lỗi không phải `ApiError`.** Trong
+18. ~~**Lỗi RFC 7807: `type` sai cho mọi lỗi không phải `ApiError`.**~~ — **Đã sửa từ trước** (kiểm lại
+    2026-09-28: `problemType()` + test ở `apps/api/src/common/__tests__/errors.test.ts`); ghi chép dưới đây đã cũ. Trong
     `apps/api/src/common/errors.ts`, nhánh fallback của `AllExceptionsFilter` tính đúng `code` nhưng
     hardcode `type: 'https://learn.ai/errors/internal-error'`. Kiểm chứng thật:
     `403 FORBIDDEN` và `401 UNAUTHENTICATED` đều tự khai là `internal-error`, trong khi `404` (ném
@@ -1284,9 +1285,9 @@ Người dùng cung cấp API key Google AI Studio (free trial). Codebase trư�
 3. **503 "high demand" xảy ra thường xuyên** trên model mới nhất (`gemini-3.6-flash`,
    `gemini-flash-latest` đều 503 lúc thử). Adapter thử lại 429/503 hai lần với backoff 1s/2s.
 
-**Cấu hình đang chạy:** `LLM_PROVIDER=google`, `LLM_MODE=live`,
-`LLM_MODEL_GENERATION=LLM_MODEL_FAST=gemini-3.1-flash-lite`. Smoke test thật qua
-`createLlmProvider()` cho JSON hợp lệ, 34 in / 93 out token, ~6s.
+**Cấu hình Gemini cũ (ADR 009 — đã thay bằng OpenAI gpt-6-luna, ADR 010):** `LLM_PROVIDER=google`, `LLM_MODE=live`,
+`LLM_MODEL_GENERATION=LLM_MODEL_FAST=gemini-3.1-flash-lite`, `LLM_MODEL_FALLBACK=gemini-3.5-flash-lite`.
+Chọn bằng so sánh thật trên pipeline — xem mục "AI worker — chọn model" cuối file.
 
 ⚠️ **Bẫy cấu hình đã phát hiện:** `apps/api` và `apps/worker` gọi `dotenv/config` với cwd là thư mục
 của chính app, nên chúng đọc `apps/<app>/.env` — **không** đọc `.env` ở gốc repo (README đang ngầm
@@ -1294,8 +1295,8 @@ hiểu ngược lại). Trước đó `apps/worker/.env` chỉ có comment và `
 cả hai app đang chạy hoàn toàn bằng giá trị default trong zod schema (kể cả `JWT_ACCESS_SECRET`
 dev-only). Key LLM vì vậy đặt ở `apps/worker/.env`.
 
-⚠️ **Giá cho model Gemini 3.x chưa đối chiếu bảng giá chính thức** — `estimateCostUsd` dùng mức
-Gemini 2.5 Pro làm fallback (cố tình ước cao để chặn `AI_JOB_MAX_COST_USD` sớm còn hơn tiêu vượt).
+✅ **Giá Gemini 3.x + Claude đã đối chiếu bảng giá chính thức 2026-09-27** (phiên 20) — trước đó
+Claude Sonnet 5/Haiku cũng sai ($3/$15, $0.8/$4 thay vì $2/$10, $1/$5).
 
 Dọn kèm: cắt đoạn rác UTF-16LE (`# LEARN_website`) ở cuối `README.md` — nó khiến prettier coi file là
 binary và `npm run lint` đỏ từ trước phiên này.
@@ -1460,3 +1461,275 @@ Kế hoạch 7 phase do người dùng duyệt. Nguồn: HANDBOOK §19 (cấu tr
   chuyển sang repository (scope Phase 5 chỉ áp `apps/api`). Quyết định khi nào migrate worker.
 - **stash@{0}** chứa WIP session khác (Gemini LLM + REQUIREMENTS/SRS + `.claude` + seed-demo-heavy) —
   **KHÔNG commit nội dung stash**, đã pop về working tree trước khi kết thúc Phase 7.
+
+## AI worker — chọn model + model dự phòng (phiên 20 — 2026-09-27) — CHƯA commit
+
+Người dùng hỏi tiến độ AI worker, rồi muốn chọn model "tốt nhất và rẻ nhất". Làm 3 việc (ADR 009):
+
+1. **Sửa bảng giá** `apps/worker/src/common/llm.ts#estimateCostUsd` theo bảng giá chính thức: Gemini
+   3.x (3.6/3.7/3.8-flash có giá khuyến mãi tới 31/12/2026 — code tự đổi giá theo ngày), Claude Sonnet 5
+   $2/$10, Haiku 4.5 $1/$5 (trước ghi sai $3/$15, $0.8/$4), bỏ hậu tố ngày của ID Claude khi tra giá.
+2. **Model dự phòng:** biến mới `LLM_MODEL_FALLBACK` (không dùng lại `LLM_MODEL_FAST` vì §5.3 dành cho
+   phân loại nhẹ). `LlmUnavailableError` (provider.ts) do cả Gemini lẫn Anthropic ném cho 429/503/529;
+   `FallbackLlmProvider` (packages/ai/src/llm/fallback.ts) gọi lại bằng model dự phòng. Gemini chờ
+   theo `RetryInfo` (trần 60s) khi hết quota phút, **ném ngay khi hết quota ngày** (API vẫn trả
+   retryDelay 30s dù chờ vô ích). Worker chặn lúc khởi động nếu model dự phòng khác họ provider.
+3. **So sánh thật** bằng `apps/worker/src/scripts/compare-models.ts` + `apps/worker/fixtures/sample-vi-http.md`.
+
+**Phát hiện quan trọng nhất:** prompt `lesson@1` chỉ liệt kê tên trường → với Gemini thật, **100% bài
+học trượt tầng 1** (model bịa `difficulty`/`type`). Trước giờ chỉ chạy với LLM mock nên không lộ. Sửa
+thành `lesson@2`: nhúng `z.toJSONSchema(LessonOutput)` vào prompt. Sau khi sửa: 3.1-flash-lite 2/2 bài
+(chạy 2 lần), 3.5-flash-lite 2/2 bài, đều qua ngay lần đầu, confidence HIGH, tiếng Việt tốt, bám nguồn.
+
+**gemini-3.8-flash bị loại ở free tier:** 5 request/phút + **20 request/ngày** mỗi model → 1–3 job/ngày.
+Chưa đo được chất lượng (quota cạn). Cấu hình chốt: chính `gemini-3.1-flash-lite`, dự phòng
+`gemini-3.5-flash-lite` (đã thêm vào `apps/worker/.env`, file không commit).
+
+Test: `npm run test` 10→14 file, 137 test, tất cả xanh; `npm run typecheck` exit 0 (sửa luôn 3 lỗi TS có sẵn
+trong `gemini.test.ts` từ commit rebuild).
+
+### Chưa làm / next-action
+- **Độ phủ outline kém (không phụ thuộc model):** tài liệu 6 mục chỉ ra 2 bài; phương thức HTTP, mã
+  2xx–4xx, cookie, cache bị bỏ. Nguyên nhân: chunk ~1200 token, `headingPath` luôn null (FR-AI-10), bước
+  outline chỉ thấy 200 ký tự đầu mỗi chunk. Việc kế tiếp nên làm cho chất lượng AI.
+- Mẫu so sánh nhỏ (1 tài liệu, 2 bài/model). Đo lại 3.8-flash khi bật billing (hoặc hôm sau khi quota reset).
+- `npm run lint` **exit 1 có sẵn từ trước** (không do phiên này): `core.autocrlf=true` làm ~140 file
+  working tree là CRLF, prettier đòi LF. Các file phiên này sửa đều pass prettier. Cần `.gitattributes`
+  (`* text=auto eol=lf`) hoặc đổi autocrlf — quyết định riêng.
+- Chưa commit — chờ người dùng yêu cầu.
+
+### Cập nhật cuối phiên 20 — đo độ ổn định + chuyển sang OpenAI (ADR 010 — blocker key đã gỡ, xem mục kế)
+- **Đo độ trễ tuần tự:** `gemini-3.1-flash-lite` 15/15, trung vị 4.8s, tối đa 9.1s (ổn định);
+  `gemini-3.5-flash-lite` 10/10 nhưng 3 lời gọi 92s/151s/139s → **không dùng làm dự phòng được**
+  (worker cắt 120s). `apps/worker/.env` vẫn đang để `LLM_MODEL_FALLBACK=gemini-3.5-flash-lite` — sẽ
+  thay khi chuyển sang OpenAI.
+- **Người dùng chọn GPT-5 nano.** Đã viết `OpenAiCompatibleLlmProvider` (Chat Completions, fetch,
+  không SDK) + `LLM_PROVIDER=openai`, `LLM_BASE_URL`, `LLM_REASONING_EFFORT`, giá gpt-5-nano/mini,
+  gpt-6-luna, bỏ hậu tố snapshot `-YYYY-MM-DD` khi tra giá. 15 file / 154 test xanh, typecheck + eslint sạch.
+- **BLOCKER:** chưa có API key OpenAI. Người dùng tự dán key vào `apps/worker/.env`
+  (`LLM_PROVIDER=openai`, `LLM_MODEL_GENERATION=gpt-5-nano`, `LLM_MODEL_FALLBACK=gpt-5-mini`,
+  `LLM_REASONING_EFFORT=low`). **Next-action:** chạy `compare-models.ts` + đo độ trễ với gpt-5-nano;
+  đạt thì đổi ADR 010 sang "Đã chấp nhận".
+
+### Kết quả cuối phiên 20 — model chính `gpt-6-luna` (ADR 010, Đã chấp nhận)
+- Người dùng dán key OpenAI vào `apps/worker/.env` (dòng `LLM_MODE=live` bị mất khi dán — đã thêm lại).
+- Đo thật trên pipeline: `gpt-5-nano` low 1/2 · 2/2 bài, 52–73 s/job; medium 1/2, 126 s/job — hay để
+  đáp án đúng dài gấp đôi (tầng 2 chặn), chép nguyên văn tài liệu. **`gpt-6-luna` 2/2 · 2/2 bài, qua
+  ngay lần đầu, 9–10 s/job, ~$0.0014/job**; độ trễ 10/10 lời gọi 5.3–8.9 s. Người dùng chỉ cho thử
+  model GPT-6 rẻ nhất (không thử sol/astra).
+- `apps/worker/.env` hiện: `LLM_PROVIDER=openai`, `LLM_MODEL_GENERATION=LLM_MODEL_FAST=gpt-6-luna`,
+  `LLM_MODEL_FALLBACK=gpt-5-nano`, `LLM_REASONING_EFFORT=low`. Đã boot thật qua `createLlmProvider()`.
+  Key Gemini không còn trong `.env` (người dùng thay bằng key OpenAI).
+- **Sự cố đã báo người dùng:** một lệnh kiểm tra gửi nhầm key Gemini tới api.openai.com (401) do chưa
+  kiểm `LLM_PROVIDER` trước — rủi ro thấp, có thể xoay vòng key Gemini nếu muốn.
+- **Lỗi có sẵn phát hiện thêm (đã tạo task riêng):** `sanitizeLessonOutput` escape `<`/`>` thành
+  `&lt;`/`&gt;` — hiển thị sai trong code block/inline code của bài học.
+- Tổng chi phí OpenAI đã tiêu khi đo: ~$0.04.
+- **Next-action:** chạy một job thật qua app (cần bật Docker Desktop) để xác nhận end-to-end với
+  gpt-6-luna; sửa độ phủ outline (task riêng); sửa sanitizer (task riêng); commit khi người dùng yêu cầu.
+
+### Dò luồng end-to-end (cuối phiên 20) — CHƯA chạy thật được, Docker Desktop crash-loop
+- Mở Docker Desktop → 300 s vẫn không lên: đúng lỗi socket cũ đã ghi ở mục "Docker Desktop — root
+  cause đầy đủ" (`%LOCALAPPDATA%\Docker\run` và `docker-secrets-engine\engine.sock` còn file cũ).
+  Quy trình rename thư mục bị bộ phân loại an toàn của Claude chặn → **người dùng tự chạy**.
+- Dò tĩnh (đã xác minh bằng đọc code):
+  - Payload hàng đợi API ↔ worker khớp (`EXTRACT_DOCUMENT`, `GENERATE_LESSONS`, cả đường admin retry).
+  - **Retry cấp job của BullMQ (`attempts: 3`) là cấu hình chết:** `LessonGenerateProcessor.fail()` ghi
+    FAILED rồi không ném lại lỗi → BullMQ coi job thành công; kể cả nếu ném lại, bước claim chỉ nhận
+    AIJob `QUEUED` nên lần thử sau cũng bỏ qua. Lỗi LLM thoáng qua sau khi hết retry adapter + dự phòng
+    → job FAILED luôn (người dùng phải bấm "Thử lại").
+  - **Tải file .md có thể bị từ chối trên Windows:** web gửi `file.type || 'application/octet-stream'`;
+    trình duyệt Windows thường để `file.type` rỗng với `.md` → API trả unsupported. CHƯA kiểm chứng
+    bằng trình duyệt thật (TXT/PDF đã chạy thật từ trước).
+  - `params.difficulty` không được worker dùng (web gửi body rỗng, prompt không nhận) — tham số chết.
+- **Next-action:** người dùng sửa Docker → chạy E2E thật với gpt-6-luna (đăng ký → khoá học → tải TXT
+  và .md → sinh bài → đọc → làm bài tập → kiểm DB `GenerationRun.model/costUsd`).
+
+
+## Phiên 21 (2026-09-27) — Giao diện v3: xoá UI cũ, dựng lại toàn bộ (ADR 011) — CHƯA commit
+
+Yêu cầu người dùng: "Xoá toàn bộ UI hiện tại, tạo lại một bản UI mới, hiện đại hơn, tương thích
+hơn, nổi bật hơn". Quyết định thiết kế do agent chốt (memory `feedback-own-the-design-decisions`),
+giữ nguyên mọi ràng buộc `[SPEC]` (bảng màu §14.2, mascot §13.1, 5 trạng thái, không gamification).
+
+**Giữ nguyên (lớp dữ liệu, không phải UI):** `features/*/*-api.ts`, `auth-context`, `lib/api-client`,
+`lib/format|humanize|url-state|form-errors|celebrate|motion|env|query-provider`, `ai-job-partial`
+(+test), `components/shared/markdown.tsx`, mascot vendor. Một thay đổi nhỏ ở lớp dữ liệu:
+`useProgressHistory` thêm `placeholderData: keepPreviousData` để "Xem thêm" không nháy skeleton.
+
+**Viết lại toàn bộ:** `theme.css` (thêm khối token ngữ nghĩa sáng/tối), `globals.css`, `app/layout.tsx`
+(font Plus Jakarta Sans + script đặt tông), mọi primitive `components/ui/*` (thêm `IconButton`,
+`ProgressRing`, `StatCard`, `SectionTitle`, `BackLink`, `Button loading`, biến thể `soft`), shell mới
+(`features/shell/app-shell|nav|brand|stat-chips|plan-usage|user-menu`; xoá `side-rail`, `stat-bar`),
+tất cả 20 route (auth chia đôi, dashboard, khóa học, chi tiết khóa có kéo-thả tài liệu, đọc bài có
+mục lục đánh dấu mục đang đọc, bài tập/kết quả, tiến trình, cài đặt có chọn giao diện, 6 màn admin +
+biểu đồ chi phí `features/admin/cost-chart.tsx`), 404/error/global-error, `/dev/ui`.
+Mới: `lib/theme.tsx`, `components/shared/theme-toggle.tsx`, `components/shared/course-cover.tsx`.
+ESLint allowlist `shell` thêm `learning` (đọc `useProgressOverview`), bỏ mục `portfolio` đã chết.
+
+**Điểm chính của thiết kế:** chế độ tối (Sáng/Tối/Hệ thống, không nháy), sidebar navy luôn tông
+tối, bỏ rail phải (nội dung rộng thêm ~320px), banner aurora, bìa khóa học sinh từ id, vòng tiến
+độ, top bar kính mờ, menu tài khoản. Vùng tải tài liệu chỉ nhận `.pdf,.txt,.md` và ghi rõ
+"PPTX/DOCX: Đã lên kế hoạch" (FR-DOC-09) — trước đây cho chọn cả pptx/docx.
+
+**Kiểm chứng (Docker vẫn hỏng → dùng mock API tạm ở scratchpad, không vào repo):**
+- `npm run typecheck` toàn workspace ✓ · `npx eslint apps/web/src` ✓ · `npm run build -w apps/web`
+  ✓ 22 route · `npm run test` 15 file / 154 test ✓ · prettier sạch trên mọi file phiên này sửa.
+- `audit-a11y.mjs` (axe, WCAG 2.2 AA): **18/18 màn 0 vi phạm** (tông sáng). Quét tông tối riêng
+  15 màn: **0 vi phạm serious/critical**. Tương phản token đo bằng công thức WCAG, ghi trong `theme.css`.
+- Chụp 1440 / 390 / `--dark` các màn chính: không màn nào tràn ngang ở 390px.
+- Playwright: nộp thiếu câu → báo + focus đúng câu 1; nộp đủ → màn kết quả; đổi tông → lưu qua reload.
+- Hai lỗi tìm ra và đã sửa trong lúc soát: (1) font tự đổi "2xx" thành "2×x" (tắt `calt`),
+  (2) `/dashboard` tràn ngang 12px ở 390px (lưới thiếu `grid-cols-1`).
+
+**Chưa làm / next-action:**
+- **Chưa kiểm với backend thật** (Docker crash-loop, xem mục phiên 20). Khi Docker chạy: `npm run dev`
+  + `node scripts/audit-a11y.mjs` + đi thử luồng tải tài liệu → sinh bài (AI Job progress thật).
+- Ảnh cũ trong `docs/screenshots/ui/` (`root-*`, `register-1440`, `lesson-path-*`,
+  `course-detail-real`, `dev-ui-1440*`) còn là giao diện cũ; ảnh mới chụp trên dữ liệu mock. Ảnh
+  portfolio (`capture-screenshots.mjs`) cần chụp lại trên dữ liệu seed thật.
+- Commit khi người dùng yêu cầu — nên tách 2 commit: việc phiên 20 (AI/LLM) và việc phiên 21 (web).
+- Branch cũ `redesign/upgrade-2026-09` và `refactor/feature-based-structure` giờ đã lỗi thời so với
+  giao diện v3 — hỏi người dùng trước khi xoá.
+
+
+## Phiên 21b (2026-09-27) — Giao diện v4 (ADR 012): thiết kế lại theo phản hồi — CHƯA commit
+
+Người dùng chê bản v3 "quá xấu, không thân thiện, không tối ưu, trông rất AI slop" (skill
+`redesign-skill`). Chẩn đoán và sửa (chi tiết lý do ở ADR 012):
+
+- **Bỏ:** banner aurora/quầng blur/lưới chấm, eyebrow mono viết hoa, sidebar navy, chip số liệu trên
+  thanh đầu (số liệu từng hiện 3 lần), thẻ số liệu icon, nút gradient phát sáng, `shadow-glow`, công
+  tắc mặt trời/mặt trăng, lộ trình hình sin (`lesson-path.tsx` đã xoá), `stat-chips.tsx`.
+- **Mới:** font Mona Sans + Newsreader serif (tiêu đề, bài đọc 19px); nền xám lạnh trung tính, nút
+  chính navy đặc, sky chỉ làm tín hiệu; thanh điều hướng trên cùng + menu tài khoản chứa gói/hạn
+  mức/giao diện; Tổng quan có thẻ "Học tiếp" dẫn thẳng vào **bài** kế tiếp; stepper bài học
+  (`features/learning/lesson-list.tsx`) với nút sắp xếp luôn hiện; `StatStrip`; bìa khóa học sáng;
+  màn đăng nhập sáng hai cột. Token mới: `primary`, `primary-hover`, `primary-fg`, `line-input`.
+- **Sửa thêm lúc soát:** số 0 gạch chéo của Mona khi `tabular-nums` (tắt `zero`), logo chìm ở tông
+  tối (`Brand` vẽ cả hai tông), lề trái Cài đặt lệch header, độ đậm 700/800 hạ về 600.
+
+**Kiểm chứng (vẫn dùng mock API ở scratchpad, Docker vẫn hỏng):** typecheck ✓ · eslint ✓ · build ✓ ·
+154/154 unit ✓ · prettier sạch · `audit-a11y.mjs` 18/18 màn 0 vi phạm · quét tông tối 15 màn 0
+serious/critical · 390px: 11 màn không tràn ngang · Playwright: nộp thiếu câu → báo + focus đúng
+câu, nộp đủ → kết quả, menu tài khoản, đổi tông lưu qua reload.
+
+**Lưu ý môi trường:** tiến trình preview không có mạng ra ngoài → `next/font` rơi về font dự phòng
+ở dev. Chạy `npm run build -w apps/web` từ shell một lần để cache font, rồi mới bật dev.
+
+**Next-action:** như mục phiên 21 (kiểm với backend thật khi Docker chạy, chụp lại ảnh portfolio,
+commit khi người dùng yêu cầu — tách commit AI/LLM phiên 20 và commit web phiên 21).
+
+
+## Phiên 22 (2026-09-28) — Tối giản + pastel tươi (ADR 013) — CHƯA commit
+
+Yêu cầu: "tối giản giao diện, hiện đại và thân thiện hơn, palette pastel tươi hơn" (`minimalist-skill`).
+- Nền `#FBFBFA`, viền `#EAEAEA`, thẻ không bóng, bo nút 6px. Bốn token pastel (sky/mint/lemon/peach)
+  là sắc nhạt của hue đã có — không phá §14.2 (không tím, không hue mới).
+- Bìa khóa học pastel (nét mực + một hình khối pastel), ô icon pastel cho số liệu, vòng trạng thái
+  hoạt động pastel, badge viên thuốc pastel chữ thường, số bước pastel ở màn đăng nhập.
+- Icon Lucide → **Phosphor** (`@phosphor-icons/react`, gỡ `lucide-react`), chỉ đổi `icon.tsx`.
+- Khung `max-w-5xl`, khoảng trắng lớn hơn; số liệu Tổng quan thành dải ngang (cột phải 16rem làm
+  nhãn gãy dòng — đã sửa).
+
+Kiểm chứng (mock API, Docker vẫn hỏng): typecheck ✓ · eslint ✓ · build ✓ · 154/154 ✓ · prettier ✓ ·
+axe sáng 18/18 + tối 15/15 0 vi phạm · 390px 11 màn không tràn · Playwright luồng bài tập + đổi tông ✓.
+Next-action không đổi (backend thật khi có Docker, ảnh portfolio, commit khi người dùng yêu cầu).
+
+
+## Phiên 22b–22c (2026-09-28) — Gỡ dấu hiệu "AI" (ADR 014) rồi đơn sắc trắng–đen (ADR 015) — CHƯA commit
+
+**22b (`taste-skill`, ADR 014):** font Hanken Grotesk tự host qua Fontsource (bỏ `next/font/google`
+vì dev/build không có mạng rơi về font dự phòng), bỏ serif; gỡ mọi ô nền bo quanh icon; mascot một
+màu phẳng + `effects={false}`; ẩn nút dev "N" (`devIndicators: false`); gỡ mọi `—`/`–` trong chữ
+hiển thị, tối đa một `·` mỗi dòng.
+
+**22c (ADR 015) — ĐỔI `[SPEC]`:** chủ sản phẩm yêu cầu trực tiếp "chỉ dùng tông trắng tới đen, mascot
+chỉ trắng và đen". Đã sửa spec §14 + HANDBOOK §14.2/§13.4 **trước**, rồi code:
+- `theme.css`: `--color-*: initial` (xoá bảng màu Tailwind mặc định) + thang `mono-50…950`; token
+  ngữ nghĩa giữ tên, giá trị xám. Trạng thái bù bằng icon + chữ + độ đậm viền (lỗi viền đen, nhãn
+  lỗi đảo màu, đáp án sai viền đứt, nút phá huỷ viền 2px).
+- Mascot/logo: đen–trắng, đảo theo tông. Favicon, pháo giấy, bìa khóa học, biểu đồ: xám.
+- `packages/ui` colors đổi theo, gỡ `feedbackColors`.
+
+**Kiểm chứng (mock API, Docker vẫn hỏng):** typecheck ✓ · eslint ✓ · build ✓ · 154/154 ✓ · prettier ✓ ·
+axe sáng 18/18 + tối 15/15 0 vi phạm · 390px 11/11 không tràn · Playwright luồng bài tập + đổi tông ✓
+· script xác nhận CSS build ra không còn màu nào có R/G/B khác nhau.
+
+**Next-action:** như trước (backend thật khi có Docker; ảnh portfolio; commit khi được yêu cầu, tách
+commit AI/LLM phiên 20 khỏi commit giao diện).
+
+
+## Phiên 23 (2026-09-28) — Hoàn thiện luồng học theo hành trình người dùng — CHƯA commit
+
+Yêu cầu: "phân tích và phát triển thêm tính năng giúp hoàn thiện sản phẩm, dựa trên luồng sử
+dụng của người dùng", rồi "tự phân tích, lên kế hoạch và implement luôn". Đi lại luồng lõi `[SPEC]`
+trên code thật, tìm 12 chỗ gãy, sửa hết; chạy đầu-cuối trên hạ tầng thật lộ thêm 5 lỗi có sẵn,
+cũng sửa hết. Spec: `docs/superpowers/specs/2026-09-28-hoan-thien-luong-hoc-design.md` (§2 phân
+tích theo chặng, §6 lỗi lộ ra khi chạy thật). Kế hoạch: `docs/superpowers/plans/2026-09-28-hoan-thien-luong-hoc.md`.
+
+**Đã làm (backend trước, UI nối bằng primitive có sẵn, đơn sắc ADR 015):**
+- Tải lên: MIME theo đuôi file (`packages/contracts/src/document-types.ts`, nguồn duy nhất cho web +
+  API) — `.md` trên Windows trước đây bị 415. PUT presigned gửi đúng `Content-Type`.
+- DOCX (`mammoth`) + PPTX (`jszip`) — `apps/worker/src/extraction/office.ts`. FR-DOC-09 → Có trong MVP.
+- PDF giữ dòng/đoạn/heading theo cỡ chữ (`pdf-layout.ts`); trước đó cả trang bị nối thành một dòng.
+- Chunk theo mục `chunkPages()` (FR-AI-10); outline `outline@2` (bao phủ, preview 400, tự lập lại khi
+  sót > 25%); lesson `lesson@3` (độ khó). Đo thật: tài liệu 6 mục → 6 bài (trước: 2).
+- `sanitizeMarkdown()` thay `sanitize-html` cho `contentMd` (code trong bài không còn hỏng).
+- `confidence` ra API + UI (cảnh báo LOW, nhãn "Cần kiểm tra") — FR-LESSON-07 trước đây ghi "Có trong
+  MVP" nhưng thực chất chưa hiển thị.
+- Nguồn bài học `GET /courses/:cid/lessons/:lid/sources` + khối "Nguồn trong tài liệu" (FR-LESSON-12).
+- Nhiều bài tập mỗi bài học (FR-LESSON-13): `?exerciseId=`, `exerciseId` khi nộp, bài học xong khi mọi
+  bài tập đạt (`lesson-completion.ts`), thanh chọn bài tập, "Bài tập/Bài học tiếp theo".
+- `findBest` trả lượt điểm cao nhất (trước: lượt mới nhất).
+- Lịch sử: `courseId/lessonId/exerciseId/passed` + cursor (FR-PROGRESS-05/06), dòng bấm được.
+- Quên mật khẩu (FR-AUTH-07): bảng `PasswordResetToken` (migration `20260928150257_password_reset_token`),
+  `MailService` (`MAIL_MODE=log|smtp`, `SMTP_URL`, `MAIL_FROM`, `PASSWORD_RESET_TTL_MIN`), trang `/reset-password`.
+- Lỗi có sẵn lộ ra khi chạy thật: `generate-lessons` bỏ qua toàn bộ body (`@Body(schema)` thiếu
+  `zodBody`); màn kết quả không chỉ ra đáp án đúng của câu trắc nghiệm AI sinh (`correctIndex` vs
+  `optionId`); LLM mock trùng tiêu đề + chép JSON Schema vào bài; không có chỗ chọn độ khó; MD hiện "trang 1".
+
+**Kiểm chứng:** `npm run typecheck` ✓ · `npx vitest run` 23 file / 256 test ✓ · eslint ✓ · `npm run build -w
+apps/web` ✓ (thêm route `/reset-password`) · prettier sạch trên file phiên này sửa · kịch bản đầu-cuối qua
+API trên Docker thật + worker (LLM **mock**) 37/37 + pha đặt lại mật khẩu đạt · đi lại bằng browser: khóa
+học, đọc bài + Nguồn, luyện tập (chọn bài tập, nộp sai → thấy đáp án đúng, làm lại → hoàn thành bài học),
+Tiến trình, quên/đặt lại mật khẩu, 320px không cắt chữ · `audit-a11y.mjs` 20/20 màn 0 vi phạm + quét riêng
+các màn mới sáng/tối 0 vi phạm.
+
+**Lưu ý môi trường:**
+- `apps/worker/.env` đang `LLM_MODE=live` (gpt-6-luna, trả phí). Phiên này chạy worker với
+  `LLM_MODE=mock` ghi đè qua biến môi trường tiến trình, không sửa file `.env`.
+- Dừng worker chạy nền bằng TaskStop KHÔNG giết tiến trình `node` con (`src/main.ts`) — phải `taskkill`
+  theo PID, bằng không hai worker cùng nhận job.
+- Docker bị ai đó `stop` lúc 21:58 (không phải crash, không phải `compose down`); đã bật lại.
+- DB dev có thêm vài tài khoản `e2e-*@test.local` + khóa "Khóa kiểm thử luồng học" do kịch bản tạo.
+- Dữ liệu bài học cũ sinh trước phiên này vẫn có `&lt;`/`&gt;` do sanitizer cũ — không migrate.
+
+**Next-action:**
+1. Commit khi người dùng yêu cầu — tách commit: (a) AI/LLM phiên 20, (b) giao diện 21–22, (c) phiên 23.
+2. Thử PPTX thật và SMTP thật (mới có unit test / `MAIL_MODE=log`).
+3. Chạy lại một job với LLM thật (rẻ nhất, theo memory) để đo độ bao phủ `outline@2` trên model thật —
+   mock luôn tạo một node mỗi chunk nên không đo được luật bao phủ.
+4. Integration test tự động cho các route mới (sources, exercise nhiều bài tập, history cursor,
+   forgot/reset) — kịch bản đầu-cuối phiên này nằm ở scratchpad, chưa vào repo/CI.
+
+### Phiên 23b (2026-09-28) — Bộ tài liệu demo `DocsTest/` + chạy AI thật
+
+- `DocsTest/` (gốc repo, chưa commit): 2 PDF (CSDL quan hệ, Python cơ bản), 2 DOCX (Mạng máy tính,
+  Agile/Scrum), 2 MD (Git, Cung cầu). Sinh bằng Playwright (PDF có lớp chữ) và python-docx (style
+  Heading/Title thật).
+- Chạy thử trên tài liệu thật lộ 3 điểm chia mục, đã sửa kèm test: style **Title** của Word thành
+  heading cấp 1 (Heading lùi một cấp) · lời mở đầu ngắn không có chunk trước được dán vào mục kế tiếp
+  cùng chương · ngưỡng gộp mục có heading `minSectionTokens` = 50 (mục cấp chương vẫn 100). Kết quả:
+  6 file → 5–6 chunk, đúng từng mục đánh số.
+- Tài khoản `client001@gmail.com` (của người dùng, gói **PRO/ACTIVE**): đặt lại mật khẩu thành
+  `Client001` theo yêu cầu, qua đúng luồng quên mật khẩu. Chạy **LLM thật** (`gpt-6-luna`) cho 3 file
+  (01 PDF, 03 DOCX, 05 MD), mỗi file một khóa: 16/17 bài thành công, mọi bài HIGH, ~$0.014 tổng,
+  28–46 s/khóa. Bài "Làm việc với kho từ xa" (Git) bị tầng 2 loại (đáp án đúng dài gấp đôi) → job
+  PARTIAL_FAILURES. Một tiêu đề hơi lạ: "Địa chỉ IP: phạm vi nội dung được cung cấp".
+- Worker đang chạy nền ở `llmMode=live` (task của phiên này).
+
+**Next-action mới (ưu tiên cao cho chất lượng sản phẩm):** chấm SHORT_ANSWER đang so khớp gần như
+nguyên văn với `acceptable` — model thật sinh đáp án mẫu là cả câu dài, nên người học gần như luôn
+bị chấm sai (8/48 câu ở lượt chạy thật). Cần quyết định (đụng HANDBOOK §7.4): chấm theo từ khoá /
+độ trùng, yêu cầu model sinh `acceptable` ngắn nhiều biến thể, hoặc chuyển SHORT_ANSWER sang tự đánh giá.

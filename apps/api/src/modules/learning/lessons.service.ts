@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type {
+  LessonSource,
   LessonSummary,
   LessonRead,
   PatchLessonInput,
@@ -11,6 +12,9 @@ import { CourseRepository } from '../courses/course.repository';
 import { LessonRepository } from './lesson.repository';
 import { LearningProgressRepository } from './learning-progress.repository';
 import { ExerciseRepository } from './exercise.repository';
+
+/** Đủ để đối chiếu một ý trong bài; chunk đầy đủ ~1200 token (~4800 ký tự). */
+const SOURCE_EXCERPT_MAX = 1500;
 
 @Injectable()
 export class LessonsService {
@@ -39,6 +43,7 @@ export class LessonsService {
           orderIndex: l.orderIndex,
           status: l.status as LessonSummary['status'],
           exerciseCount: countMap.get(l.id) ?? 0,
+          confidence: l.confidence,
           progressStatus: p?.status ?? 'NOT_STARTED',
           bestScore: p?.bestScore ?? null,
         };
@@ -60,11 +65,43 @@ export class LessonsService {
       orderIndex: lesson.orderIndex,
       status: lesson.status as LessonRead['status'],
       sourceChunkIds: lesson.sourceChunkIds,
+      confidence: lesson.confidence,
       editedByUserAt: lesson.editedByUserAt?.toISOString() ?? null,
       progress: {
         status: p?.status ?? 'NOT_STARTED',
         bestScore: p?.bestScore ?? null,
       },
+    };
+  }
+
+  /**
+   * Đoạn tài liệu gốc của bài học — FR-LESSON-12. Thứ tự theo tài liệu rồi vị trí chunk (đọc
+   * xuôi như tài liệu gốc), không theo thứ tự LLM liệt kê.
+   */
+  async getLessonSources(
+    userId: string,
+    courseId: string,
+    lessonId: string,
+  ): Promise<{ sources: LessonSource[] }> {
+    const course = await this.ownedCourse(courseId, userId);
+    const lesson = await this.lessons.findInCourse(lessonId, course.id);
+    if (!lesson) throw ApiError.notFound('Không tìm thấy bài học.');
+
+    const chunks = await this.lessons.findSourceChunks(course.id, userId, lesson.sourceChunkIds);
+    return {
+      sources: chunks.map((c) => {
+        const truncated = c.content.length > SOURCE_EXCERPT_MAX;
+        return {
+          chunkId: c.id,
+          documentId: c.documentId,
+          filename: c.document.filename,
+          pageFrom: c.pageFrom,
+          pageTo: c.pageTo,
+          headingPath: c.headingPath,
+          excerpt: truncated ? `${c.content.slice(0, SOURCE_EXCERPT_MAX).trimEnd()}…` : c.content,
+          truncated,
+        };
+      }),
     };
   }
 

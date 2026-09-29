@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { cn } from '@/components/ui/cn';
+import { useTheme } from '@/lib/theme';
 
 /**
  * Mascot Circle — bản động từ Blob Studio (40 state, 25 biểu cảm).
@@ -48,21 +49,20 @@ const CircleAvatar = dynamic(() => import('./mascot/CircleAvatar'), {
 });
 
 /**
- * Màu thân mascot.
+ * Màu mascot — ADR 015: **chỉ trắng và đen**.
  *
- * Bản export của Blob Studio để `DEFAULT_GRADIENT = ['#000000','#000000','#000000']`
- * — đen tuyền, phẳng. Trên thẻ trắng nó thành một đốm đen không thuộc bảng màu
- * nào của LEARN, còn trên `navy-900` thì chìm hẳn (đó là lý do hero phải lót một
- * đĩa sáng phía sau). Truyền gradient ở đây kéo mascot về đúng palette §14.2 mà
- * không phải sửa một dòng nào trong file vendor.
+ * Tông sáng: thân đen, mắt + miệng trắng — cũng chính là màu gốc của bản export Blob Studio
+ * (`DEFAULT_GRADIENT` đen tuyền). Tông tối: đảo lại (thân trắng, mặt đen), vì thân đen chìm
+ * hẳn trên nền gần đen. Vendor nhận `gradient` 3 điểm dừng; truyền cùng một màu cho cả ba là
+ * thân phẳng, không phải sửa file vendor (ADR 006).
  *
- * Gradient của component chạy từ **trên-phải** (`x1=1 y1=0`) xuống **dưới-trái**,
- * nên stop đầu là điểm sáng: sky-400 → navy-700 → navy-900 đọc ra một khối cầu
- * navy được ánh sáng thương hiệu rọi vào, thay vì một hình tròn bẹt.
- *
- * Mắt giữ màu trắng mặc định — tương phản 17:1 trên navy-900.
+ * `effects={false}`: hiệu ứng của vendor (vệt sao chổi, pháo giấy quanh mascot) chạy qua
+ * nhiều hue — phá quy tắc đơn sắc. Pháo giấy khi qua bài ở `lib/celebrate.ts` đã là thang xám.
  */
-const BODY_GRADIENT: [string, string, string] = ['#7FD3F7', '#16202E', '#0B1220'];
+const BLACK = '#111111';
+const WHITE = '#FFFFFF';
+const BODY_LIGHT: [string, string, string] = [BLACK, BLACK, BLACK];
+const BODY_DARK: [string, string, string] = [WHITE, WHITE, WHITE];
 
 export function Mascot({
   state,
@@ -76,13 +76,22 @@ export function Mascot({
   expression?: number;
   className?: string;
 }) {
+  const { resolved } = useTheme();
+  const dark = resolved === 'dark';
   return (
     <span
       aria-hidden="true"
       className={cn('inline-block shrink-0 select-none', className)}
       style={{ width: size, height: size }}
     >
-      <CircleAvatar state={state} size={size} expression={expression} gradient={BODY_GRADIENT} />
+      <CircleAvatar
+        state={state}
+        size={size}
+        expression={expression}
+        gradient={dark ? BODY_DARK : BODY_LIGHT}
+        eyeColor={dark ? BLACK : WHITE}
+        effects={false}
+      />
     </span>
   );
 }

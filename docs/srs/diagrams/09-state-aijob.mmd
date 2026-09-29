@@ -1,0 +1,10 @@
+stateDiagram-v2
+  [*] --> QUEUED : POST generate-lessons (trừ quota)
+  QUEUED --> RUNNING : worker claim WHERE status = QUEUED
+  QUEUED --> CANCELLED : POST cancel
+  RUNNING --> CANCELLED : POST cancel, worker dừng ở checkpoint
+  RUNNING --> SUCCEEDED : có ít nhất 1 Lesson hợp lệ
+  RUNNING --> FAILED : 0 Lesson hợp lệ, timeout, vượt trần chi phí
+  FAILED --> QUEUED : BullMQ retry (tối đa 3) hoặc admin retry
+  SUCCEEDED --> [*]
+  CANCELLED --> [*]

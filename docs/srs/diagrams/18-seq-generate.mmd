@@ -1,0 +1,27 @@
+sequenceDiagram
+  autonumber
+  actor U as Learner
+  participant W as Web
+  participant A as API (AiService)
+  participant D as PostgreSQL
+  participant R as Redis (BullMQ)
+  U->>W: bấm "Sinh bài học bằng AI" (chọn độ khó)
+  W->>A: POST /ai/courses/:courseId/generate-lessons { documentIds?, language?, difficulty? }
+  A->>D: Course thuộc userId?
+  A->>D: documentIds đều thuộc Course này và của user?
+  A->>D: đã có job QUEUED/RUNNING cùng course + params?
+  alt có job đang chờ/chạy
+    A-->>W: 200 AiJobSummary của job đó (chống bấm hai lần)
+  else tạo mới
+    rect rgb(244, 244, 245)
+      Note over A,D: consume(AI_JOBS_RUN) — advisory lock + đếm + INSERT trong 1 transaction
+      A->>D: INSERT AIJob (QUEUED, idempotencyKey, inputParams)
+    end
+    A->>R: add lesson-generate (jobId gen-{id}, attempts 3, backoff mũ 5s) — sau commit
+    A-->>W: 200 AiJobSummary (QUEUED)
+  end
+  loop mỗi 2 giây khi QUEUED / RUNNING
+    W->>A: GET /ai/jobs/:id
+    A-->>W: status, progress, progressLabel, error
+  end
+  W-->>U: danh sách Lesson mới (hoặc cảnh báo partial / lỗi)

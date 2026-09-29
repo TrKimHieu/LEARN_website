@@ -22,6 +22,21 @@ export interface LlmProvider {
   generate(params: LlmGenerateParams): Promise<LlmGenerationResult>;
 }
 
+/**
+ * Model tạm thời không phục vụ được (quá tải 503/529, hết quota 429) sau khi adapter đã tự thử lại.
+ * Tách thành lớp riêng để tầng trên (FallbackLlmProvider) phân biệt với lỗi cấu hình — đổi sang
+ * model khác chữa được lỗi này, còn sai key/sai tên model thì không.
+ */
+export class LlmUnavailableError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'LlmUnavailableError';
+  }
+}
+
 /** JSON parse kèm thông báo lỗi rõ — dùng khi model trả về không phải JSON thuần. */
 export function extractJson(text: string): unknown {
   const trimmed = text.trim();

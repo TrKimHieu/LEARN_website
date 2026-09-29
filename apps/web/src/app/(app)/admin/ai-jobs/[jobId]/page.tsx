@@ -6,7 +6,6 @@ import { StatusChip, jobTypeLabel } from '@/features/admin/status-chip';
 import {
   Button,
   Card,
-  CardTitle,
   Icon,
   PageHeader,
   Table,
@@ -99,32 +98,32 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
         <Fact label="Xếp hàng lúc" value={new Date(j.queuedAt).toLocaleString('vi-VN')} />
         <Fact
           label="Hoàn tất lúc"
-          value={j.finishedAt ? new Date(j.finishedAt).toLocaleString('vi-VN') : '—'}
+          value={j.finishedAt ? new Date(j.finishedAt).toLocaleString('vi-VN') : 'Chưa xong'}
         />
       </div>
 
       {j.error && (
-        <Card className="mt-4 border-danger-100 bg-danger-50">
-          <p className="flex items-center gap-1.5 text-sm font-bold text-danger-700">
+        <Card className="mt-4 border-bad-line bg-bad-soft">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-bad">
             <Icon name="alert" size={16} />
             {j.error.code}: {j.error.message}
           </p>
           {j.error.detail != null && (
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs text-danger-700">
+            <pre className="mt-3 overflow-x-auto rounded-control border border-bad-line bg-panel p-3 font-mono text-xs text-bad">
               {JSON.stringify(j.error.detail, null, 2)}
             </pre>
           )}
         </Card>
       )}
 
-      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Tham số đầu vào</h2>
+      <h2 className="mb-3 mt-10 text-base font-semibold text-fg">Tham số đầu vào</h2>
       <Card>
-        <pre className="overflow-x-auto text-xs text-ink-700">
+        <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-fg-muted">
           {JSON.stringify(j.inputParams, null, 2)}
         </pre>
       </Card>
 
-      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Lượt gọi LLM ({j.runs.length})</h2>
+      <h2 className="mb-3 mt-10 text-base font-semibold text-fg">Lượt gọi LLM ({j.runs.length})</h2>
       {j.runs.length === 0 ? (
         <TableEmpty title="Chưa có lượt gọi nào" icon="sparkles" />
       ) : (
@@ -140,7 +139,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
             <Tbody>
               {j.runs.map((r) => (
                 <tr key={r.id}>
-                  <Td className="font-medium text-ink-900">{r.step}</Td>
+                  <Td className="font-medium text-fg">{r.step}</Td>
                   <Td className="font-mono text-xs">{r.model}</Td>
                   <Td align="right" className="tabular-nums">
                     {r.inputTokens}/{r.outputTokens}
@@ -148,7 +147,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
                   <Td align="right" className="tabular-nums">
                     {r.latencyMs}ms
                   </Td>
-                  <Td className="whitespace-nowrap text-ink-500">
+                  <Td className="whitespace-nowrap text-fg-subtle">
                     {new Date(r.createdAt).toLocaleTimeString('vi-VN')}
                   </Td>
                 </tr>
@@ -158,7 +157,7 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
         </TableCard>
       )}
 
-      <h2 className="mb-3 mt-8 text-lg font-bold text-ink-900">Lịch sử thao tác admin</h2>
+      <h2 className="mb-3 mt-10 text-base font-semibold text-fg">Lịch sử thao tác admin</h2>
       {auditLog.isLoading && <LoadingState variant="list" rows={3} />}
       {auditLog.isError && (
         <ErrorState
@@ -173,11 +172,11 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
       )}
       {auditLog.data && auditLog.data.entries.length > 0 && (
         <Card padded={false}>
-          <ul className="divide-y divide-surface-200">
+          <ul className="divide-y divide-line">
             {auditLog.data.entries.map((e) => (
               <li key={e.id} className="px-5 py-3 text-sm">
-                <span className="font-bold text-ink-900">{e.action}</span>
-                <span className="text-ink-500">
+                <span className="font-semibold text-fg">{e.action}</span>
+                <span className="text-fg-subtle">
                   {' · '}
                   {e.actorEmail ?? 'hệ thống'}
                   {' · '}
@@ -194,9 +193,9 @@ export default function AdminAiJobDetailPage({ params }: { params: Promise<{ job
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <Card>
-      <CardTitle className="text-xs font-medium text-ink-500">{label}</CardTitle>
-      <p className="mt-1.5 text-sm font-medium text-ink-900">{value}</p>
+    <Card className="p-4 sm:p-5">
+      <p className="text-xs font-semibold text-fg-subtle">{label}</p>
+      <p className="mt-1.5 text-sm font-semibold text-fg">{value}</p>
     </Card>
   );
 }

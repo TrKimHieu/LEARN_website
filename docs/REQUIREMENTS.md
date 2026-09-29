@@ -16,8 +16,10 @@
 >   Tài liệu này không lặp lại tiến độ chi tiết, chỉ gắn nhãn 4 mức bắt buộc theo `AGENTS.md`:
 >   **Có trong MVP** · **Đang phát triển** · **Đã lên kế hoạch** · **Mở rộng tương lai**.
 >
-> Cập nhật lần cuối: 2026-09-22, đối chiếu trực tiếp với schema Prisma và controller thật
-> trong repo tại thời điểm viết — không suy diễn từ tài liệu cũ.
+> Cập nhật lần cuối: 2026-09-28 (đợt "hoàn thiện luồng học", spec
+> `docs/superpowers/specs/2026-09-28-hoan-thien-luong-hoc-design.md`), đối chiếu trực tiếp với
+> schema Prisma, controller thật và một lượt chạy đầu-cuối trên hạ tầng thật — không suy diễn
+> từ tài liệu cũ.
 
 ---
 
@@ -130,7 +132,7 @@ nhãn `Mở rộng tương lai`:
 - Chỉnh sửa course cộng tác thời gian thực.
 - Huấn luyện foundation model riêng.
 - Phân tích/khuyến nghị nâng cao.
-- OCR cho PDF scan, trích xuất PPTX/DOCX (hiện chỉ PDF có lớp text + TXT/MD — xem §5.3).
+- OCR cho PDF scan (PDF có lớp text, DOCX, PPTX, TXT, MD đã đọc được — xem §5.3).
 
 ---
 
@@ -153,7 +155,7 @@ lỗi chặn release, không phải "nợ kỹ thuật có thể hoãn", trừ k
 | NFR-SEC-08 | Khoá lưu trữ object storage không đoán được | courses/{courseId}/documents/{documentId}.{ext}, không dùng tên file người dùng đặt, chỉ truy cập qua presigned URL hạn ngắn, bucket không public |
 | NFR-SEC-09 | Không tin giá/trạng thái thanh toán từ frontend | Giá lấy từ Plan trong DB; trạng thái thanh toán chỉ cập nhật qua webhook đã xác minh chữ ký |
 | NFR-SEC-10 | Không log/commit secret | .env không commit; secret không xuất hiện trong log ứng dụng |
-| NFR-SEC-11 | Mọi endpoint yêu cầu xác thực trừ danh sách trắng | Ngoại lệ: /auth/register, /auth/login, /auth/refresh, /plans, /health*, /webhooks/stripe |
+| NFR-SEC-11 | Mọi endpoint yêu cầu xác thực trừ danh sách trắng | Ngoại lệ: /auth/register, /auth/login, /auth/refresh, /auth/forgot-password, /auth/reset-password, /plans, /health*, /webhooks/stripe |
 
 ### 4.2 Hiệu năng và khả năng mở rộng — NFR-PERF
 
@@ -220,12 +222,12 @@ Mỗi yêu cầu ghi rõ trạng thái theo 4 nhãn bắt buộc của AGENTS.md
 | FR-AUTH-04 | Đăng xuất (thu hồi refresh token hiện tại) và đăng xuất toàn bộ phiên | Có trong MVP |
 | FR-AUTH-05 | Xem và sửa hồ sơ cơ bản (displayName, locale) | Có trong MVP |
 | FR-AUTH-06 | Đổi mật khẩu khi đã đăng nhập | Có trong MVP |
-| FR-AUTH-07 | Quên mật khẩu qua email | **Đang phát triển** — màn hình tồn tại, hiển thị đúng trạng thái "đang phát triển", backend chưa có endpoint gửi email |
+| FR-AUTH-07 | Quên mật khẩu qua email | Có trong MVP — token 256-bit chỉ lưu SHA-256, hạn `PASSWORD_RESET_TTL_MIN` (30 phút), dùng một lần, đặt lại xong thu hồi mọi phiên; trả cùng một câu cho mọi email (không lộ email đã đăng ký), giới hạn 5 lần/15 phút/IP và 3 thư/giờ/email. Gửi thư: `MAIL_MODE=log` (dev, in đường dẫn ra log API) hoặc `MAIL_MODE=smtp` (`SMTP_URL`). Ở production mà vẫn `log` thì thư **không** được gửi (chỉ cảnh báo trong log) |
 | FR-AUTH-08 | Mọi route ngoài trang public phải được bảo vệ (redirect nếu chưa đăng nhập) | Có trong MVP |
 
 Route thật: POST /auth/register, POST /auth/login, POST /auth/refresh,
 POST /auth/logout, POST /auth/logout-all, GET /auth/me, PATCH /auth/me,
-POST /auth/change-password.
+POST /auth/change-password, POST /auth/forgot-password, POST /auth/reset-password.
 
 ### 5.2 Course Management — FR-COURSE `[SPEC §6.2]`
 
@@ -254,17 +256,17 @@ DELETE /courses/:id.
 | FR-DOC-06 | Xoá document (xoá cả file trên object storage) | Có trong MVP |
 | FR-DOC-07 | Chặn upload trùng checksum trong cùng course | Có trong MVP |
 | FR-DOC-08 | Trích xuất text từ PDF có lớp text, TXT, MD | Có trong MVP |
-| FR-DOC-09 | Trích xuất PPTX, DOCX | **Đã lên kế hoạch** — chưa triển khai (officeparser, mammoth) |
+| FR-DOC-09 | Trích xuất PPTX, DOCX | Có trong MVP — DOCX qua `mammoth` (heading Word → heading Markdown, số trang lấy từ `docProps/app.xml` nếu có), PPTX qua `jszip` (mỗi slide một trang, tiêu đề slide → heading, thứ tự theo trình chiếu). `.doc`/`.ppt` đời cũ không hỗ trợ |
 | FR-DOC-10 | OCR cho PDF scan (không có lớp text) | **Đã lên kế hoạch** — hiện từ chối tường minh bằng ScannedPdfNotSupportedError, không giả vờ xử lý được |
 | FR-DOC-11 | Trang danh sách tài liệu độc lập (ngoài trang course) | **Đã lên kế hoạch** |
 
 Route thật: POST /courses/:courseId/documents/upload-url, POST /documents/:id/confirm,
 GET /courses/:courseId/documents, GET /documents/:id/download, DELETE /documents/:id.
 
-Định dạng hỗ trợ thật hiện nay: .pdf (có lớp text), .txt, .md. .pptx/.docx nằm trong
-whitelist phần mở rộng ở tầng validation nhưng **chưa có trình trích xuất** — nộp lên sẽ dừng ở
-bước xử lý, không được quảng cáo là "hỗ trợ đầy đủ 5 định dạng" ở bất kỳ nơi nào (marketing,
-UI, tài liệu) cho tới khi FR-DOC-09 hoàn tất.
+Định dạng hỗ trợ thật hiện nay: .pdf (có lớp text), .docx, .pptx, .txt, .md. Danh sách nằm ở
+**một** chỗ (`packages/contracts/src/document-types.ts`) dùng chung cho web và API. MIME luôn suy
+từ **đuôi file**, không tin `File.type` của trình duyệt (Chrome/Windows để rỗng với `.md`); worker
+vẫn kiểm magic bytes (NFR-SEC-07). PDF scan vẫn bị từ chối tường minh (FR-DOC-10).
 
 ### 5.4 AI Lesson Generation — FR-AI `[SPEC §6.4]`
 
@@ -279,8 +281,9 @@ UI, tài liệu) cho tới khi FR-DOC-09 hoàn tất.
 | FR-AI-07 | Lưu một phần kết quả nếu chỉ một số Lesson lỗi (partialFailures), không fail toàn bộ job | Có trong MVP |
 | FR-AI-08 | Đổi nhà cung cấp LLM qua biến môi trường (Anthropic / Google Gemini) | Có trong MVP |
 | FR-AI-09 | Chạy AI job ở chế độ mock cho test/CI, không gọi LLM thật | Có trong MVP |
-| FR-AI-10 | Nhận diện heading thật trong tài liệu (thay vì heuristic đơn giản) khi chunk | **Đã lên kế hoạch** |
+| FR-AI-10 | Nhận diện heading thật trong tài liệu (thay vì heuristic đơn giản) khi chunk | Có trong MVP — PDF theo cỡ chữ thật (`pdf-layout.ts`), DOCX theo style Heading, PPTX theo tiêu đề slide, MD theo `#`, TXT theo mẫu "Chương 2", "2.1 …". Chunk không vắt qua hai mục, `headingPath` = "Cha > Con"; outline `outline@2` có luật bao phủ và tự lập lại một lần khi sót > 25% chunk |
 | FR-AI-11 | Job định kỳ dọn AI Job treo, dead-letter queue | **Đã lên kế hoạch** |
+| FR-AI-12 | Chọn độ khó bài tập khi sinh bài học (EASY/MEDIUM/HARD) | Có trong MVP — ô chọn cạnh nút "Sinh bài học bằng AI", đi vào prompt `lesson@3` |
 
 Route thật: POST /courses/:courseId/generate-lessons, GET /jobs, GET /jobs/:id,
 POST /jobs/:id/cancel, GET /jobs/:id/stream.
@@ -295,16 +298,20 @@ POST /jobs/:id/cancel, GET /jobs/:id/stream.
 | FR-LESSON-04 | Sửa nội dung Lesson do AI sinh | Có trong MVP |
 | FR-LESSON-05 | Sắp xếp lại thứ tự Lesson | Có trong MVP |
 | FR-LESSON-06 | Xoá Lesson | Có trong MVP |
-| FR-LESSON-07 | Hiển thị cảnh báo LOW_CONFIDENCE khi Lesson lệch khỏi tài liệu gốc | Có trong MVP |
+| FR-LESSON-07 | Hiển thị cảnh báo LOW_CONFIDENCE khi Lesson lệch khỏi tài liệu gốc | Có trong MVP — **đến 2026-09-28 mới đạt thật**: trước đó `confidence` có trong DB nhưng API không trả, UI không hiện (nhãn cũ ghi sai). Nay: khối cảnh báo ở trang đọc bài + nhãn "Cần kiểm tra" ở danh sách |
 | FR-LESSON-08 | Xem Exercise của Lesson, không lộ đáp án đúng trước khi nộp | Có trong MVP |
 | FR-LESSON-09 | Nộp câu trả lời Exercise | Có trong MVP |
 | FR-LESSON-10 | Chấm điểm tự động, trả về đúng/sai + giải thích | Có trong MVP, hỗ trợ 4 loại câu hỏi: MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER, FILL_BLANK |
-| FR-LESSON-11 | Đánh dấu Lesson hoàn thành | Có trong MVP |
+| FR-LESSON-11 | Đánh dấu Lesson hoàn thành | Có trong MVP — Lesson COMPLETED khi **mọi** Exercise của nó có ít nhất một lượt đạt `passScore` riêng; không hạ cấp khi làm lại trượt |
+| FR-LESSON-12 | Xem đoạn tài liệu gốc mà Lesson được soạn từ đó (tên file, trang, mục) | Có trong MVP — mở sẵn khi Lesson LOW_CONFIDENCE |
+| FR-LESSON-13 | Làm mọi Exercise của một Lesson (AI sinh 1–5), điều hướng giữa chúng | Có trong MVP |
 
 Route thật: GET /courses/:courseId/lessons, GET /courses/:courseId/lessons/:lessonId,
 POST /courses/:courseId/lessons/:lessonId/start, PATCH /courses/:courseId/lessons/reorder,
 PATCH /courses/:courseId/lessons/:lessonId, DELETE /courses/:courseId/lessons/:lessonId,
-GET /lessons/:lessonId/exercise, POST /lessons/:lessonId/exercise/submit.
+GET /courses/:courseId/lessons/:lessonId/sources,
+GET /lessons/:lessonId/exercise[?exerciseId=], POST /lessons/:lessonId/exercise/submit
+(body có `exerciseId` tuỳ chọn; bỏ trống = bài tập đầu tiên).
 
 > Ghi chú kiến trúc: path Lesson/Exercise lồng dưới /courses/:id/... thay vì phẳng
 > /lessons/:id như HANDBOOK §7.2 mô tả ban đầu — quyết định có chủ đích để tránh refactor
@@ -319,11 +326,11 @@ GET /lessons/:lessonId/exercise, POST /lessons/:lessonId/exercise/submit.
 | FR-PROGRESS-02 | Hiển thị tiến trình tổng quan (overview) của user | Có trong MVP |
 | FR-PROGRESS-03 | Hiển thị tiến trình theo từng course | Có trong MVP |
 | FR-PROGRESS-04 | Hiển thị lịch sử học tập cơ bản | Có trong MVP |
-| FR-PROGRESS-05 | Bấm vào một dòng lịch sử để nhảy thẳng tới đúng bài học | **Đang phát triển** — lịch sử hiện ghi đúng tên bài/course nhưng thiếu courseId/lessonId để điều hướng |
-| FR-PROGRESS-06 | Phân trang cursor-based thật cho lịch sử (thay vì tăng limit) | **Đã lên kế hoạch** |
+| FR-PROGRESS-05 | Bấm vào một dòng lịch sử để nhảy thẳng tới đúng bài học | Có trong MVP |
+| FR-PROGRESS-06 | Phân trang cursor-based thật cho lịch sử (thay vì tăng limit) | Có trong MVP — `?limit=&cursor=` → `{ items, nextCursor }`, thứ tự `(createdAt, id)` |
 
 Route thật: GET /progress/overview, GET /progress/courses, GET /progress/course/:courseId,
-GET /progress/history.
+GET /progress/history?limit=&cursor=.
 
 ### 5.7 Subscription & Billing — FR-SUB `[SPEC §6.7]`
 

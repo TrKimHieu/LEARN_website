@@ -44,6 +44,16 @@ export class LearningController {
     return this.lessons.getLessonRead(user.userId, courseId, lessonId);
   }
 
+  @Get('courses/:courseId/lessons/:lessonId/sources')
+  @Auth()
+  async lessonSources(
+    @CurrentUser() user: UserContext,
+    @Param('courseId', zodParam(idSchema)) courseId: string,
+    @Param('lessonId', zodParam(idSchema)) lessonId: string,
+  ) {
+    return this.lessons.getLessonSources(user.userId, courseId, lessonId);
+  }
+
   @Post('courses/:courseId/lessons/:lessonId/start')
   @Auth()
   async startLesson(
@@ -92,8 +102,9 @@ export class LearningController {
   async exerciseRead(
     @CurrentUser() user: UserContext,
     @Param('lessonId', zodParam(idSchema)) lessonId: string,
+    @Query('exerciseId', zodParam(idSchema.optional())) exerciseId: string | undefined,
   ) {
-    return this.exercises.getExerciseRead(user.userId, lessonId);
+    return this.exercises.getExerciseRead(user.userId, lessonId, exerciseId);
   }
 
   @Post('lessons/:lessonId/exercise/submit')
@@ -132,7 +143,8 @@ export class LearningController {
   async history(
     @CurrentUser() user: UserContext,
     @Query('limit', zodParam(limitSchema)) limit: number,
+    @Query('cursor', zodParam(idSchema.optional())) cursor: string | undefined,
   ) {
-    return this.progress.history(user.userId, limit);
+    return this.progress.history(user.userId, limit, cursor);
   }
 }

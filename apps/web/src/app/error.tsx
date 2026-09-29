@@ -1,14 +1,10 @@
 'use client';
 
-import { ErrorState } from '@/components/ui/states';
+import { ErrorState } from '@/components/ui';
 
 /**
- * Error boundary cấp route — bắt lỗi render chưa từng được bắt ở đâu khác.
- *
- * Dùng `ErrorState` — component này vốn đã đánh bóng sẵn cho lỗi tải dữ liệu
- * (`ai-job-progress.tsx`, mọi màn `(app)`) nhưng chưa từng được nối vào chỗ Next
- * gọi khi chính việc RENDER bị lỗi. `detail` là đúng chỗ `error.digest` thuộc về —
- * mã lỗi Next gắn cho log phía server, người dùng copy được khi báo lỗi.
+ * Error boundary cấp route — lỗi RENDER chưa được bắt ở đâu khác. `detail` mang
+ * `error.digest` (mã Next gắn cho log phía server) để người dùng copy khi báo lỗi.
  */
 export default function RouteError({
   error,
@@ -18,7 +14,8 @@ export default function RouteError({
   reset: () => void;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-100 px-4">
+    <main className="flex min-h-dvh items-center justify-center bg-app px-4">
+      <h1 className="sr-only">Lỗi</h1>
       <div className="w-full max-w-md">
         <ErrorState
           title="Đã có lỗi xảy ra"
@@ -27,6 +24,6 @@ export default function RouteError({
           onRetry={reset}
         />
       </div>
-    </div>
+    </main>
   );
 }

@@ -40,6 +40,14 @@ describe('gradeSubmission', () => {
     expect(skipped?.explanation).toBe('giải thích q2');
   });
 
+  // Lỗi thật: worker lưu đáp án trắc nghiệm dạng `{ correctIndex }`, seed lưu `{ optionId }`, web
+  // chỉ đọc `optionId` — nên với bài AI sinh, màn kết quả không bao giờ chỉ ra đáp án đúng.
+  it('đáp án trắc nghiệm trả về luôn là { optionId } suy từ isCorrect, dù DB lưu dạng nào', () => {
+    const q = { ...mcq('q1', 1, 'q1-b'), correctAnswer: { correctIndex: 1 } };
+    const { results } = gradeSubmission([q], byId(pick('q1', 'q1-a')), { passScore: 50 });
+    expect(results[0]?.correctAnswer).toEqual({ optionId: 'q1-b' });
+  });
+
   it('results giữ nguyên thứ tự câu hỏi đưa vào', () => {
     const questions = [mcq('q1', 1, 'q1-a'), mcq('q2', 1, 'q2-a'), mcq('q3', 1, 'q3-a')];
     const { results } = gradeSubmission(questions, byId(pick('q3', 'q3-a')), { passScore: 50 });

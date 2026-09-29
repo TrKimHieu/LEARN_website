@@ -26,15 +26,16 @@ model User {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
-  subscriptions Subscription[]
-  courses       Course[]
-  documents     Document[]
-  aiJobs        AIJob[]
-  progress      LearningProgress[]
-  submissions   Submission[]
-  refreshTokens RefreshToken[]
-  usage         UsageCounter[]
-  auditLogs     AuditLog[]
+  subscriptions       Subscription[]
+  courses             Course[]
+  documents           Document[]
+  aiJobs              AIJob[]
+  progress            LearningProgress[]
+  submissions         Submission[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  usage               UsageCounter[]
+  auditLogs           AuditLog[]
 }
 
 enum UserRole {
@@ -58,6 +59,20 @@ model RefreshToken {
   @@index([userId, familyId])
 }
 
+/// Đặt lại mật khẩu qua email (FR-AUTH-07). Chỉ lưu SHA-256 của token, dùng một lần, hạn ngắn.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 // ─── Khóa học và tài liệu ───────────────────────────────────────────
 
 model Course {
@@ -71,7 +86,7 @@ model Course {
   updatedAt   DateTime     @updatedAt
   deletedAt   DateTime?
 
-  owner     User        @relation(fields: [ownerId], references: [id])
+  owner     User               @relation(fields: [ownerId], references: [id])
   documents Document[]
   lessons   Lesson[]
   aiJobs    AIJob[]
@@ -102,10 +117,10 @@ model Document {
   extractedAt    DateTime?
   createdAt      DateTime       @default(now())
 
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  uploader User @relation(fields: [uploaderId], references: [id])
-  chunks DocumentChunk[]
-  aiJobs AIJob[]
+  course   Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  uploader User            @relation(fields: [uploaderId], references: [id])
+  chunks   DocumentChunk[]
+  aiJobs   AIJob[]
 
   @@index([courseId, status])
   @@index([courseId, checksumSha256])
@@ -202,24 +217,24 @@ model GenerationRun {
 // ─── Nội dung học ───────────────────────────────────────────────────
 
 model Lesson {
-  id               String       @id @default(uuid())
+  id               String           @id @default(uuid())
   courseId         String
   documentId       String?
   aiJobId          String?
   orderIndex       Int
   title            String
   summary          String?
-  contentMd        String       @db.Text
+  contentMd        String           @db.Text
   estimatedMinutes Int?
-  status           LessonStatus @default(DRAFT)
+  status           LessonStatus     @default(DRAFT)
   sourceChunkIds   String[]
   confidence       LessonConfidence @default(UNKNOWN)
   editedByUserAt   DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?
 
-  course   Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   exercises Exercise[]
 
   @@unique([courseId, orderIndex])
@@ -247,8 +262,8 @@ model Exercise {
   passScore   Int        @default(70)
   createdAt   DateTime   @default(now())
 
-  lesson    Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  questions Question[]
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  questions   Question[]
   submissions Submission[]
 
   @@unique([lessonId, orderIndex])
@@ -272,8 +287,8 @@ model Question {
   sourceChunkId String?
   createdAt     DateTime     @default(now())
 
-  exercise   Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
-  options    AnswerOption[]
+  exercise          Exercise           @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  options           AnswerOption[]
   submissionAnswers SubmissionAnswer[]
 
   @@unique([exerciseId, orderIndex])
@@ -336,9 +351,9 @@ model Submission {
   durationMs Int?
   createdAt  DateTime @default(now())
 
-  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
-  answers SubmissionAnswer[]
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise           @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  answers  SubmissionAnswer[]
 
   @@unique([userId, exerciseId, attemptNo])
   @@index([userId, createdAt])
@@ -354,7 +369,7 @@ model SubmissionAnswer {
   feedback     String?
 
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  question  Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question   Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([submissionId, questionId])
 }
@@ -362,19 +377,19 @@ model SubmissionAnswer {
 // ─── Gói dịch vụ và thanh toán ──────────────────────────────────────
 
 model Plan {
-  id               String   @id @default(uuid())
-  code             String   @unique
-  name             String
-  description      String?
-  priceCents       Int
-  currency         String   @default("USD")
-  interval         String   @default("month")
-  limits           Json
-  features         String[]
-  isActive         Boolean  @default(true)
-  displayOrder     Int      @default(0)
-  isFutureExtension Boolean @default(false)
-  providerPriceId  String?
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  description       String?
+  priceCents        Int
+  currency          String   @default("USD")
+  interval          String   @default("month")
+  limits            Json
+  features          String[]
+  isActive          Boolean  @default(true)
+  displayOrder      Int      @default(0)
+  isFutureExtension Boolean  @default(false)
+  providerPriceId   String?
 
   subscriptions Subscription[]
 
@@ -394,8 +409,8 @@ model Subscription {
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan     Plan     @relation(fields: [planId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [planId], references: [id])
   payments Payment[]
 
   @@index([userId, status])
@@ -409,14 +424,14 @@ enum SubscriptionStatus {
 }
 
 model Payment {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   subscriptionId    String
   amountCents       Int
   currency          String
   status            String
-  providerPaymentId String   @unique
+  providerPaymentId String    @unique
   paidAt            DateTime?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 }

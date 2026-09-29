@@ -1,0 +1,19 @@
+sequenceDiagram
+  autonumber
+  participant P as Stripe
+  participant A as API (webhooks/stripe)
+  participant D as PostgreSQL
+  Note over P,D: Hành vi mục tiêu — FR-SUB-06 Đã lên kế hoạch. Hiện endpoint luôn trả 400.
+  P->>A: POST /webhooks/stripe (raw body + Stripe-Signature)
+  A->>A: xác minh chữ ký bằng STRIPE_WEBHOOK_SECRET
+  alt chữ ký sai
+    A-->>P: 400 { received: false }
+  end
+  A->>D: INSERT PaymentEvent (provider, eventId) — UNIQUE
+  alt eventId đã tồn tại
+    A-->>P: 200 { received: true } (bỏ qua, idempotent)
+  else sự kiện mới
+    A->>D: cập nhật Subscription / Payment theo loại sự kiện
+    A->>D: PaymentEvent.processedAt = now()
+    A-->>P: 200 { received: true }
+  end

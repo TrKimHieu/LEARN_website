@@ -3,79 +3,113 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
-import { z } from 'zod';
-import { Button, Field, Input } from '@/components/ui';
-import { PartialNotice } from '@/components/ui/states';
+import { forgotPasswordSchema } from '@learn/contracts';
+import { Button, Field, Icon, InlineError, Input } from '@/components/ui';
+import { apiFetch, errorText } from '@/lib/api-client';
+import { AuthHeading } from './auth-heading';
 
-const emailOnly = z.string().email();
-
+/**
+ * Quên mật khẩu — FR-AUTH-07 bước 1. Máy chủ trả cùng một câu cho mọi email (không lộ email nào
+ * đã đăng ký), nên màn xác nhận cũng nói "nếu email có trong hệ thống".
+ */
 export function ForgotPasswordView() {
   const [email, setEmail] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    setFieldError(null);
     setError(null);
-    if (!emailOnly.safeParse(email).success) {
-      setError('Email không hợp lệ.');
+    const parsed = forgotPasswordSchema.safeParse({ email });
+    if (!parsed.success) {
+      setFieldError('Email không hợp lệ.');
+      document.getElementById('email')?.focus();
       return;
     }
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await apiFetch('/api/v1/auth/forgot-password', { method: 'POST', body: parsed.data });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
     return (
-      <div className="space-y-4 text-center">
-        <p className="text-sm text-ink-700">
-          Nếu email <b>{email}</b> có trong hệ thống, chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu.
-        </p>
-        {/* Nhãn "Đang phát triển" theo AGENTS.md — không trình bày tính năng
-            chưa làm như đã làm. */}
-        <PartialNotice>
-          Tính năng gửi email <b>đang phát triển</b> — luồng đặt lại mật khẩu sẽ được nối ở một bước
-          sau.
-        </PartialNotice>
-        <p className="pt-1">
-          <Link
-            href="/login"
-            className="rounded-md text-xs font-bold text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
+      <div>
+        <Icon name="check" size={32} className="mb-5 text-fg" />
+        <AuthHeading
+          title="Kiểm tra hộp thư"
+          description={`Nếu ${email} có tài khoản LEARN, một thư chứa đường dẫn đặt lại mật khẩu vừa được gửi tới đó. Đường dẫn dùng được một lần và hết hạn sau 30 phút.`}
+        />
+        <p className="text-sm leading-relaxed text-fg-subtle">
+          Không thấy thư? Xem thư mục Spam, hoặc{' '}
+          <button
+            type="button"
+            onClick={() => setSubmitted(false)}
+            className="cursor-pointer rounded-md font-semibold text-fg underline underline-offset-2 hover:no-underline focus-ring"
           >
-            Quay lại đăng nhập
-          </Link>
+            gửi lại
+          </button>
+          .
         </p>
+        <Link
+          href="/login"
+          className="mt-6 inline-flex items-center gap-1.5 rounded-md text-sm font-semibold text-accent underline underline-offset-2 hover:no-underline focus-ring"
+        >
+          <Icon name="arrow-left" size={16} />
+          Quay lại đăng nhập
+        </Link>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label="Email" htmlFor="email" error={error ?? undefined}>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          invalid={Boolean(error)}
-          aria-describedby={error ? 'email-error' : undefined}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </Field>
+    <>
+      <AuthHeading
+        title="Quên mật khẩu"
+        description="Nhập email bạn đã dùng để đăng ký, chúng tôi sẽ gửi đường dẫn đặt lại mật khẩu."
+      />
+      <form onSubmit={onSubmit} className="space-y-5" noValidate>
+        <Field label="Email" htmlFor="email" error={fieldError ?? undefined}>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            placeholder="ban@vidu.com"
+            required
+            invalid={Boolean(fieldError)}
+            aria-describedby={fieldError ? 'email-error' : undefined}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
 
-      <Button type="submit" fullWidth size="lg">
-        Gửi hướng dẫn
-      </Button>
+        {Boolean(error) && (
+          <InlineError>{errorText(error, 'Không gửi được yêu cầu, vui lòng thử lại.')}</InlineError>
+        )}
 
-      <p className="pt-1 text-center text-xs font-bold text-ink-500">
-        Nhớ ra mật khẩu rồi?{' '}
-        <Link
-          href="/login"
-          className="rounded-md text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
-        >
-          Đăng nhập
-        </Link>
-      </p>
-    </form>
+        <Button type="submit" fullWidth size="lg" loading={submitting}>
+          {submitting ? 'Đang gửi…' : 'Gửi đường dẫn đặt lại'}
+        </Button>
+
+        <p className="pt-2 text-center text-sm text-fg-subtle">
+          Nhớ ra mật khẩu rồi?{' '}
+          <Link
+            href="/login"
+            className="rounded-md font-semibold text-accent underline underline-offset-2 hover:no-underline focus-ring"
+          >
+            Đăng nhập
+          </Link>
+        </p>
+      </form>
+    </>
   );
 }

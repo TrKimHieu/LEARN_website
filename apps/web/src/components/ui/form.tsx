@@ -2,26 +2,21 @@
 
 import { useId, useState } from 'react';
 import { cn } from './cn';
-import { Icon } from './icon';
+import { Icon, type IconName } from './icon';
 
 /**
- * Điều khiển form. Viền 1px và bo `rounded-lg` theo cùng ngôn ngữ với Button/Card;
- * lỗi luôn đi kèm `aria-describedby` để trình đọc màn hình đọc được, và
- * `aria-invalid` để trạng thái lỗi không chỉ nằm ở màu viền.
- *
- * Ô nhập ở trạng thái nghỉ phải *im lặng*: viền `surface-300` mảnh, nền trắng, không bóng.
- * Chỉ khi focus mới có tín hiệu rõ — viền sky cộng vòng outline.
+ * Điều khiển form. Nhãn luôn hiển thị phía trên (không dùng placeholder làm nhãn), lỗi
+ * nằm ngay dưới ô kèm icon, `aria-invalid` + `aria-describedby` để trình đọc màn hình
+ * đọc được. Ô ở trạng thái nghỉ im lặng; focus mới có vòng sky.
  */
-
 const CONTROL =
-  'w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink-900 outline-none ' +
-  'transition-all duration-200 placeholder:text-ink-300 ' +
-  'hover:border-surface-400 ' +
-  'focus:border-sky-500 focus-ring-tight ' +
-  'disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-ink-500';
+  'w-full rounded-control border bg-panel px-3.5 text-[0.9375rem] text-fg outline-none ' +
+  'transition-[border-color,box-shadow] duration-200 placeholder:text-fg-subtle/80 ' +
+  'hover:border-fg-subtle focus:border-fg focus:shadow-[0_0_0_3px_var(--line)] ' +
+  'disabled:cursor-not-allowed disabled:bg-muted disabled:text-fg-subtle';
 
 function controlClass(invalid: boolean, className?: string) {
-  return cn(CONTROL, invalid ? 'border-danger-500' : 'border-surface-300', className);
+  return cn(CONTROL, invalid ? 'border-fg focus:border-fg' : 'border-line-input', className);
 }
 
 export function Field({
@@ -30,26 +25,32 @@ export function Field({
   hint,
   error,
   children,
+  className,
 }: {
   label: string;
   htmlFor: string;
   hint?: string;
   error?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-ink-900">
+    <div className={className}>
+      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-fg">
         {label}
       </label>
       {children}
       {hint && !error && (
-        <p id={`${htmlFor}-hint`} className="mt-1.5 text-xs text-ink-500">
+        <p id={`${htmlFor}-hint`} className="mt-1.5 text-xs text-fg-subtle">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${htmlFor}-error`} className="mt-1.5 text-xs font-medium text-danger-700">
+        <p
+          id={`${htmlFor}-error`}
+          className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-bad"
+        >
+          <Icon name="alert" size={13} />
           {error}
         </p>
       )}
@@ -60,12 +61,29 @@ export function Field({
 export function Input({
   invalid = false,
   className,
+  icon,
   ...rest
-}: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+}: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean; icon?: IconName }) {
+  if (icon) {
+    return (
+      <div className={cn('relative', className)}>
+        <Icon
+          name={icon}
+          size={17}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle"
+        />
+        <input
+          aria-invalid={invalid || undefined}
+          className={controlClass(invalid, 'h-11 pl-10')}
+          {...rest}
+        />
+      </div>
+    );
+  }
   return (
     <input
       aria-invalid={invalid || undefined}
-      className={controlClass(invalid, className)}
+      className={controlClass(invalid, cn('h-11', className))}
       {...rest}
     />
   );
@@ -79,7 +97,7 @@ export function Textarea({
   return (
     <textarea
       aria-invalid={invalid || undefined}
-      className={controlClass(invalid, className)}
+      className={controlClass(invalid, cn('py-2.5 leading-relaxed', className))}
       {...rest}
     />
   );
@@ -88,33 +106,30 @@ export function Textarea({
 export function Select({
   invalid = false,
   className,
+  children,
   ...rest
 }: React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
   return (
-    <select
-      aria-invalid={invalid || undefined}
-      className={controlClass(invalid, className)}
-      {...rest}
-    />
+    <div className={cn('relative', className)}>
+      <select
+        aria-invalid={invalid || undefined}
+        className={controlClass(invalid, 'h-11 cursor-pointer appearance-none pr-10')}
+        {...rest}
+      >
+        {children}
+      </select>
+      <Icon
+        name="chevron-down"
+        size={16}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-subtle"
+      />
+    </div>
   );
 }
 
 /**
- * Ô mật khẩu có nút hiện/ẩn.
- *
- * Che mật khẩu bằng dấu chấm làm người dùng gõ sai nhiều hơn và hay bỏ dở form
- * hơn, trong khi lợi ích chống nhìn trộm gần như không có ở thiết bị cá nhân —
- * NN/g khuyến nghị luôn kèm tuỳ chọn bỏ che ("Stop Password Masking"). Trên màn
- * đăng ký, nơi người dùng đang *đặt* một mật khẩu mới và không thể dán lại từ
- * đâu cả, đây là thứ ảnh hưởng trực tiếp tới tỉ lệ tạo tài khoản thành công.
- *
- * Chi tiết a11y:
- * - Nút nằm NGOÀI `<label>` nên bấm nó không nhảy focus vào ô nhập.
- * - Nhãn nút đổi theo trạng thái ("Hiện mật khẩu" / "Ẩn mật khẩu"), icon chỉ là
- *   trang trí.
- * - `aria-pressed` cho trình đọc màn hình biết đây là công tắc hai trạng thái.
- * - Vùng bấm 32×32 — trên ngưỡng 24×24 của WCAG 2.2 (2.5.8 Target Size).
- * - Ô nhập chừa `pr-11` để chữ không chui xuống dưới nút.
+ * Ô mật khẩu có nút hiện/ẩn (NN/g — "Stop Password Masking"). Nút nằm ngoài `<label>`,
+ * nhãn đổi theo trạng thái, `aria-pressed` cho công tắc hai trạng thái, vùng bấm 32px.
  */
 export function PasswordInput({
   invalid = false,
@@ -123,22 +138,23 @@ export function PasswordInput({
 }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & { invalid?: boolean }) {
   const [visible, setVisible] = useState(false);
   const hintId = useId();
+  const describedBy = [rest['aria-describedby'], hintId].filter(Boolean).join(' ');
 
   return (
     <div className="relative">
       <input
         type={visible ? 'text' : 'password'}
         aria-invalid={invalid || undefined}
-        aria-describedby={hintId}
-        className={controlClass(invalid, cn('pr-11', className))}
         {...rest}
+        aria-describedby={describedBy}
+        className={controlClass(invalid, cn('h-11 pr-12', className))}
       />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
         aria-pressed={visible}
         aria-label={visible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-        className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-ink-500 hover:bg-surface-200 hover:text-ink-900 focus-ring-tight"
+        className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-fg-subtle hover:bg-muted hover:text-fg focus-ring-tight"
       >
         <Icon name={visible ? 'eye-off' : 'eye'} size={18} />
       </button>

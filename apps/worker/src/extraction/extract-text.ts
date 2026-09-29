@@ -1,28 +1,18 @@
 import { extractPdfText, isLikelyScanned } from './pdf';
+import { extractDocx, extractPptx } from './office';
+import { UnsupportedFileError, ScannedPdfNotSupportedError, type ExtractResult } from './errors';
 
-export class UnsupportedFileError extends Error {
-  constructor(mimeType: string) {
-    super(`Định dạng tài liệu không được hỗ trợ: ${mimeType}`);
-    this.name = 'UnsupportedFileError';
-  }
-}
+export {
+  UnsupportedFileError,
+  ScannedPdfNotSupportedError,
+  type ExtractedPage,
+  type ExtractResult,
+} from './errors';
 
-export class ScannedPdfNotSupportedError extends Error {
-  constructor() {
-    super('Tài liệu là PDF scan (không có lớp text) — OCR chưa được hỗ trợ ở phiên bản này.');
-    this.name = 'ScannedPdfNotSupportedError';
-  }
-}
-
-export interface ExtractedPage {
-  pageNumber: number;
-  text: string;
-}
-
-export interface ExtractResult {
-  pages: ExtractedPage[];
-  pageCount: number | null;
-}
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+/** DOCX/PPTX là gói ZIP: bắt đầu bằng chữ ký local file header `PK\x03\x04`. */
+const MAGIC_ZIP = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 
 const MAGIC_PDF = Buffer.from('%PDF-');
 
@@ -33,6 +23,12 @@ function verifyMagicBytes(bytes: Buffer, mimeType: string): void {
       throw new UnsupportedFileError(
         'application/pdf (magic bytes không khớp — file có thể bị hỏng)',
       );
+    }
+    return;
+  }
+  if (mimeType === DOCX_MIME || mimeType === PPTX_MIME) {
+    if (!bytes.subarray(0, 4).equals(MAGIC_ZIP)) {
+      throw new UnsupportedFileError(`${mimeType} (magic bytes không khớp — file có thể bị hỏng)`);
     }
     return;
   }
@@ -51,13 +47,21 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
-/** Trích text theo loại file — HANDBOOK §8.2. PPTX/DOCX/OCR: chưa hỗ trợ ở phiên bản này. */
+/** Trích text theo loại file — HANDBOOK §8.2. OCR cho PDF scan: chưa hỗ trợ (FR-DOC-10). */
 export async function extractText(bytes: Buffer, mimeType: string): Promise<ExtractResult> {
   verifyMagicBytes(bytes, mimeType);
 
   if (mimeType === 'application/pdf') {
     const result = await extractPdfText(bytes);
     if (isLikelyScanned(result)) throw new ScannedPdfNotSupportedError();
+    return {
+      pages: result.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeText(p.text) })),
+      pageCount: result.pageCount,
+    };
+  }
+
+  if (mimeType === DOCX_MIME || mimeType === PPTX_MIME) {
+    const result = mimeType === DOCX_MIME ? await extractDocx(bytes) : await extractPptx(bytes);
     return {
       pages: result.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeText(p.text) })),
       pageCount: result.pageCount,

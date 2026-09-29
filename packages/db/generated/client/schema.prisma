@@ -26,15 +26,16 @@ model User {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
-  subscriptions Subscription[]
-  courses       Course[]
-  documents     Document[]
-  aiJobs        AIJob[]
-  progress      LearningProgress[]
-  submissions   Submission[]
-  refreshTokens RefreshToken[]
-  usage         UsageCounter[]
-  auditLogs     AuditLog[]
+  subscriptions       Subscription[]
+  courses             Course[]
+  documents           Document[]
+  aiJobs              AIJob[]
+  progress            LearningProgress[]
+  submissions         Submission[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  usage               UsageCounter[]
+  auditLogs           AuditLog[]
 }
 
 enum UserRole {
@@ -56,6 +57,20 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, familyId])
+}
+
+/// Đặt lại mật khẩu qua email (FR-AUTH-07). Chỉ lưu SHA-256 của token, dùng một lần, hạn ngắn.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ─── Khóa học và tài liệu ───────────────────────────────────────────

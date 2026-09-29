@@ -23,6 +23,21 @@ export const questionReadSchema = z.object({
   options: z.array(answerOptionReadSchema).default([]),
 });
 
+/**
+ * Một bài tập trong danh sách bài tập của bài học — để điều hướng giữa các bài tập (AI sinh 1–5
+ * bài tập mỗi bài học). Chỉ có tổng quan, không có câu hỏi hay đáp án.
+ */
+export const exerciseNavItemSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  orderIndex: z.number().int(),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
+  questionCount: z.number().int(),
+  passScore: z.number().int(),
+  bestScore: z.number().int().nullable(),
+  passed: z.boolean(),
+});
+
 export const exerciseReadSchema = z.object({
   id: z.string(),
   title: z.string().nullable(),
@@ -39,6 +54,8 @@ export const exerciseReadSchema = z.object({
       createdAt: z.string(),
     })
     .nullable(),
+  /** Mọi bài tập của bài học, theo `orderIndex` — gồm cả bài đang mở. */
+  exercises: z.array(exerciseNavItemSchema),
 });
 
 const questionAnswerSchema = z.discriminatedUnion('type', [
@@ -63,6 +80,8 @@ const questionAnswerSchema = z.discriminatedUnion('type', [
 export const submitExerciseSchema = z
   .object({
     answers: z.array(questionAnswerSchema).min(1),
+    /** Bài tập được nộp; bỏ trống = bài tập đầu tiên của bài học (tương thích client cũ). */
+    exerciseId: z.string().uuid().optional(),
     durationMs: z.number().int().positive().max(3_600_000).optional(),
   })
   .strict()
@@ -72,6 +91,9 @@ export const submitExerciseSchema = z
 
 export const submissionSchema = z.object({
   id: z.string(),
+  exerciseId: z.string(),
+  /** Sau lượt nộp này, mọi bài tập của bài học đã đạt (bài học chuyển COMPLETED). */
+  lessonCompleted: z.boolean(),
   attemptNo: z.number().int(),
   score: z.number().int(),
   maxScore: z.number().int(),
@@ -88,6 +110,7 @@ export const submissionSchema = z.object({
   ),
 });
 
+export type ExerciseNavItem = z.infer<typeof exerciseNavItemSchema>;
 export type ExerciseRead = z.infer<typeof exerciseReadSchema>;
 export type SubmitExerciseInput = z.infer<typeof submitExerciseSchema>;
 export type SubmissionResult = z.infer<typeof submissionSchema>;

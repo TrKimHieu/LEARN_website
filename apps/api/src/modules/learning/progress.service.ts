@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type {
   ProgressOverview,
   ProgressCourse,
-  HistoryItem,
+  HistoryPage,
   CourseProgress,
 } from '@learn/contracts';
 import { ApiError } from '../../common/errors';
@@ -72,11 +72,19 @@ export class ProgressService {
     };
   }
 
-  async history(userId: string, limit = 20): Promise<{ items: HistoryItem[] }> {
-    const subs = await this.submissions.recent(userId, limit);
+  async history(userId: string, limit = 20, cursor?: string): Promise<HistoryPage> {
+    // Lấy dư một dòng để biết còn trang sau hay không mà không cần COUNT.
+    const rows = await this.submissions.page(userId, limit + 1, cursor);
+    const hasMore = rows.length > limit;
+    const subs = hasMore ? rows.slice(0, limit) : rows;
     return {
+      nextCursor: hasMore ? (subs.at(-1)?.id ?? null) : null,
       items: subs.map((s) => ({
         id: s.id,
+        courseId: s.exercise.lesson.course.id,
+        lessonId: s.exercise.lesson.id,
+        exerciseId: s.exerciseId,
+        passed: s.score >= s.exercise.passScore,
         lessonTitle: s.exercise.lesson.title,
         courseTitle: s.exercise.lesson.course.title,
         exerciseTitle: s.exercise.title,

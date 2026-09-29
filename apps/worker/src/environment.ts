@@ -9,10 +9,16 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().default('minioadmin'),
   S3_SECRET_ACCESS_KEY: z.string().default('minioadmin'),
   S3_REGION: z.string().default('us-east-1'),
-  LLM_PROVIDER: z.enum(['anthropic', 'google']).default('anthropic'),
+  LLM_PROVIDER: z.enum(['anthropic', 'google', 'openai']).default('anthropic'),
+  /** Chỉ cho LLM_PROVIDER=openai: endpoint tương thích khác OpenAI (DeepSeek, Groq…). Rỗng = OpenAI. */
+  LLM_BASE_URL: z.string().default(''),
+  /** Chỉ cho model reasoning qua LLM_PROVIDER=openai (GPT-5…). Rỗng = không gửi, model tự chọn. */
+  LLM_REASONING_EFFORT: z.enum(['', 'none', 'minimal', 'low', 'medium', 'high']).default(''),
   LLM_API_KEY: z.string().default(''),
   LLM_MODEL_GENERATION: z.string().default('claude-sonnet-5'),
   LLM_MODEL_FAST: z.string().default('claude-haiku-4-5-20251001'),
+  /** Model cùng nhà cung cấp, dùng khi model chính trả 429/503/529 (ADR 009). Rỗng = không dự phòng. */
+  LLM_MODEL_FALLBACK: z.string().default(''),
   LLM_MODE: z.enum(['live', 'mock', 'record']).default('mock'),
   /** Đường dẫn file JSON kịch bản sẵn cho MockLlmProvider — xem packages/ai/src/llm/fixtures.ts. */
   MOCK_FIXTURES_PATH: z.string().optional(),

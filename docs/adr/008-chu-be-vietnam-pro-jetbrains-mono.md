@@ -1,7 +1,7 @@
 # ADR 008 — Nạp webfont Be Vietnam Pro + JetBrains Mono, và khối token bổ sung
 
 - **Ngày:** 2026-09-22
-- **Trạng thái:** Đã chấp nhận
+- **Trạng thái:** Đã chấp nhận — **phần chọn font sans bị thay bởi ADR 011** (Plus Jakarta Sans, 2026-09-27); phần token bổ sung vẫn hiệu lực.
 - **Liên quan:** spec §14.2 (`[SPEC]`), `docs/UI-GUIDE.md` §2, `UX-UI-PRINCIPLES` §4
 
 ## Bối cảnh

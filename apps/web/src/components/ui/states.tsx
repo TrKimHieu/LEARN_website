@@ -6,23 +6,14 @@ import { Skeleton } from './skeleton';
 import { cn } from './cn';
 
 /**
- * 5 trạng thái bắt buộc của một màn có dữ liệu (AGENTS.md): Loading · Empty ·
- * Error · Partial · Success. Bốn thành phần dưới đây phủ 4 trạng thái đầu.
+ * 5 trạng thái bắt buộc của một màn có dữ liệu (AGENTS.md): Loading · Empty · Error ·
+ * Partial · Success. Bảng chọn component ở `docs/UI-GUIDE.md` §4c.
  *
- * Loading dùng skeleton chứ không dùng mascot: HANDBOOK §13.1 `[SPEC]` giới hạn
- * mascot ở hero, empty state, tiến độ AI Job và lỗi.
- *
- * Nguyên tắc chung cho cả bốn: **luôn nói bước tiếp theo là gì**. Một màn rỗng chỉ ghi
- * "Không có dữ liệu" đẩy người dùng vào ngõ cụt; nó phải nói được vì sao rỗng và nút nào
- * làm nó hết rỗng.
+ * Loading dùng skeleton, không dùng mascot — HANDBOOK §13.1 `[SPEC]` giới hạn mascot ở
+ * hero, empty state, tiến độ AI Job và lỗi. Mọi trạng thái rỗng/lỗi phải nói bước tiếp.
  */
 
-/**
- * Skeleton khớp hình dạng nội dung sắp hiện ra.
- *
- * `variant` để khối chờ có tỉ lệ giống thứ nó thay thế — skeleton cao bằng nhau cho mọi
- * màn làm bố cục nhảy một nhịp khi dữ liệu về (layout shift).
- */
+/** Skeleton khớp hình dạng nội dung sắp hiện ra — tránh bố cục nhảy khi dữ liệu về. */
 export function LoadingState({
   rows = 3,
   variant = 'card',
@@ -35,8 +26,8 @@ export function LoadingState({
   label?: string;
 }) {
   const shape = {
-    card: 'h-24 w-full',
-    list: 'h-12 w-full',
+    card: 'h-24 w-full rounded-card',
+    list: 'h-14 w-full',
     text: 'h-4 w-full',
   }[variant];
 
@@ -44,20 +35,17 @@ export function LoadingState({
     <div className={cn('space-y-3', className)} aria-busy="true" aria-live="polite">
       <span className="sr-only">{label}</span>
       {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton
-          key={i}
-          // Dòng cuối ngắn hơn: khối chữ thật hiếm khi tràn đủ chiều rộng dòng cuối.
-          className={cn(shape, variant === 'text' && i === rows - 1 && 'w-2/3')}
-        />
+        <Skeleton key={i} className={cn(shape, variant === 'text' && i === rows - 1 && 'w-2/3')} />
       ))}
     </div>
   );
 }
 
+type Action = { label: string; onClick: () => void };
+
 /**
- * Màn rỗng. `action` là lối thoát — gần như luôn nên có.
- * `secondaryAction` cho trường hợp có hai đường đi hợp lý (ví dụ: tải tài liệu lên *hoặc*
- * xem khoá học mẫu).
+ * Màn rỗng. `size="compact"` khi nó là MỤC CON của một màn đã có nội dung khác
+ * (UI-GUIDE §4c) — cùng mascot, hạ xuống một hàng ngang.
  */
 export function EmptyState({
   title,
@@ -66,29 +54,23 @@ export function EmptyState({
   secondaryAction,
   mascot = 'sleeping',
   size = 'default',
+  className,
 }: {
   title: string;
   description?: string;
-  action?: { label: string; onClick: () => void };
-  secondaryAction?: { label: string; onClick: () => void };
+  action?: Action;
+  secondaryAction?: Action;
   mascot?: MascotState;
-  /**
-   * `compact` — cho khi `EmptyState` là MỤC CON của một màn đã có nội dung khác phía
-   * trên nó (ví dụ "Hoạt động gần đây" trên `/dashboard`), chứ không phải toàn bộ nội
-   * dung của màn. Xem docs/UI-GUIDE.md §4c. Vẫn dùng mascot — khác `TableEmpty`, thứ
-   * dành cho bảng quản trị chứ không phải để "bớt ồn" trên màn người học.
-   */
   size?: 'default' | 'compact';
+  className?: string;
 }) {
   if (size === 'compact') {
     return (
-      <Card className="flex items-center gap-4 px-5 py-5 text-left">
+      <Card className={cn('flex items-center gap-4 px-5 py-4', className)}>
         <Mascot state={mascot} size={48} />
         <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-tight text-ink-900">{title}</p>
-          {description && (
-            <p className="mt-0.5 text-sm leading-relaxed text-ink-500">{description}</p>
-          )}
+          <p className="text-sm font-semibold text-fg">{title}</p>
+          {description && <p className="mt-0.5 text-sm text-fg-subtle">{description}</p>}
           {(action || secondaryAction) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {action && (
@@ -109,11 +91,11 @@ export function EmptyState({
   }
 
   return (
-    <Card className="flex flex-col items-center px-6 py-12 text-center">
+    <Card className={cn('flex flex-col items-center px-6 py-12 text-center', className)}>
       <Mascot state={mascot} size={88} />
-      <p className="mt-5 text-base font-semibold tracking-tight text-ink-900">{title}</p>
+      <p className="mt-5 text-xl font-semibold text-fg">{title}</p>
       {description && (
-        <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-ink-500">{description}</p>
+        <p className="mt-1.5 max-w-md text-sm leading-relaxed text-fg-subtle">{description}</p>
       )}
       {(action || secondaryAction) && (
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
@@ -130,40 +112,43 @@ export function EmptyState({
 }
 
 /**
- * Lỗi tải dữ liệu.
- *
- * Viền `danger-100` mảnh thay vì nền đỏ: đây là "thử lại được", không phải "hỏng rồi".
- * `detail` để đặt mã lỗi / requestId — thứ người dùng copy được khi báo lỗi — tách khỏi
- * câu giải thích cho người đọc.
+ * Lỗi tải dữ liệu — thay nội dung khi *query* hỏng. `detail` là requestId/mã lỗi để
+ * người dùng copy khi báo lỗi.
  */
 export function ErrorState({
   title = 'Không tải được dữ liệu',
   description,
   detail,
   onRetry,
+  className,
 }: {
   title?: string;
   description?: string;
   detail?: string;
   onRetry?: () => void;
+  className?: string;
 }) {
   return (
-    <Card className="flex flex-col items-center border-danger-100 px-6 py-12 text-center">
+    <Card
+      role="alert"
+      className={cn('flex flex-col items-center border-bad-line px-6 py-12 text-center', className)}
+    >
       <Mascot state="alerting" size={88} />
-      <p className="mt-5 flex items-center gap-1.5 text-base font-semibold tracking-tight text-danger-700">
-        <Icon name="alert" size={16} />
+      <p className="mt-5 flex items-center gap-1.5 text-base font-semibold text-bad">
+        <Icon name="alert" size={17} />
         {title}
       </p>
       {description && (
-        <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-ink-500">{description}</p>
+        <p className="mt-1.5 max-w-md text-sm leading-relaxed text-fg-subtle">{description}</p>
       )}
       {detail && (
-        <code className="mt-3 rounded-md bg-surface-100 px-2 py-1 font-mono text-xs text-ink-500">
-          {detail}
+        <code className="mt-3 rounded-md border border-line bg-muted px-2 py-1 font-mono text-xs text-fg-subtle">
+          Mã yêu cầu: {detail}
         </code>
       )}
       {onRetry && (
         <Button className="mt-6" variant="secondary" onClick={onRetry}>
+          <Icon name="retry" size={16} />
           Thử lại
         </Button>
       )}
@@ -172,19 +157,8 @@ export function ErrorState({
 }
 
 /**
- * Partial: có dữ liệu nhưng thiếu/chưa đủ — hiện dữ liệu kèm dải cảnh báo,
- * không thay thế nội dung.
- */
-/**
- * Lỗi cục bộ của một thao tác — hỏng một nút, không hỏng cả màn.
- *
- * Khác `ErrorState`: `ErrorState` thay thế nội dung khi *query* hỏng; cái này nằm cạnh
- * form hoặc nút khi một *mutation* hỏng, và nội dung xung quanh vẫn còn nguyên.
- *
- * Trước khi có component này, đoạn markup dưới đây được chép nguyên văn ở **11 chỗ** —
- * và cả 11 bản đều thiếu icon, tức là chỉ dựa vào màu đỏ để báo lỗi. UI-GUIDE §2 cấm
- * thẳng điều đó ("màu không bao giờ là tín hiệu duy nhất"). Gộp trùng lặp chỉ là lợi
- * ích phụ; thêm icon một lần cho cả 11 chỗ mới là lý do.
+ * Lỗi cục bộ của một *thao tác* (mutation) — nội dung xung quanh vẫn còn. Luôn có icon:
+ * màu không bao giờ là tín hiệu duy nhất (UI-GUIDE §2).
  */
 export function InlineError({
   children,
@@ -197,8 +171,8 @@ export function InlineError({
     <p
       role="alert"
       className={cn(
-        'flex items-start gap-2.5 rounded-card border border-danger-100 bg-danger-50',
-        'px-4 py-3 text-sm font-medium leading-relaxed text-danger-700',
+        'flex items-start gap-2.5 rounded-control border border-bad-line bg-bad-soft',
+        'px-4 py-3 text-sm leading-relaxed text-bad',
         className,
       )}
     >
@@ -208,13 +182,23 @@ export function InlineError({
   );
 }
 
-export function PartialNotice({ children }: { children: React.ReactNode }) {
+/** Partial — có dữ liệu nhưng thiếu/chưa đủ; hiện kèm dữ liệu, không thay thế nó. */
+export function PartialNotice({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div
       role="status"
-      className="mb-4 flex items-start gap-2.5 rounded-lg border border-warning-100 bg-warning-50 px-4 py-3 text-sm leading-relaxed text-warning-700"
+      className={cn(
+        'flex items-start gap-2.5 rounded-control border border-warn-line bg-warn-soft px-4 py-3 text-sm leading-relaxed text-warn',
+        className,
+      )}
     >
-      <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+      <Icon name="info" size={16} className="mt-0.5 shrink-0" />
       <span>{children}</span>
     </div>
   );

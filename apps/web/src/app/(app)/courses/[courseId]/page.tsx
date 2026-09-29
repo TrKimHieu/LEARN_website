@@ -1,17 +1,33 @@
 'use client';
 
 import { use, useRef, useState } from 'react';
-import Link from 'next/link';
+import { DOCUMENT_ACCEPT, type DocumentList } from '@learn/contracts';
 import { useCourse, useCourseDocuments } from '@/features/courses/courses-api';
 import { useUploadDocument } from '@/features/documents/documents-api';
 import { useLessons, useReorderLessons } from '@/features/learning/learning-api';
 import { useGenerateLessons } from '@/features/ai/ai-api';
 import { AiJobProgress } from '@/features/ai/ai-job-progress';
+import { LessonList } from '@/features/learning/lesson-list';
 import { QuotaNotice } from '@/components/shared/quota-notice';
-import { LessonPath } from '@/features/learning/lesson-path';
-import { Badge, Button, ButtonLink, Card, CardTitle, Icon, ProgressBar } from '@/components/ui';
-import { EmptyState, ErrorState, InlineError, LoadingState } from '@/components/ui/states';
-import { errorText, isQuotaExceededError } from '@/lib/api-client';
+import { CourseCover } from '@/components/shared/course-cover';
+import {
+  BackLink,
+  Badge,
+  Button,
+  ButtonLink,
+  EmptyState,
+  ErrorState,
+  Icon,
+  InlineError,
+  LoadingState,
+  ProgressBar,
+  SectionTitle,
+  Skeleton,
+  cn,
+} from '@/components/ui';
+import { errorDetail, errorText, isQuotaExceededError } from '@/lib/api-client';
+import { relativeTime } from '@/lib/format';
+import { humanizeCode } from '@/lib/humanize';
 
 const DOC_STATUS_LABEL: Record<string, string> = {
   PENDING: 'Chờ tải lên',
@@ -21,10 +37,24 @@ const DOC_STATUS_LABEL: Record<string, string> = {
   FAILED: 'Lỗi',
 };
 
+type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
+
+const DIFFICULTIES: { value: Difficulty; label: string }[] = [
+  { value: 'EASY', label: 'Bài tập dễ' },
+  { value: 'MEDIUM', label: 'Bài tập vừa' },
+  { value: 'HARD', label: 'Bài tập khó' },
+];
+
 function docTone(status: string) {
   if (status === 'FAILED') return 'danger' as const;
   if (status === 'EXTRACTED') return 'success' as const;
+  if (status === 'EXTRACTING') return 'info' as const;
   return 'neutral' as const;
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 export default function CourseDetailPage({ params }: { params: Promise<{ courseId: string }> }) {
@@ -32,16 +62,17 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const course = useCourse(courseId);
   const documents = useCourseDocuments(courseId);
   const upload = useUploadDocument(courseId);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [uploadError, setUploadError] = useState<unknown>(null);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<unknown>(null);
   const lessons = useLessons(courseId);
   const generateLessons = useGenerateLessons(courseId);
   const reorderLessons = useReorderLessons(courseId);
-  const [reorderError, setReorderError] = useState<unknown>(null);
-  const hasExtractedDoc = Boolean(documents.data?.documents.some((d) => d.status === 'EXTRACTED'));
 
+  const [uploadError, setUploadError] = useState<unknown>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<unknown>(null);
+  const [reorderError, setReorderError] = useState<unknown>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
+
+  const hasExtractedDoc = Boolean(documents.data?.documents.some((d) => d.status === 'EXTRACTED'));
   const lessonList = lessons.data?.lessons ?? [];
   const completedCount = lessonList.filter((l) => l.progressStatus === 'COMPLETED').length;
 
@@ -64,7 +95,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   async function handleGenerate() {
     setGenerateError(null);
     try {
-      const job = await generateLessons.mutateAsync();
+      const job = await generateLessons.mutateAsync({ difficulty });
       setActiveJobId(job.id);
     } catch (err) {
       setGenerateError(err);
@@ -82,267 +113,374 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       await upload.mutateAsync(file);
     } catch (err) {
       setUploadError(err);
-    } finally {
-      if (fileInput.current) fileInput.current.value = '';
     }
   }
 
-  if (course.isLoading) return <LoadingState rows={2} label="Đang tải khóa học" />;
+  if (course.isLoading) {
+    return (
+      <div aria-busy="true" aria-live="polite">
+        <span className="sr-only">Đang tải khóa học</span>
+        <Skeleton className="mb-6 h-5 w-24" />
+        <Skeleton className="h-60 w-full rounded-panel" />
+        <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <Skeleton className="h-96 rounded-card" />
+          <Skeleton className="h-64 rounded-card" />
+        </div>
+      </div>
+    );
+  }
 
   if (course.isError || !course.data) {
     return (
-      <ErrorState
-        title="Không tải được khóa học"
-        description={errorText(course.error, 'Vui lòng thử lại sau ít phút.')}
-        onRetry={() => void course.refetch()}
-      />
+      <>
+        <h1 className="sr-only">Khóa học</h1>
+        <ErrorState
+          title="Không tải được khóa học"
+          description={errorText(course.error, 'Vui lòng thử lại sau ít phút.')}
+          detail={errorDetail(course.error)}
+          onRetry={() => void course.refetch()}
+        />
+      </>
     );
   }
 
   /**
-   * Bài mà nút chính sẽ mở.
-   *
-   * Màn này trước đây không có hành động chính nào cho *người học*: nút nổi bật
-   * duy nhất là "Sinh bài học bằng AI" — việc của người soạn nội dung. Người vào
-   * để học phải tự suy ra rằng mấy cái vòng tròn trên lộ trình bấm được. Ưu tiên:
-   * bài đang học dở → bài chưa bắt đầu đầu tiên → bài đầu tiên (đã xong hết thì
-   * là xem lại).
+   * Bài mà nút chính sẽ mở: đang học dở → chưa bắt đầu đầu tiên → bài đầu tiên (xem lại).
+   * Nhãn bám trạng thái thật của bài sắp mở.
    */
   const resumeLesson =
     lessonList.find((l) => l.progressStatus === 'IN_PROGRESS') ??
     lessonList.find((l) => l.progressStatus === 'NOT_STARTED') ??
     lessonList[0];
-
-  // Nhãn bám theo trạng thái thật của bài sắp mở, không chỉ theo số bài đã xong:
-  // một bài đang học dở thì "Bắt đầu học" là nói sai.
-  const resumeLabel =
-    completedCount === lessonList.length && lessonList.length > 0
-      ? 'Xem lại'
-      : resumeLesson?.progressStatus === 'NOT_STARTED' && completedCount === 0
-        ? 'Bắt đầu học'
-        : 'Tiếp tục học';
+  const allDone = completedCount === lessonList.length && lessonList.length > 0;
+  const resumeLabel = allDone
+    ? 'Xem lại'
+    : resumeLesson?.progressStatus === 'NOT_STARTED' && completedCount === 0
+      ? 'Bắt đầu học'
+      : 'Tiếp tục học';
+  const docCount = documents.data?.documents.length ?? 0;
 
   return (
-    <section>
-      <Link
-        href="/courses"
-        className="inline-flex items-center gap-1 rounded-md text-sm font-bold text-ink-500 hover:text-ink-900"
-      >
-        <Icon name="chevron-right" size={15} className="rotate-180" />
-        Khóa học
-      </Link>
+    <>
+      <BackLink href="/courses" label="Khóa học" />
 
-      {/* ------------------------------------------------ banner khóa học */}
-      <div className="mt-3 rounded-card border-b-[6px] border-navy-900 bg-navy-800 px-6 py-5">
-        <p className="text-xs font-medium text-sky-500">Khóa học</p>
-        <h1 className="mt-1 text-2xl font-bold text-white">{course.data.title}</h1>
-        {course.data.description && (
-          <p className="mt-1.5 max-w-2xl text-sm text-ink-300">{course.data.description}</p>
-        )}
-        {lessonList.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+      {/* ------------------------------------------------ đầu trang */}
+      <header className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1fr)_14rem] md:items-end">
+        <div className="min-w-0">
+          <h1 className="text-[2.25rem] font-semibold leading-tight tracking-[-0.025em] text-fg sm:text-[2.75rem]">
+            {course.data.title}
+          </h1>
+          {course.data.description && (
+            <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-fg-subtle">
+              {course.data.description}
+            </p>
+          )}
+          {resumeLesson && (
+            <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3">
+              <ButtonLink href={`/courses/${courseId}/lessons/${resumeLesson.id}`}>
+                {resumeLabel}
+                <Icon name="arrow-right" size={16} />
+              </ButtonLink>
+              <p className="min-w-0 max-w-sm truncate text-sm text-fg-subtle">
+                {allDone ? 'Mở lại ' : 'Tiếp theo: '}
+                <span className="font-medium text-fg">{resumeLesson.title}</span>
+              </p>
+            </div>
+          )}
+        </div>
+        <CourseCover
+          id={courseId}
+          title={course.data.title}
+          className="hidden aspect-[4/3] rounded-card border border-line md:block"
+        />
+      </header>
+
+      <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4 border-y border-line py-4 text-sm">
+        <div>
+          <dt className="text-fg-subtle">Tiến độ</dt>
+          <dd className="mt-1 flex items-center gap-3">
+            <span className="font-semibold tabular-nums text-fg">
+              {completedCount}/{lessonList.length} bài
+            </span>
+            {lessonList.length > 0 && (
               <ProgressBar
+                size="xs"
                 value={completedCount}
                 max={lessonList.length}
                 label={`Đã hoàn thành ${completedCount} trên ${lessonList.length} bài`}
-                className="max-w-xs"
+                className="w-28"
               />
-              <span className="shrink-0 text-sm font-bold text-white">
-                {completedCount}/{lessonList.length} bài
-              </span>
-            </div>
-            {resumeLesson && (
-              <ButtonLink href={`/courses/${courseId}/lessons/${resumeLesson.id}`}>
-                {resumeLabel}
-                <Icon name="chevron-right" size={18} strokeWidth={3} />
-              </ButtonLink>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-fg-subtle">Tài liệu nguồn</dt>
+          <dd className="mt-1 font-semibold tabular-nums text-fg">{docCount}</dd>
+        </div>
+        <div>
+          <dt className="text-fg-subtle">Ngôn ngữ</dt>
+          <dd className="mt-1 font-semibold text-fg">
+            {course.data.language === 'en' ? 'Tiếng Anh' : 'Tiếng Việt'}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
+        {/* ----------------------------------------------------- lộ trình */}
+        <section aria-labelledby="path-title" className="min-w-0">
+          <SectionTitle
+            id="path-title"
+            description="Bấm vào một bài để học. Mũi tên bên phải đổi thứ tự."
+            action={
+              <div className="flex items-center gap-2">
+                {/* Độ khó bài tập AI sẽ soạn (đi vào prompt `lesson@3`). */}
+                <label htmlFor="generate-difficulty" className="sr-only">
+                  Độ khó bài tập
+                </label>
+                <select
+                  id="generate-difficulty"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+                  disabled={activeJobId !== null || generateLessons.isPending}
+                  className="h-9 cursor-pointer rounded-control border border-line-input bg-panel px-2.5 text-sm text-fg hover:border-fg disabled:cursor-not-allowed disabled:opacity-60 focus-ring-tight"
+                >
+                  {DIFFICULTIES.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+                {/* Việc của người soạn nội dung — `secondary`, không tranh với nút chính. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handleGenerate()}
+                  loading={generateLessons.isPending}
+                  disabled={activeJobId !== null || !hasExtractedDoc}
+                  aria-describedby={hasExtractedDoc ? undefined : 'generate-blocked'}
+                >
+                  {!generateLessons.isPending && <Icon name="sparkles" size={16} />}
+                  {generateLessons.isPending ? 'Đang tạo job…' : 'Sinh bài học bằng AI'}
+                </Button>
+              </div>
+            }
+          >
+            Lộ trình bài học
+          </SectionTitle>
+
+          {/* Lý do nút xám phải nhìn thấy được — phần tử disabled không hiện tooltip. */}
+          {!hasExtractedDoc && !documents.isLoading && (
+            <p
+              id="generate-blocked"
+              className="mb-4 flex items-start gap-2 rounded-control bg-muted px-3.5 py-2.5 text-sm text-fg-muted"
+            >
+              <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
+              Cần ít nhất một tài liệu đã trích xuất xong thì mới sinh được bài học.
+            </p>
+          )}
+
+          {isQuotaExceededError(generateError) && (
+            <QuotaNotice
+              className="mb-4"
+              metric={generateError.meta.metric}
+              limit={generateError.meta.limit}
+              used={generateError.meta.used}
+            />
+          )}
+          {Boolean(generateError) && !isQuotaExceededError(generateError) && (
+            <InlineError className="mb-4">
+              {errorText(generateError, 'Không sinh được bài học, vui lòng thử lại.')}
+            </InlineError>
+          )}
+          {Boolean(reorderError) && (
+            <InlineError className="mb-4">
+              {errorText(reorderError, 'Không sắp xếp lại được, vui lòng thử lại.')}
+            </InlineError>
+          )}
+
+          {activeJobId && <AiJobProgress jobId={activeJobId} onDone={handleJobDone} />}
+
+          {!activeJobId && lessons.isLoading && (
+            <LoadingState rows={3} variant="list" label="Đang tải bài học" />
+          )}
+          {!activeJobId && lessons.isError && (
+            <ErrorState
+              title="Không tải được bài học"
+              description={errorText(lessons.error, 'Vui lòng thử lại.')}
+              onRetry={() => void lessons.refetch()}
+            />
+          )}
+          {!activeJobId && lessons.data && lessonList.length === 0 && (
+            <EmptyState
+              title="Chưa có bài học nào"
+              description={
+                hasExtractedDoc
+                  ? 'Tài liệu đã sẵn sàng. Bấm "Sinh bài học bằng AI" để tạo lộ trình.'
+                  : 'Tải tài liệu lên ở khung bên cạnh, rồi bấm "Sinh bài học bằng AI" để tạo lộ trình.'
+              }
+            />
+          )}
+          {!activeJobId && lessonList.length > 0 && (
+            <LessonList
+              lessons={lessonList}
+              courseId={courseId}
+              onMove={(i, d) => void moveLesson(i, d)}
+              reordering={reorderLessons.isPending}
+            />
+          )}
+        </section>
+
+        {/* ----------------------------------------------------- tài liệu */}
+        <section aria-labelledby="docs-title" className="min-w-0">
+          <SectionTitle id="docs-title">Tài liệu nguồn</SectionTitle>
+
+          <Dropzone onFile={(f) => void handleFile(f)} uploading={upload.isPending} />
+
+          {isQuotaExceededError(uploadError) && (
+            <QuotaNotice
+              className="mt-3"
+              metric={uploadError.meta.metric}
+              limit={uploadError.meta.limit}
+              used={uploadError.meta.used}
+            />
+          )}
+          {Boolean(uploadError) && !isQuotaExceededError(uploadError) && (
+            <InlineError className="mt-3">
+              {errorText(uploadError, 'Tải tài liệu thất bại, vui lòng thử lại.')}
+            </InlineError>
+          )}
+
+          <div className="mt-4">
+            {documents.isLoading && (
+              <LoadingState rows={2} variant="list" label="Đang tải tài liệu" />
+            )}
+            {documents.isError && (
+              <ErrorState
+                title="Không tải được tài liệu"
+                description={errorText(documents.error, 'Vui lòng thử lại.')}
+                onRetry={() => void documents.refetch()}
+              />
+            )}
+            {documents.data && documents.data.documents.length === 0 && (
+              <p className="rounded-control border border-dashed border-line px-4 py-3 text-center text-sm text-fg-subtle">
+                Chưa có tài liệu nào trong khóa này.
+              </p>
+            )}
+            {documents.data && documents.data.documents.length > 0 && (
+              <ul className="divide-y divide-line">
+                {documents.data.documents.map((doc) => (
+                  <DocumentRow key={doc.id} doc={doc} />
+                ))}
+              </ul>
             )}
           </div>
-        )}
-        {resumeLesson && (
-          <p className="mt-2 truncate text-xs text-ink-300">
-            {completedCount === lessonList.length ? 'Mở lại: ' : 'Tiếp theo: '}
-            {resumeLesson.title}
+        </section>
+      </div>
+    </>
+  );
+}
+
+function DocumentRow({ doc }: { doc: DocumentList }) {
+  return (
+    <li className="py-3">
+      <div className="flex items-start gap-3">
+        <Icon
+          name="file"
+          size={20}
+          className={cn('mt-0.5 shrink-0', doc.status === 'FAILED' ? 'text-bad' : 'text-fg-subtle')}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-fg" title={doc.filename}>
+            {doc.filename}
           </p>
-        )}
-      </div>
-
-      {/* ----------------------------------------------------- lộ trình */}
-      <div className="mt-8 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-ink-900">Lộ trình bài học</h2>
-        {/* Hành động của người soạn nội dung, không phải của người học — để
-            `secondary` cho nó không tranh chấp với nút "Tiếp tục học" ở banner. */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => void handleGenerate()}
-          disabled={activeJobId !== null || generateLessons.isPending || !hasExtractedDoc}
-          aria-describedby={hasExtractedDoc ? undefined : 'generate-blocked'}
+          <p className="mt-0.5 text-xs text-fg-subtle">
+            {formatSize(doc.sizeBytes)}
+            {doc.pageCount ? ` · ${doc.pageCount} trang` : ''}
+            {doc.createdAt ? ` · ${relativeTime(doc.createdAt)}` : ''}
+          </p>
+        </div>
+        <Badge
+          tone={docTone(doc.status)}
+          icon={
+            doc.status === 'FAILED'
+              ? 'alert'
+              : doc.status === 'EXTRACTED'
+                ? 'check'
+                : doc.status === 'EXTRACTING'
+                  ? 'spinner'
+                  : undefined
+          }
+          className="shrink-0"
         >
-          {generateLessons.isPending ? 'Đang tạo job…' : 'Sinh bài học bằng AI'}
-        </Button>
+          {DOC_STATUS_LABEL[doc.status] ?? humanizeCode(doc.status)}
+        </Badge>
       </div>
-
-      {/* Lý do nút xám phải nhìn thấy được. `title` cũ không dùng được: phần tử
-          disabled không nhận sự kiện chuột nên tooltip không bao giờ hiện, và
-          trên cảm ứng thì không có hover để mà hiện. */}
-      {!hasExtractedDoc && (
-        <p id="generate-blocked" className="mt-2 flex items-start gap-1.5 text-sm text-ink-700">
-          <Icon name="info" size={16} className="mt-0.5 shrink-0 text-sky-700" />
-          Cần ít nhất một tài liệu đã trích xuất xong thì mới sinh được bài học.
+      {doc.status === 'FAILED' && doc.errorMessage && (
+        <p className="mt-2 flex items-start gap-2 rounded-md border border-bad-line px-2.5 py-2 text-xs text-bad">
+          <Icon name="alert" size={14} className="mt-px shrink-0" />
+          <span>{doc.errorMessage}</span>
         </p>
       )}
+    </li>
+  );
+}
 
-      {isQuotaExceededError(generateError) && (
-        <div className="mt-3">
-          <QuotaNotice
-            metric={generateError.meta.metric}
-            limit={generateError.meta.limit}
-            used={generateError.meta.used}
-          />
-        </div>
-      )}
-      {Boolean(generateError) && !isQuotaExceededError(generateError) && (
-        <InlineError className="mt-3">
-          {errorText(generateError, 'Không sinh được bài học, vui lòng thử lại.')}
-        </InlineError>
-      )}
-      {Boolean(reorderError) && (
-        <InlineError className="mt-3">
-          {errorText(reorderError, 'Không sắp xếp lại được, vui lòng thử lại.')}
-        </InlineError>
-      )}
+/**
+ * Vùng tải lên: bấm để chọn tệp hoặc kéo-thả. `<input type="file">` vẫn là điều khiển
+ * thật (chỉ ẩn bằng `sr-only`, không `hidden`), nên Tab tới được và trình đọc màn hình
+ * đọc được nhãn; vòng focus hiện trên khung nhờ `has-[:focus-visible]`.
+ */
+function Dropzone({ onFile, uploading }: { onFile: (f: File) => void; uploading: boolean }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
 
-      {activeJobId && <AiJobProgress jobId={activeJobId} onDone={handleJobDone} />}
-
-      {!activeJobId && lessons.isLoading && (
-        <div className="mt-4">
-          <LoadingState rows={3} label="Đang tải bài học" />
-        </div>
+  return (
+    <label
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!uploading) setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file && !uploading) onFile(file);
+      }}
+      className={cn(
+        'flex cursor-pointer flex-col items-center gap-1.5 rounded-card border border-dashed px-5 py-6 text-center transition-colors duration-150',
+        'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-fg',
+        dragging
+          ? 'border-fg bg-accent-soft'
+          : 'border-line-input bg-panel hover:border-fg hover:bg-panel-2',
+        uploading && 'pointer-events-none opacity-70',
       )}
-      {!activeJobId && lessons.isError && (
-        <div className="mt-4">
-          <ErrorState
-            title="Không tải được bài học"
-            description={errorText(lessons.error, 'Vui lòng thử lại.')}
-            onRetry={() => void lessons.refetch()}
-          />
-        </div>
-      )}
-      {!activeJobId && lessons.data && lessonList.length === 0 && (
-        <div className="mt-4">
-          <EmptyState
-            title="Chưa có bài học nào"
-            description={'Tải tài liệu lên rồi nhấn "Sinh bài học bằng AI" để tạo lộ trình.'}
-          />
-        </div>
-      )}
-      {!activeJobId && lessonList.length > 0 && (
-        <Card className="mt-4 overflow-hidden" padded={false}>
-          <LessonPath
-            lessons={lessonList}
-            courseId={courseId}
-            onMove={(i, d) => void moveLesson(i, d)}
-            reordering={reorderLessons.isPending}
-          />
-        </Card>
-      )}
-
-      {/* ----------------------------------------------------- tài liệu */}
-      <div className="mt-10 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-ink-900">Tài liệu nguồn</h2>
-        <div>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".pdf,.pptx,.docx,.txt,.md"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleFile(file);
-            }}
-          />
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => fileInput.current?.click()}
-            disabled={upload.isPending}
-          >
-            {upload.isPending ? 'Đang tải lên…' : 'Tải tài liệu lên'}
-          </Button>
-        </div>
-      </div>
-
-      {isQuotaExceededError(uploadError) && (
-        <div className="mt-3">
-          <QuotaNotice
-            metric={uploadError.meta.metric}
-            limit={uploadError.meta.limit}
-            used={uploadError.meta.used}
-          />
-        </div>
-      )}
-      {Boolean(uploadError) && !isQuotaExceededError(uploadError) && (
-        <InlineError className="mt-3">
-          {errorText(uploadError, 'Tải tài liệu thất bại, vui lòng thử lại.')}
-        </InlineError>
-      )}
-
-      {documents.isLoading && (
-        <div className="mt-4">
-          <LoadingState rows={1} label="Đang tải tài liệu" />
-        </div>
-      )}
-      {documents.isError && (
-        <div className="mt-4">
-          <ErrorState
-            title="Không tải được danh sách tài liệu"
-            description={errorText(documents.error, 'Vui lòng thử lại.')}
-            onRetry={() => void documents.refetch()}
-          />
-        </div>
-      )}
-      {documents.data && documents.data.documents.length === 0 && (
-        <div className="mt-4">
-          <EmptyState
-            title="Chưa có tài liệu nào"
-            description="Tải lên PDF, slide hoặc tài liệu văn bản để AI sinh bài học từ đó."
-          />
-        </div>
-      )}
-      {documents.data && documents.data.documents.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          {documents.data.documents.map((doc) => (
-            <li key={doc.id}>
-              <Card className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <CardTitle className="truncate text-sm">{doc.filename}</CardTitle>
-                  <p className="mt-0.5 text-xs text-ink-500">
-                    {(doc.sizeBytes / 1024 / 1024).toFixed(2)} MB
-                    {doc.pageCount ? ` · ${doc.pageCount} trang` : ''}
-                  </p>
-                  {doc.status === 'FAILED' && doc.errorMessage && (
-                    <p className="mt-1 text-xs font-medium text-danger-700">{doc.errorMessage}</p>
-                  )}
-                </div>
-                <Badge
-                  tone={docTone(doc.status)}
-                  icon={
-                    doc.status === 'FAILED'
-                      ? 'alert'
-                      : doc.status === 'EXTRACTED'
-                        ? 'check'
-                        : undefined
-                  }
-                >
-                  {DOC_STATUS_LABEL[doc.status] ?? doc.status}
-                </Badge>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    >
+      <input
+        ref={input}
+        type="file"
+        accept={DOCUMENT_ACCEPT}
+        className="sr-only"
+        disabled={uploading}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFile(file);
+          e.target.value = '';
+        }}
+      />
+      <Icon
+        name={uploading ? 'spinner' : 'upload'}
+        size={20}
+        className={cn('mb-1 text-fg-subtle', uploading && 'animate-spin')}
+      />
+      <span className="text-sm font-medium text-fg">
+        {uploading ? 'Đang tải lên…' : 'Kéo tệp vào đây hoặc bấm để chọn'}
+      </span>
+      <span className="text-xs leading-relaxed text-fg-subtle">
+        PDF có lớp chữ, Word (DOCX), PowerPoint (PPTX), TXT, Markdown.
+        <br />
+        PDF scan chưa đọc được.
+      </span>
+    </label>
   );
 }

@@ -1,0 +1,15 @@
+flowchart TB
+  subgraph R1["Chuẩn bị nội dung"]
+    direction LR
+    A([Đăng ký / Đăng nhập]) --> B[Tạo Course] --> C["Tải Document<br/>PDF · DOCX · PPTX · TXT · MD"] --> D{"Trích xuất<br/>thành công?"}
+  end
+  subgraph R2["Học tập"]
+    direction LR
+    E["Sinh Lesson bằng AI<br/>chọn độ khó"] --> F{"Kết quả<br/>AI Job"} --> G["Học Lesson<br/>cảnh báo LOW_CONFIDENCE"] --> H["Làm Exercise<br/>chấm điểm ngay"] --> I["Theo dõi tiến trình<br/>dashboard · lịch sử"]
+  end
+  D -- "EXTRACTED" --> E
+  D -. "FAILED: PDF scan, sai định dạng, vượt số trang → tải lại" .-> C
+  F -. "FAILED → chạy lại" .-> E
+  Q["Gợi ý nâng cấp gói<br/>(402 QUOTA_EXCEEDED)"]
+  B -. "hết quota" .-> Q
+  E -. "hết quota" .-> Q

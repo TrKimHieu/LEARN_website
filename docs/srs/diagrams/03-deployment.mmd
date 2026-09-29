@@ -1,0 +1,29 @@
+flowchart TB
+  subgraph APPS["Tiến trình ứng dụng — npm run dev"]
+    direction LR
+    w["web :3000<br/>Next.js"]
+    a["api :4000<br/>NestJS · nodemon + ts-node"]
+    k["worker<br/>NestJS standalone"]
+  end
+  subgraph DEV["Hạ tầng local — infra/docker-compose.yml"]
+    direction LR
+    pg[("postgres:16-alpine<br/>:5432")]
+    rd[("redis:7-alpine<br/>:6379")]
+    mn[("MinIO<br/>:9000 API · :9001 console")]
+    mc["minio/mc<br/>tạo bucket learn-documents"]
+    mc --> mn
+  end
+  subgraph CI["GitHub Actions — .github/workflows/ci.yml"]
+    direction LR
+    l[lint] --> t[typecheck] --> u[unit tests] --> b["build<br/>api · worker · web"]
+    au["npm audit"]
+    it["integration tests<br/>API thật + Postgres/Redis"]
+  end
+  subgraph IMG["Container images — infra/Dockerfile.*"]
+    direction LR
+    i1[Dockerfile.web]
+    i2[Dockerfile.api]
+    i3[Dockerfile.worker]
+  end
+  APPS --> DEV
+  CI -. "đóng gói" .-> IMG

@@ -23,7 +23,7 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const LEARNER = { email: 'demo@learn.ai', password: 'Demo@12345' };
 const ADMIN = { email: 'admin@learn.ai', password: 'Admin@12345' };
 
-const ANON_ROUTES = ['/', '/login', '/register', '/forgot-password'];
+const ANON_ROUTES = ['/', '/login', '/register', '/forgot-password', '/reset-password'];
 const LEARNER_ROUTES = ['/dashboard', '/courses', '/courses/new', '/progress', '/settings'];
 const ADMIN_ROUTES = [
   '/admin',

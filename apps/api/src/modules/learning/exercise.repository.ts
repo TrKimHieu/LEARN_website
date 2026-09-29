@@ -6,18 +6,36 @@ export class ExerciseRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Bài tập đầu tiên (theo orderIndex) của một bài học — kèm câu hỏi/đáp án.
-   * Bản đọc KHÔNG lộ isCorrect / correctAnswer trước khi nộp `[SPEC]`.
+   * Một bài tập của bài học kèm câu hỏi/đáp án — `exerciseId` bỏ trống thì lấy bài đầu tiên
+   * (theo orderIndex). Lọc cả `lessonId` khi có `exerciseId`: id bài tập từ client không được
+   * dùng để với sang bài tập của bài học khác. Bản trả ra client KHÔNG lộ isCorrect /
+   * correctAnswer trước khi nộp `[SPEC]` — việc lọc đó nằm ở service.
    */
-  findFirstForLesson(lessonId: string, db: Db = this.prisma.client) {
+  findForLesson(lessonId: string, exerciseId?: string, db: Db = this.prisma.client) {
     return db.exercise.findFirst({
-      where: { lessonId },
+      where: { lessonId, ...(exerciseId ? { id: exerciseId } : {}) },
       orderBy: { orderIndex: 'asc' },
       include: {
         questions: {
           orderBy: { orderIndex: 'asc' },
           include: { options: { orderBy: { orderIndex: 'asc' } } },
         },
+      },
+    });
+  }
+
+  /** Mọi bài tập của một bài học — tổng quan cho điều hướng và luật hoàn thành bài học. */
+  listForLesson(lessonId: string, db: Db = this.prisma.client) {
+    return db.exercise.findMany({
+      where: { lessonId },
+      orderBy: { orderIndex: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        orderIndex: true,
+        difficulty: true,
+        passScore: true,
+        _count: { select: { questions: true } },
       },
     });
   }

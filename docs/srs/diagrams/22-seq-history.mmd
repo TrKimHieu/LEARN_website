@@ -1,0 +1,12 @@
+sequenceDiagram
+  autonumber
+  actor U as Learner
+  participant A as API (ProgressService)
+  participant D as PostgreSQL
+  U->>A: GET /progress/history?limit=20
+  A->>D: Submission WHERE userId ORDER BY createdAt DESC, id DESC LIMIT 21
+  A-->>U: { items[20], nextCursor = id của item cuối } (null nếu ≤ 20)
+  U->>A: GET /progress/history?limit=20&cursor={id}
+  A->>D: cursor = { id }, skip 1, cùng thứ tự (createdAt, id) … LIMIT 21
+  A-->>U: { items, nextCursor }
+  Note over U: mỗi item có courseId, lessonId, exerciseId để nhảy thẳng tới bài (FR-PROGRESS-05)

@@ -1,0 +1,88 @@
+<section class="chapter">
+<h1><span class="num">2.</span> Mô tả kiến trúc tổng thể <span class="en">(Overall Description)</span></h1>
+
+<h2>2.1 Kiến trúc hệ thống <span class="en">(System Architecture)</span></h2>
+<p>LEARN là một <b>modular monolith</b> đặt trong <b>monorepo</b> TypeScript (npm workspaces), tách thành ba tiến trình chạy độc lập và các package dùng chung:</p>
+<ul>
+<li><b>apps/web</b> — Next.js 15 (App Router). Gồm trang portfolio công khai và ứng dụng học tập cần đăng nhập. Gọi API qua REST, giữ access token trong memory, refresh token nằm trong cookie httpOnly.</li>
+<li><b>apps/api</b> — NestJS 11, REST dưới <code>/api/v1</code>. Chia module theo domain: <code>auth</code>, <code>courses</code>, <code>documents</code>, <code>ai</code>, <code>learning</code>, <code>subscriptions</code>, <code>admin</code>, <code>health</code>. Mỗi module theo lớp <b>Controller → Service → Repository</b>; repository là nơi duy nhất truy vấn Prisma và bắt buộc lọc quyền sở hữu (ADR 005).</li>
+<li><b>apps/worker</b> — NestJS standalone (không mở HTTP), tiêu thụ hai hàng đợi BullMQ: <code>document-extract</code> (concurrency 4) và <code>lesson-generate</code> (concurrency 2). Tách khỏi API để việc gọi LLM chậm không chiếm tài nguyên request và để scale độc lập.</li>
+<li><b>packages/contracts</b> (Zod schema + kiểu dùng chung web/api/worker), <b>packages/db</b> (Prisma client, argon2, uuidv7), <b>packages/ai</b> (adapter LLM, prompt có version, chunker, validator 4 tầng), <b>packages/ui</b>, <b>packages/config</b>.</li>
+</ul>
+<p>Các thành phần tương tác như sau: trình duyệt gọi web; web gọi API bằng Bearer JWT. API đọc/ghi PostgreSQL, ký presigned URL để trình duyệt PUT file thẳng lên object storage, và đẩy job vào Redis. Worker nhận job, đọc file từ storage, gọi LLM, ghi kết quả vào PostgreSQL và publish tiến độ qua Redis pub/sub. Bên thứ ba: LLM provider, SMTP, Stripe (<span class="st plan">Đã lên kế hoạch</span>).</p>
+<figure class="landscape"><img src="diagrams/png/02-architecture.png"><figcaption>System Architecture Diagram — ba tiến trình, tầng dữ liệu và dịch vụ bên thứ ba</figcaption></figure>
+
+<table>
+<caption>Ba luồng dữ liệu chính</caption>
+<colgroup><col style="width:20%"><col style="width:42%"><col></colgroup>
+<thead><tr><th>Luồng</th><th>Đường đi</th><th>Lý do thiết kế</th></tr></thead>
+<tbody>
+<tr><td><b>Request đồng bộ</b></td><td>Browser → Web → API → PostgreSQL → API → Web</td><td>CRUD, chấm điểm, tiến trình — cần phản hồi ngay, validate bằng Zod, lỗi theo RFC 7807.</td></tr>
+<tr><td><b>Upload file</b></td><td>API ký presigned PUT → Browser PUT thẳng lên storage → API <code>confirm</code> → enqueue trích xuất</td><td>File tới 25 MB không đi qua API server; storage key do server sinh, bucket không public.</td></tr>
+<tr><td><b>Xử lý AI bất đồng bộ</b></td><td>API tạo AIJob + enqueue → Worker (outline → lesson → validate → lưu) → Web poll tiến độ</td><td>Một job có thể chạy vài phút và tốn tiền; cần retry, huỷ, giới hạn chi phí, không chặn request.</td></tr>
+</tbody></table>
+
+<table class="compact">
+<caption>Quyết định kiến trúc đã chốt (ADR)</caption>
+<colgroup><col style="width:10%"><col style="width:36%"><col></colgroup>
+<thead><tr><th>ADR</th><th>Quyết định</th><th>Ảnh hưởng tới yêu cầu</th></tr></thead>
+<tbody>
+<tr><td>001</td><td>TypeScript cho toàn bộ hệ thống, <code>strict: true</code></td><td>Contracts dùng chung giữa web/api/worker; NFR-SEC-06</td></tr>
+<tr><td>002</td><td>Monorepo <code>apps/*</code> + <code>packages/*</code></td><td>Một nguồn Zod schema; build/CI thống nhất</td></tr>
+<tr><td>003</td><td>Tách Outline và sinh Lesson thành hai giai đoạn</td><td>FR-AI-02; kiểm soát cấu trúc Course và chi phí</td></tr>
+<tr><td>004</td><td>Webhook là nguồn sự thật cho trạng thái thanh toán</td><td>NFR-SEC-09, FR-SUB-06</td></tr>
+<tr><td>005</td><td>Lọc quyền sở hữu bắt buộc ở tầng repository</td><td>NFR-SEC-04 (chống IDOR)</td></tr>
+<tr><td>009–010</td><td>Gemini free tier + model dự phòng; adapter OpenAI-compatible</td><td>FR-AI-08; fallback khi provider trả 429/503/529</td></tr>
+<tr><td>012–015</td><td>Giao diện v4 đơn sắc, nội dung trước</td><td>§5.3, NFR-UX</td></tr>
+</tbody></table>
+
+<h3>Môi trường chạy &amp; triển khai</h3>
+<p>Khi phát triển, hạ tầng chạy bằng Docker Compose (PostgreSQL, Redis, MinIO + job tạo bucket); ba tiến trình ứng dụng chạy bằng <code>npm run dev</code>. CI trên GitHub Actions chạy lint, typecheck, unit test, build, audit và integration test với PostgreSQL/Redis thật. Mỗi tiến trình có Dockerfile riêng trong <code>infra/</code>. Thứ tự deploy an toàn: <b>migration → worker → api → web</b>.</p>
+<figure class="w90"><img src="diagrams/png/03-deployment.png"><figcaption>Deployment &amp; runtime view — môi trường local, CI và container image</figcaption></figure>
+
+<h2>2.2 Môi trường và Công nghệ <span class="en">(Operating Environment &amp; Tech Stack)</span></h2>
+<p>Phiên bản lấy từ <code>package.json</code> của từng workspace và <code>infra/docker-compose.yml</code> tại thời điểm viết.</p>
+<table>
+<caption>Tech Stack</caption>
+<colgroup><col style="width:17%"><col style="width:33%"><col></colgroup>
+<thead><tr><th>Thành phần</th><th>Công nghệ / Phiên bản</th><th>Mục đích sử dụng</th></tr></thead>
+<tbody>
+<tr><td><b>Ngôn ngữ</b></td><td>TypeScript 5.7, Node.js ≥ 22</td><td>Một ngôn ngữ cho mọi tầng; <code>strict</code>, <code>noUncheckedIndexedAccess</code></td></tr>
+<tr><td><b>Frontend</b></td><td>Next.js 15, React 19, Tailwind CSS 4</td><td>Web app + trang portfolio; App Router, route group <code>(auth)</code>, <code>(app)</code></td></tr>
+<tr><td></td><td>TanStack React Query 5, React Hook Form 7 + @hookform/resolvers</td><td>Cache dữ liệu server (staleTime 30s), polling AI Job; form validate bằng cùng Zod schema với API</td></tr>
+<tr><td></td><td>marked + isomorphic-dompurify, motion, Phosphor icons</td><td>Render Markdown bài học (sanitize lần 2 ở client), chuyển động, icon</td></tr>
+<tr><td><b>Backend</b></td><td>NestJS 11 (platform-express), helmet, cookie-parser</td><td>REST API, guard/pipe/filter, bảo mật header, đọc cookie refresh token</td></tr>
+<tr><td></td><td>jose 5</td><td>Ký/xác minh JWT HS256 (ghim thuật toán)</td></tr>
+<tr><td></td><td>nodemailer 7</td><td>Gửi thư đặt lại mật khẩu (<code>MAIL_MODE=smtp</code>)</td></tr>
+<tr><td><b>Validation</b></td><td>Zod 4 (<code>packages/contracts</code>)</td><td>Validate mọi input; nguồn kiểu dùng chung</td></tr>
+<tr><td><b>Database</b></td><td>PostgreSQL 16, Prisma 6</td><td>Lưu trữ chính; migration, transaction, advisory lock</td></tr>
+<tr><td><b>Queue / Cache</b></td><td>Redis 7, BullMQ 5, ioredis 5</td><td>Hàng đợi job, pub/sub tiến độ, rate limit</td></tr>
+<tr><td><b>Object storage</b></td><td>S3 API (AWS SDK v3), MinIO khi dev</td><td>Lưu file gốc; presigned PUT/GET</td></tr>
+<tr><td><b>Trích xuất tài liệu</b></td><td>pdfjs-dist 4, mammoth 1.13, jszip 3</td><td>PDF có lớp text (kèm layout để nhận heading), DOCX, PPTX</td></tr>
+<tr><td><b>AI / LLM</b></td><td>@anthropic-ai/sdk; adapter Gemini và OpenAI-compatible tự viết; sanitize-html</td><td>Sinh outline/lesson; đổi provider qua <code>LLM_PROVIDER</code>; model dự phòng; làm sạch Markdown</td></tr>
+<tr><td><b>Bảo mật</b></td><td>@node-rs/argon2, uuidv7</td><td>Hash mật khẩu argon2id; ID sắp xếp theo thời gian</td></tr>
+<tr><td><b>Testing</b></td><td>Vitest 2, supertest, Playwright 1.63, axe-core</td><td>Unit/integration test, chụp màn hình, audit accessibility</td></tr>
+<tr><td><b>Build</b></td><td>tsup + @swc/core, ts-node + nodemon</td><td>Bundle API/worker (SWC để emit decorator metadata); chạy dev</td></tr>
+<tr><td><b>CI/CD</b></td><td>GitHub Actions, Docker (<code>infra/Dockerfile.*</code>)</td><td>Lint, typecheck, test, build, audit; image cho web/api/worker</td></tr>
+<tr><td><b>Chất lượng mã</b></td><td>ESLint 9 + typescript-eslint, eslint-plugin-jsx-a11y, Prettier 3</td><td>Quy tắc boundary theo feature, accessibility, định dạng</td></tr>
+</tbody></table>
+
+<table class="compact">
+<caption>Biến môi trường quan trọng (không ghi giá trị secret)</caption>
+<colgroup><col style="width:30%"><col style="width:22%"><col></colgroup>
+<thead><tr><th>Biến</th><th>Mặc định</th><th>Ý nghĩa</th></tr></thead>
+<tbody>
+<tr><td><code>DATABASE_URL</code>, <code>REDIS_URL</code></td><td>localhost</td><td>Kết nối PostgreSQL, Redis</td></tr>
+<tr><td><code>APP_URL</code></td><td>http://localhost:3000</td><td>Origin CORS, đường dẫn trong email</td></tr>
+<tr><td><code>APP_TIMEZONE</code></td><td>Asia/Ho_Chi_Minh</td><td>Múi giờ cắt ngày cho streak</td></tr>
+<tr><td><code>JWT_ACCESS_SECRET</code>, <code>JWT_ACCESS_TTL</code></td><td>— , 15m</td><td>Khoá ký và thời hạn access token</td></tr>
+<tr><td><code>REFRESH_TOKEN_TTL_DAYS</code></td><td>30</td><td>Thời hạn refresh token</td></tr>
+<tr><td><code>S3_*</code>, <code>S3_PUT_URL_EXPIRES_SEC</code></td><td>MinIO, 900</td><td>Storage; hạn presigned PUT (15 phút)</td></tr>
+<tr><td><code>LLM_PROVIDER</code>, <code>LLM_MODE</code></td><td>anthropic, mock</td><td>anthropic | google | openai; mock | live</td></tr>
+<tr><td><code>LLM_MODEL_GENERATION</code>, <code>LLM_MODEL_FALLBACK</code></td><td>theo provider</td><td>Model chính và model dự phòng cùng provider</td></tr>
+<tr><td><code>AI_JOB_MAX_COST_USD</code>, <code>AI_JOB_TIMEOUT_MS</code>, <code>AI_MAX_CONCURRENT_CALLS</code></td><td>0.50, 900000, 3</td><td>Trần chi phí, thời gian, số lượt gọi song song mỗi job</td></tr>
+<tr><td><code>DOCUMENT_MAX_SIZE</code>, <code>UPLOAD_MAX_PAGES</code></td><td>26214400, 300</td><td>Giới hạn file</td></tr>
+<tr><td><code>BILLING_MODE</code>, <code>STRIPE_*</code></td><td>demo</td><td>demo | live</td></tr>
+<tr><td><code>MAIL_MODE</code>, <code>SMTP_URL</code>, <code>PASSWORD_RESET_TTL_MIN</code></td><td>log, — , 30</td><td>Gửi thư thật hay in link ra log (dev)</td></tr>
+</tbody></table>
+</section>

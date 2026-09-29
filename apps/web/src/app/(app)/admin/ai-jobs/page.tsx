@@ -49,7 +49,7 @@ export default function AdminAiJobsPage() {
               id="job-status"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-56"
+              className="w-full sm:w-60"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -62,13 +62,13 @@ export default function AdminAiJobsPage() {
       />
 
       {jobs.data && total > 0 && (
-        <p className="mb-4 flex items-center gap-1.5 text-sm text-ink-500">
-          <span className="font-bold tabular-nums text-ink-700">{total}</span> job trong danh sách ·
-          tỉ lệ thất bại
+        <p className="mb-4 flex items-center gap-1.5 text-sm text-fg-subtle">
+          <span className="font-semibold tabular-nums text-fg-muted">{total}</span> job trong danh
+          sách · tỉ lệ thất bại
           <span
             className={cn(
-              'inline-flex items-center gap-1 font-bold tabular-nums',
-              alerting ? 'text-danger-700' : 'text-ink-700',
+              'inline-flex items-center gap-1 font-semibold tabular-nums',
+              alerting ? 'text-bad' : 'text-fg-muted',
             )}
           >
             {alerting && <Icon name="alert" size={14} />}
@@ -120,14 +120,14 @@ export default function AdminAiJobsPage() {
               <Tbody>
                 {jobs.data.jobs.map((j) => (
                   <tr key={j.id}>
-                    <Td className="font-medium text-ink-900">{j.courseTitle}</Td>
+                    <Td className="font-medium text-fg">{j.courseTitle}</Td>
                     <Td>{j.requesterEmail}</Td>
                     <Td>{jobTypeLabel(j.type)}</Td>
                     <Td>
                       <StatusChip status={j.status} />
                       {j.status === 'FAILED' && j.error && (
                         <p
-                          className="mt-1 max-w-xs truncate text-xs font-medium text-danger-700"
+                          className="mt-1 max-w-xs truncate text-xs font-medium text-bad"
                           title={j.error.message}
                         >
                           {j.error.message}
@@ -137,13 +137,13 @@ export default function AdminAiJobsPage() {
                     <Td align="right" className="tabular-nums">
                       {j.progress}%
                     </Td>
-                    <Td className="whitespace-nowrap text-ink-500">
+                    <Td className="whitespace-nowrap text-fg-subtle">
                       {new Date(j.queuedAt).toLocaleString('vi-VN')}
                     </Td>
                     <Td align="right">
                       <Link
                         href={`/admin/ai-jobs/${j.id}`}
-                        className="inline-flex items-center gap-0.5 rounded-md text-sm font-bold text-sky-700 underline underline-offset-2 hover:no-underline focus-ring"
+                        className="inline-flex items-center gap-0.5 rounded-md text-sm font-semibold text-accent underline underline-offset-2 hover:no-underline focus-ring"
                       >
                         Chi tiết
                         <Icon name="chevron-right" size={15} strokeWidth={3} />

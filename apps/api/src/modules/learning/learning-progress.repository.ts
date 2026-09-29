@@ -41,7 +41,10 @@ export class LearningProgressRepository {
     });
   }
 
-  /** Đọc tiến độ hiện tại rồi upsert khi nộp bài — chạy TRONG transaction của submission. */
+  /**
+   * Đọc tiến độ hiện tại rồi upsert khi nộp bài — chạy TRONG transaction của submission.
+   * `lessonComplete` do service tính theo luật "mọi bài tập đều đạt" (lesson-completion.ts).
+   */
   async upsertAfterSubmission(
     tx: Prisma.TransactionClient,
     args: {
@@ -49,10 +52,10 @@ export class LearningProgressRepository {
       courseId: string;
       lessonId: string;
       percent: number;
-      passed: boolean;
+      lessonComplete: boolean;
     },
   ): Promise<void> {
-    const { userId, courseId, lessonId, percent, passed } = args;
+    const { userId, courseId, lessonId, percent, lessonComplete: passed } = args;
     const now = new Date();
     const existing = await tx.learningProgress.findUnique({
       where: { userId_lessonId: { userId, lessonId } },

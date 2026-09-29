@@ -1,28 +1,41 @@
 @import '../../../../packages/config/tailwind/theme.css';
 @import 'tailwindcss';
 
-@layer base {
-  :root {
-    color-scheme: light;
-  }
+/* `dark:` bám theo `data-theme`, không theo media query: người dùng chọn được
+   Sáng/Tối/Hệ thống ở Cài đặt, và một cây con (sidebar) có thể ép tông riêng. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-  /* Khối `prefers-reduced-motion` bên dưới đã ép `scroll-behavior: auto !important`,
-     nên dòng này an toàn a11y sẵn. */
+@layer base {
+  /* Khối `prefers-reduced-motion` bên dưới ép `scroll-behavior: auto`. */
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-surface-100 text-ink-900 antialiased;
+    @apply bg-app text-fg antialiased;
     font-family: var(--font-sans);
+    /* Tắt `calt`: Plus Jakarta Sans (v3) từng đổi "2xx" thành "2×x" — sai nội dung bài học.
+       Chữ bài học phải hiện đúng như đã gõ với mọi font, nên giữ lưới an toàn này. */
+    font-feature-settings: 'calt' 0;
+    min-height: 100dvh;
   }
 
-  /* Ngắt dòng chủ động — UX-UI-PRINCIPLES §4.2. `balance` cân các dòng của tiêu đề
-     ngắn; `pretty` chỉ lo chống chữ mồ côi ở dòng cuối đoạn văn dài. */
+  /* Số đều không dùng số 0 gạch chéo (Mona Sans từng vẽ "3Ø/3Ø điểm" — trông như mã máy
+     giữa câu tiếng Việt). Giữ `zero` 0 để font nào cũng ra số 0 thường; code dùng mono riêng. */
+  .tabular-nums,
+  table {
+    font-feature-settings:
+      'calt' 0,
+      'zero' 0,
+      'tnum' 1;
+  }
+
   h1,
   h2,
   h3 {
     text-wrap: balance;
+    letter-spacing: -0.012em;
   }
 
   p,
@@ -30,41 +43,46 @@
     text-wrap: pretty;
   }
 
-  /* Cột số trong bảng phải thẳng hàng — UX-UI-PRINCIPLES §4.2. */
   table {
     font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--line-strong);
+  }
+
+  /* Viền mặc định của Tailwind v4 là `currentColor` — kéo về token để mọi
+     `border` trần đều đổi theo tông sáng/tối. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
   }
 }
 
 @layer utilities {
-  /* Vòng focus — một nguồn duy nhất. Trước đó chuỗi này được gõ lại ở 23 chỗ,
-     nên sửa độ dày hay màu là phải đi tìm từng chỗ.
-
-     Ba biến thể, khác nhau đúng một thứ mỗi lần:
-     - `focus-ring`       offset-2 · sky-600 — mặc định, dùng trên nền sáng.
-     - `focus-ring-tight` offset-1 · sky-600 — ô nhập liệu: offset-2 chạm vào ô
-       bên cạnh trong form xếp sát, còn viền ô đã tự làm mốc rồi.
-     - `focus-ring-dark`  offset-2 · sky-500 — trên nền navy, nơi sky-600 chìm.
-       (Đây là đồ hoạ, không phải chữ, nên không vướng luật "sky-700 cho chữ".) */
+  /* Vòng focus — một nguồn. Màu chữ chính (đen ở tông sáng, trắng ở tông tối). */
   .focus-ring {
-    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600;
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg dark:focus-visible:outline-fg;
   }
 
   .focus-ring-tight {
-    @apply focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-600;
+    @apply focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-fg dark:focus-visible:outline-fg;
   }
 
   .focus-ring-dark {
-    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500;
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }
 
-/* Giảm chuyển động — công tắc toàn cục cho animation thuần CSS.
-   `MotionConfig reducedMotion="user"` ở gốc cây chỉ với tới component `motion.*`;
-   các tiện ích CSS của Tailwind (`animate-pulse` trên skeleton, `animate-spin`)
-   không nghe nó. Khối này phủ nốt phần còn lại. Không đặt `animation: none` vì
-   một số hiệu ứng dùng keyframe để hiện ra — rút ngắn về gần 0 thì phần tử vẫn
-   tới trạng thái cuối, chỉ là tới ngay lập tức. */
+/* Giảm chuyển động — công tắc toàn cục cho animation thuần CSS. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -76,32 +94,52 @@
   }
 }
 
-/* Nội dung Lesson render từ Markdown đã sanitize — apps/web/src/components/shared/markdown.tsx */
+/* Nội dung Lesson render từ Markdown đã sanitize — components/shared/markdown.tsx.
+   Mọi màu đi qua token nên đọc được ở cả hai tông. */
+/* Bài đọc (ADR 014): cùng họ sans với giao diện, cỡ lớn hơn và dòng thưa hơn để đọc đoạn
+   dài — tách "nội dung để học" khỏi "giao diện để bấm" bằng nhịp chữ, không bằng đổi font. */
+.lesson-content {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--fg);
+}
+.lesson-content > :first-child {
+  margin-top: 0;
+}
 .lesson-content h1,
 .lesson-content h2,
 .lesson-content h3,
 .lesson-content h4 {
   font-weight: 600;
-  color: var(--color-ink-900);
-  margin-top: 1.25em;
-  margin-bottom: 0.5em;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+  line-height: 1.3;
+  margin-top: 1.75em;
+  margin-bottom: 0.6em;
+  scroll-margin-top: 6rem;
 }
 .lesson-content h1 {
-  font-size: 1.25rem;
+  font-size: 1.55rem;
 }
 .lesson-content h2 {
-  font-size: 1.125rem;
+  font-size: 1.3rem;
 }
 .lesson-content h3,
 .lesson-content h4 {
-  font-size: 1rem;
+  font-size: 1.0625rem;
 }
 .lesson-content p {
-  margin-bottom: 0.75em;
+  margin-bottom: 1em;
+  color: var(--fg-muted);
+}
+.lesson-content strong {
+  color: var(--fg);
+  font-weight: 700;
 }
 .lesson-content ul,
 .lesson-content ol {
-  margin: 0.5em 0 0.75em 1.25em;
+  margin: 0.5em 0 1em 1.35em;
+  color: var(--fg-muted);
 }
 .lesson-content ul {
   list-style: disc;
@@ -110,36 +148,71 @@
   list-style: decimal;
 }
 .lesson-content li {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.35em;
+  padding-left: 0.2em;
 }
-/* sky-700 là bậc sky DUY NHẤT hợp lệ cho chữ — xem docs/UI-GUIDE.md §10.
-   Giá trị cũ ở đây là sky-500: ~1.9:1 trên nền trắng, trượt hẳn WCAG 1.4.3.
-   Nó sống sót lâu vì `scripts/audit-a11y.mjs` không quét route bài học nào. */
+.lesson-content li::marker {
+  color: var(--fg-subtle);
+}
+/* Liên kết nội dòng luôn gạch chân — WCAG 1.4.1, không phân biệt chỉ bằng màu. */
 .lesson-content a {
-  color: var(--color-sky-700);
+  color: var(--accent);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .lesson-content code {
-  background: var(--color-surface-200);
-  border-radius: 0.25rem;
+  background: var(--muted);
+  border-radius: 0.3rem;
   padding: 0.1em 0.35em;
   font-family: var(--font-mono);
-  font-size: 0.875em;
+  font-size: 0.8em;
+  color: var(--fg);
 }
 .lesson-content pre {
-  background: var(--color-surface-200);
+  background: #161616;
+  color: #f2f2f2;
   border-radius: 0.5rem;
-  padding: 0.75em 1em;
+  padding: 1em 1.15em;
   overflow-x: auto;
-  margin-bottom: 0.75em;
+  margin: 0.25em 0 1.25em;
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 .lesson-content pre code {
   background: none;
+  border: 0;
   padding: 0;
+  color: inherit;
 }
 .lesson-content blockquote {
-  border-left: 3px solid var(--color-ink-300);
-  padding-left: 0.75em;
-  color: var(--color-ink-500);
-  margin-bottom: 0.75em;
+  border-left: 3px solid var(--fg);
+  padding: 0.1em 0 0.1em 1em;
+  margin-bottom: 1em;
+}
+.lesson-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+.lesson-content hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2em 0;
+}
+.lesson-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.25em;
+  font-size: 0.9375rem;
+  display: block;
+  overflow-x: auto;
+}
+.lesson-content th,
+.lesson-content td {
+  border: 1px solid var(--line);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.lesson-content th {
+  background: var(--muted);
+  font-weight: 600;
+  color: var(--fg);
 }

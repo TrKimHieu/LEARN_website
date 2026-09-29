@@ -5,8 +5,8 @@ import { Skeleton } from './skeleton';
 import { cn } from './cn';
 
 /**
- * Bảng dữ liệu. Bọc trong `Card` + `overflow-x-auto` để bảng nhiều cột cuộn
- * ngang trong vùng của nó thay vì làm tràn cả trang trên màn hẹp.
+ * Bảng dữ liệu. `overflow-x-auto` để bảng nhiều cột cuộn ngang trong vùng của nó thay
+ * vì làm tràn cả trang trên màn hẹp.
  */
 export function TableCard({
   children,
@@ -28,7 +28,7 @@ export function Table({ children }: { children: React.ReactNode }) {
 
 export function Thead({ children }: { children: React.ReactNode }) {
   return (
-    <thead className="border-b border-surface-300 bg-surface-100 text-left">
+    <thead className="border-b border-line bg-panel-2 text-left">
       <tr>{children}</tr>
     </thead>
   );
@@ -45,7 +45,7 @@ export function Th({
     <th
       scope="col"
       className={cn(
-        'whitespace-nowrap px-4 py-3 text-xs font-medium text-ink-500',
+        'whitespace-nowrap px-4 py-3 text-xs font-semibold text-fg-subtle',
         align === 'right' && 'text-right',
       )}
     >
@@ -55,7 +55,11 @@ export function Th({
 }
 
 export function Tbody({ children }: { children: React.ReactNode }) {
-  return <tbody className="divide-y divide-surface-200">{children}</tbody>;
+  return (
+    <tbody className="divide-y divide-line [&>tr]:transition-colors [&>tr:hover]:bg-panel-2">
+      {children}
+    </tbody>
+  );
 }
 
 export function Td({
@@ -68,35 +72,28 @@ export function Td({
   align?: 'left' | 'right';
 }) {
   return (
-    <td className={cn('px-4 py-3 text-ink-700', align === 'right' && 'text-right', className)}>
+    <td className={cn('px-4 py-3.5 text-fg-muted', align === 'right' && 'text-right', className)}>
       {children}
     </td>
   );
 }
 
-/**
- * Khung chờ mang hình dạng của chính cái bảng sắp hiện ra.
- *
- * Trước đây các màn admin dùng `<Skeleton className="h-48" />` — một tảng xám đặc. Nó không
- * cho biết sắp có gì, và khi dữ liệu về thì cả trang giật một nhịp vì chiều cao thật khác
- * chiều cao tảng xám. Vẽ đúng số cột và số dòng thì chuyển tiếp gần như không thấy.
- */
+/** Khung chờ mang đúng số cột/dòng của bảng sắp hiện ra. */
 export function TableSkeleton({ columns, rows = 5 }: { columns: number; rows?: number }) {
   return (
     <Card padded={false} className="overflow-hidden" aria-busy="true" aria-live="polite">
       <span className="sr-only">Đang tải dữ liệu</span>
-      <div className="border-b border-surface-300 bg-surface-100 px-4 py-3">
+      <div className="border-b border-line bg-panel-2 px-4 py-3.5">
         <div className="flex gap-4">
           {Array.from({ length: columns }).map((_, i) => (
             <Skeleton key={i} className="h-3 flex-1" />
           ))}
         </div>
       </div>
-      <div className="divide-y divide-surface-200">
+      <div className="divide-y divide-line">
         {Array.from({ length: rows }).map((_, r) => (
-          <div key={r} className="flex gap-4 px-4 py-3.5">
+          <div key={r} className="flex gap-4 px-4 py-4">
             {Array.from({ length: columns }).map((_, c) => (
-              // Cột đầu thường là định danh (email, tiêu đề) nên dài hơn phần còn lại.
               <Skeleton key={c} className={cn('h-4', c === 0 ? 'flex-[2]' : 'flex-1')} />
             ))}
           </div>
@@ -107,18 +104,9 @@ export function TableSkeleton({ columns, rows = 5 }: { columns: number; rows?: n
 }
 
 /**
- * Bảng không có dòng nào.
- *
- * Phân biệt hai tình huống mà bản trước gộp làm một câu ("Không có người dùng nào khớp."):
- *
- * - **`filtered`** — có dữ liệu, nhưng bộ lọc hiện tại không khớp gì. Lối ra là *bỏ bộ lọc*,
- *   nên phải có nút làm đúng việc đó; bảo người dùng tự nhớ mình đã gõ gì vào ô tìm kiếm là
- *   đẩy việc sang cho họ.
- * - **chưa có gì** — hệ thống thật sự trống. Lối ra nằm ở chỗ khác (hoặc không có, và khi đó
- *   phải nói rõ là không có việc gì phải làm).
- *
- * Không dùng `EmptyState` ở đây: `EmptyState` có mascot 88px, hợp với màn chính của người
- * học; bảng quản trị thì một dòng chữ căn giữa là đủ và đọc nhanh hơn.
+ * Bảng không có dòng nào. Phân biệt *bộ lọc không khớp* (lối ra: nút Xoá bộ lọc) với
+ * *hệ thống chưa có gì* (nói khi nào dữ liệu sẽ xuất hiện). Không mascot — đây là bảng
+ * quản trị (UI-GUIDE §4c, ranh giới `[SPEC]` §13.1).
  */
 export function TableEmpty({
   title,
@@ -134,16 +122,15 @@ export function TableEmpty({
   clearLabel?: string;
 }) {
   return (
-    <Card className="flex flex-col items-center px-6 py-12 text-center">
-      <span className="grid size-10 place-items-center rounded-full bg-surface-100 text-ink-300">
-        <Icon name={icon} size={20} />
-      </span>
-      <p className="mt-4 text-sm font-semibold text-ink-900">{title}</p>
+    <Card className="flex flex-col items-center border-dashed px-6 py-12 text-center">
+      <Icon name={icon} size={28} className="text-fg-subtle" />
+      <p className="mt-4 text-sm font-semibold text-fg">{title}</p>
       {description && (
-        <p className="mt-1 max-w-sm text-sm leading-relaxed text-ink-500">{description}</p>
+        <p className="mt-1 max-w-sm text-sm leading-relaxed text-fg-subtle">{description}</p>
       )}
       {onClearFilter && (
         <Button className="mt-5" variant="secondary" size="sm" onClick={onClearFilter}>
+          <Icon name="x" size={15} />
           {clearLabel}
         </Button>
       )}

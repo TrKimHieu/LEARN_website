@@ -1,0 +1,43 @@
+erDiagram
+  User {
+    string id PK
+  }
+  Plan {
+    string id PK
+    string code UK "FREE | PRO | TEAM"
+    int priceCents
+    json limits
+    bool isFutureExtension
+  }
+  Subscription {
+    string id PK
+    string userId FK
+    string planId FK
+    enum status
+    datetime currentPeriodEnd
+    bool cancelAtPeriodEnd
+  }
+  Payment {
+    string id PK
+    string subscriptionId FK
+    int amountCents
+    string providerPaymentId UK
+  }
+  PaymentEvent {
+    string id PK
+    string provider "UK (provider, eventId)"
+    string eventId
+    json payload
+    datetime processedAt
+  }
+  UsageCounter {
+    string id PK
+    string userId FK "UK (userId, period, metric)"
+    string period "YYYY-MM"
+    enum metric
+    int value
+  }
+  User ||--o{ Subscription : has
+  Plan ||--o{ Subscription : "priced by"
+  Subscription ||--o{ Payment : has
+  User ||--o{ UsageCounter : has

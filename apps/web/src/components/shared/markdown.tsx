@@ -70,7 +70,7 @@ export function Markdown({ content }: { content: string }) {
   const { html } = renderMarkdown(content);
   return (
     <div
-      className="lesson-content text-sm leading-relaxed text-ink-900"
+      className="lesson-content text-sm leading-relaxed text-fg"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@learn/db';
-import type { ExerciseRead, SubmitExerciseInput, SubmissionResult } from '@learn/contracts';
+import type {
+  ExerciseNavItem,
+  ExerciseRead,
+  SubmitExerciseInput,
+  SubmissionResult,
+} from '@learn/contracts';
 import { ApiError } from '../../common/errors';
 import { PrismaService } from '../../common/services';
 import { ExerciseRepository } from './exercise.repository';
 import { SubmissionRepository } from './submission.repository';
 import { LearningProgressRepository } from './learning-progress.repository';
 import { LessonRepository } from './lesson.repository';
+import { isLessonComplete } from './lesson-completion';
 
 export interface GradedAnswer {
   questionId: string;
@@ -45,12 +51,23 @@ export class ExercisesService {
     private readonly progress: LearningProgressRepository,
   ) {}
 
-  async getExerciseRead(userId: string, lessonId: string): Promise<ExerciseRead> {
+  /**
+   * Một bài tập của bài học (mặc định bài đầu) + tổng quan mọi bài tập để điều hướng.
+   * Trước đây chỉ đọc được bài đầu tiên: bài tập 2–5 AI sinh ra nằm chết trong DB.
+   */
+  async getExerciseRead(
+    userId: string,
+    lessonId: string,
+    exerciseId?: string,
+  ): Promise<ExerciseRead> {
     await this.assertLessonAccess(userId, lessonId);
-    const exercise = await this.exercises.findFirstForLesson(lessonId);
-    if (!exercise) throw ApiError.notFound('Không có bài tập cho bài học này.');
+    const exercise = await this.exercises.findForLesson(lessonId, exerciseId);
+    if (!exercise) throw ApiError.notFound('Không có bài tập này trong bài học.');
 
-    const best = await this.submissions.findBest(userId, exercise.id);
+    const [best, nav] = await Promise.all([
+      this.submissions.findBest(userId, exercise.id),
+      this.exerciseNav(userId, lessonId),
+    ]);
 
     return {
       id: exercise.id,
@@ -81,7 +98,29 @@ export class ExercisesService {
             createdAt: best.createdAt.toISOString(),
           }
         : null,
+      exercises: nav,
     };
+  }
+
+  private async exerciseNav(userId: string, lessonId: string): Promise<ExerciseNavItem[]> {
+    const list = await this.exercises.listForLesson(lessonId);
+    const best = await this.submissions.bestScoresForExercises(
+      userId,
+      list.map((e) => e.id),
+    );
+    return list.map((e) => {
+      const bestScore = best.get(e.id) ?? null;
+      return {
+        id: e.id,
+        title: e.title,
+        orderIndex: e.orderIndex,
+        difficulty: e.difficulty as ExerciseNavItem['difficulty'],
+        questionCount: e._count.questions,
+        passScore: e.passScore,
+        bestScore,
+        passed: bestScore !== null && bestScore >= e.passScore,
+      };
+    });
   }
 
   /** Chấm điểm ngay tại server, lưu 1 bản ghi, trả kết quả kèm đáp án — HANDBOOK §7.4. */
@@ -91,8 +130,8 @@ export class ExercisesService {
     input: SubmitExerciseInput,
   ): Promise<SubmissionResult> {
     const lesson = await this.assertLessonAccess(userId, lessonId);
-    const exercise = await this.exercises.findFirstForLesson(lessonId);
-    if (!exercise) throw ApiError.notFound('Không có bài tập cho bài học này.');
+    const exercise = await this.exercises.findForLesson(lessonId, input.exerciseId);
+    if (!exercise) throw ApiError.notFound('Không có bài tập này trong bài học.');
 
     const questions = exercise.questions;
     // Chống gian lận: mọi questionId phải thuộc exercise này.
@@ -117,7 +156,6 @@ export class ExercisesService {
       lessonId,
       exerciseId: exercise.id,
       percent,
-      passed,
       durationMs: input.durationMs ?? null,
       results,
       answerByQuestion,
@@ -125,6 +163,8 @@ export class ExercisesService {
 
     return {
       id: created.id,
+      exerciseId: exercise.id,
+      lessonCompleted: created.lessonCompleted,
       attemptNo: created.attemptNo,
       score: percent,
       maxScore: SCORE_SCALE,
@@ -156,11 +196,10 @@ export class ExercisesService {
     lessonId: string;
     exerciseId: string;
     percent: number;
-    passed: boolean;
     durationMs: number | null;
     results: GradedAnswer[];
     answerByQuestion: Map<string, SubmittedAnswer>;
-  }): Promise<{ id: string; attemptNo: number; createdAt: Date }> {
+  }): Promise<{ id: string; attemptNo: number; createdAt: Date; lessonCompleted: boolean }> {
     for (let retry = 0; ; retry++) {
       try {
         return await this.prisma.client.$transaction(async (tx) => {
@@ -179,15 +218,25 @@ export class ExercisesService {
             })),
           });
 
+          // Luật hoàn thành tính SAU khi ghi lượt này, trong cùng transaction — điểm vừa nộp
+          // phải được tính, và hai lượt nộp song song ở hai bài tập khác nhau không bỏ sót nhau.
+          const siblings = await this.exercises.listForLesson(args.lessonId, tx);
+          const best = await this.submissions.bestScoresForExercises(
+            args.userId,
+            siblings.map((e) => e.id),
+            tx,
+          );
+          const lessonComplete = isLessonComplete(siblings, best);
+
           await this.progress.upsertAfterSubmission(tx, {
             userId: args.userId,
             courseId: args.courseId,
             lessonId: args.lessonId,
             percent: args.percent,
-            passed: args.passed,
+            lessonComplete,
           });
 
-          return created;
+          return { ...created, lessonCompleted: lessonComplete };
         });
       } catch (e) {
         if (isUniqueViolation(e) && retry < ATTEMPT_CONFLICT_RETRIES) continue;
@@ -245,7 +294,7 @@ export function gradeSubmission(
     return {
       questionId: q.id,
       isCorrect,
-      correctAnswer: q.correctAnswer,
+      correctAnswer: publicCorrectAnswer(q),
       explanation: q.explanation,
       pointsEarned: isCorrect ? q.points : 0,
     };
@@ -253,6 +302,19 @@ export function gradeSubmission(
 
   const percent = Math.round((pointsEarned / maxPoints) * SCORE_SCALE);
   return { results, percent, passed: percent >= opts.passScore };
+}
+
+/**
+ * Đáp án đúng gửi về client SAU khi nộp. Trắc nghiệm luôn là `{ optionId }` suy từ
+ * `AnswerOption.isCorrect` — chính nguồn dùng để chấm. Cột `correctAnswer` của câu trắc nghiệm
+ * không đáng tin: worker lưu `{ correctIndex }`, seed lưu `{ optionId }`, còn web chỉ đọc
+ * `optionId`, nên trước đây bài AI sinh không bao giờ được chỉ ra đáp án đúng ở màn kết quả.
+ */
+function publicCorrectAnswer(q: GradableQuestion): unknown {
+  if (q.type === 'MULTIPLE_CHOICE') {
+    return { optionId: q.options.find((o) => o.isCorrect)?.id ?? null };
+  }
+  return q.correctAnswer;
 }
 
 export function normalize(text: string): string {

@@ -2,23 +2,20 @@ import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
 /**
- * Nối className có điều kiện **và** khử xung đột Tailwind.
+ * Nối className có điều kiện **và** khử xung đột Tailwind — `className` truyền từ
+ * ngoài vào ghi đè được lớp mặc định của primitive.
  *
- * Trước đây hàm này chỉ `join(' ')`, nên `className` truyền từ ngoài vào không
- * ghi đè được lớp mặc định của primitive — `<Button className="bg-white">` vẫn
- * ra nền sky vì cả hai lớp cùng tồn tại và thứ tự trong file CSS mới là thứ
- * quyết định. `tailwind-merge` giữ lại lớp đứng sau trong cùng nhóm, đúng với
- * kỳ vọng của mọi call site.
- *
- * Token riêng của LEARN (`packages/config/tailwind/theme.css`) không nằm trong
- * thang mặc định của Tailwind nên phải khai báo thêm, nếu không `rounded-card`
- * và `rounded-2xl` sẽ bị coi là hai nhóm khác nhau và cùng tồn tại.
+ * Token riêng của LEARN (`packages/config/tailwind/theme.css`) không nằm trong thang
+ * mặc định của Tailwind nên phải khai báo, nếu không `rounded-card` và `rounded-2xl`
+ * bị coi là hai nhóm khác nhau và cùng tồn tại. Màu ngữ nghĩa (`bg-panel`,
+ * `text-fg`…) thì tailwind-merge tự nhận ra là màu, không cần khai báo.
  */
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
       rounded: [{ rounded: ['control', 'card', 'panel', 'pill'] }],
-      shadow: [{ shadow: ['card', 'raised', 'overlay'] }],
+      shadow: [{ shadow: ['card', 'raised', 'overlay', 'glow'] }],
+      'font-size': [{ text: ['2xs'] }],
     },
   },
 });

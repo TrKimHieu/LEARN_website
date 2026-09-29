@@ -56,7 +56,7 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().default(DEV_ONLY_DEFAULTS.S3_ACCESS_KEY_ID),
   S3_SECRET_ACCESS_KEY: z.string().default(DEV_ONLY_DEFAULTS.S3_SECRET_ACCESS_KEY),
   S3_REGION: z.string().default('us-east-1'),
-  LLM_PROVIDER: z.enum(['anthropic', 'google']).default('anthropic'),
+  LLM_PROVIDER: z.enum(['anthropic', 'google', 'openai']).default('anthropic'),
   LLM_API_KEY: z.string().default(''),
   LLM_MODEL_GENERATION: z.string().default('claude-sonnet-5'),
   LLM_MODEL_FAST: z.string().default('claude-haiku-4-5-20251001'),
@@ -73,6 +73,20 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().default(''),
   STRIPE_WEBHOOK_SECRET: z.string().default(''),
   LOG_LEVEL: z.string().default('info'),
+  /**
+   * Gửi thư (đặt lại mật khẩu — FR-AUTH-07). `log`: không gửi, in đường dẫn ra log API — chỉ để
+   * dev; ở production chế độ này KHÔNG in đường dẫn (token là bí mật), chỉ cảnh báo thư không đi.
+   * `smtp`: gửi thật qua `SMTP_URL` (vd `smtps://user:pass@smtp.example.com:465`).
+   */
+  MAIL_MODE: z.enum(['log', 'smtp']).default('log'),
+  SMTP_URL: z.string().default(''),
+  MAIL_FROM: z.string().default('LEARN <no-reply@learn.local>'),
+  PASSWORD_RESET_TTL_MIN: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(24 * 60)
+    .default(30),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -90,6 +104,7 @@ export function insecureProductionVars(source: Env): string[] {
   if (source.BILLING_MODE === 'live' && !source.STRIPE_WEBHOOK_SECRET) {
     bad.push('STRIPE_WEBHOOK_SECRET');
   }
+  if (source.MAIL_MODE === 'smtp' && !source.SMTP_URL) bad.push('SMTP_URL');
   return bad;
 }
 
