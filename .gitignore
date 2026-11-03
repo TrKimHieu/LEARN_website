@@ -1,53 +1,11 @@
-# Dependencies
 node_modules/
-.pnp
-.pnp.js
-
-# Build outputs
-dist/
-build/
 .next/
-out/
+.expo/
+dist/
 coverage/
 *.tsbuildinfo
-.next-cache/
-
-# Environment — KHÔNG BAO GIỜ commit .env
-.env
-.env.*
+.env*
 !.env.example
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Config/cache cục bộ của các công cụ AI coding assistant — không commit
-.claude/
-.agent/
-.cursor/
-.codex/
-.windsurf/
-.cline/
-.continue/
-.aider*
-
-# Playwright
-test-results/
-playwright-report/
-
-# Prisma (some environments)
-packages/db/prisma/deploy/
-
-# Kịch bản MockLlmProvider tự chuẩn bị (nội dung cá nhân, chỉ giữ file mẫu .example.json)
-apps/worker/fixtures/*.json
-!apps/worker/fixtures/*.example.json
+.local/
+android/
+ios/

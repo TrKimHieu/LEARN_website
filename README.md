@@ -1,66 +1,7 @@
-# LEARN
+# LEARN web
 
-> **Turn your documents into interactive learning.**
+Standalone private web repository. Public contracts 1.0.0 are pinned in vendor/ with SHA-256. No backend or other client checkout is required.
 
-Nền tảng biến tài liệu học tập (PDF, slide, tài liệu cá nhân) thành khóa học và
-bài học tương tác bằng AI.
+Setup: npm ci, npm run lint, npm run typecheck, npm test, npm run build.
 
-## Yêu cầu hệ thống
-
-- Node ≥ 20
-- Docker + Docker Compose (postgres, redis, minio)
-- pnpm hoặc npm ≥ 10
-
-## Chạy local
-
-```bash
-cp .env.example .env            # điền LLM_API_KEY nếu muốn gọi LLM thật
-npm install
-docker compose -f infra/docker-compose.yml up -d
-npm run db:migrate
-npm run db:seed
-npm run dev                     # web :3000 · api :4000
-```
-
-## Cấu trúc dự án
-
-```
-├── apps/
-│   ├── web/          Next.js (marketing site + web app)
-│   ├── api/          NestJS (REST API)
-│   └── worker/       NestJS standalone (AI worker)
-├── packages/
-│   ├── db/           Prisma schema, migration, seed
-│   ├── contracts/    Zod schemas dùng chung
-│   ├── ai/           Prompt, LLM adapter, validator
-│   ├── ui/           Component & design token
-│   └── config/       TypeScript, ESLint, Tailwind shared config
-├── infra/            Docker Compose, Dockerfiles
-├── docs/             HANDBOOK, ADR, screenshots, session log
-└── CircleMascot/     Mascot animation component
-```
-
-## Tech Stack
-
-| Tầng     | Công nghệ                                          |
-| -------- | -------------------------------------------------- |
-| Frontend | Next.js 15, React 19, Tailwind 4, TanStack Query 5 |
-| Backend  | NestJS 11, TypeScript 5                            |
-| Database | PostgreSQL 16, Prisma 6                            |
-| Queue    | Redis 7, BullMQ 5                                  |
-| Storage  | S3/MinIO                                           |
-| AI       | Anthropic Claude hoặc Google Gemini (đổi qua env)  |
-| Testing  | Vitest, Supertest, Playwright                      |
-| CI       | GitHub Actions                                     |
-
-## Lệnh thường dùng
-
-```bash
-npm run dev              # web + api + worker
-npm run typecheck        # tsc --noEmit
-npm run test             # unit (vitest)
-npm run lint             # eslint + prettier
-npm run db:migrate       # áp migration
-npm run db:seed          # seed dữ liệu mẫu
-npm run db:reset         # xoá sạch + seed lại (CHỈ LOCAL)
-```
+Copy .env.example to .env.local (web) or .env (mobile). Use the shared API sandbox endpoint. API paths include /api/v1; the configured base is the origin only. Mobile APK: configure your Expo project and run npm run build:apk; export does not validate a native APK.
