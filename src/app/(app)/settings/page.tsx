@@ -96,7 +96,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Cài đặt" description="Hồ sơ, giao diện, gói đăng ký và hạn mức sử dụng." />
+      <PageHeader title="Cài đặt" />
 
       {/* ------------------------------------------- hồ sơ + giao diện */}
       <div className="grid gap-4 lg:grid-cols-2">

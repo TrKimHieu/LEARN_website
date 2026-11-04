@@ -318,7 +318,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         <section aria-labelledby="path-title" className="min-w-0">
           <SectionTitle
             id="path-title"
-            description="Bấm vào một bài để học. Có thể đổi thứ tự các bài."
             action={
               <div className="flex items-center gap-2">
                 {/* Độ khó bài tập AI sẽ soạn (đi vào prompt `lesson@3`). */}

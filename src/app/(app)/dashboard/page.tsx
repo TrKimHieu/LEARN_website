@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/features/auth/auth-context';
 import { CircleArrowLink, ColorBlock, StatTile } from '@/components/shared/color-block';
 import { Mascot } from '@/components/shared/mascot';
 import type { ProgressCourse } from '@learn/api-contracts';
@@ -56,8 +55,7 @@ export default function DashboardPage() {
     return (
       <div aria-busy="true" aria-live="polite">
         <span className="sr-only">Đang tải tổng quan</span>
-        <Skeleton className="h-10 w-56" />
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <Skeleton className="h-44 rounded-card" />
           <Skeleton className="h-44 rounded-card" />
         </div>
@@ -84,9 +82,8 @@ export default function DashboardPage() {
   if (data.courseCount === 0) {
     return (
       <>
-        <Header>Bắt đầu bằng một khóa học đầu tiên.</Header>
+        <h1 className="sr-only">Tổng quan</h1>
         <EmptyState
-          className="mt-10"
           title="Chưa có khóa học nào"
           description="Tạo khóa học đầu tiên và tải tài liệu lên. AI sẽ sinh bài học và bài tập từ chính nội dung đó."
           action={{ label: 'Tạo khóa học đầu tiên', onClick: () => router.push('/courses/new') }}
@@ -97,14 +94,10 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header>
-        {data.totalLessons > 0
-          ? `Tiến độ: ${Math.round((data.completedLessons / data.totalLessons) * 100)}%`
-          : 'Các khóa của bạn chưa có bài học nào.'}
-      </Header>
+      <h1 className="sr-only">Tổng quan</h1>
 
-      <div className="mt-6">
-        {courses.isLoading && <Skeleton className="h-56 rounded-panel" />}
+      <div>
+        {courses.isLoading && <Skeleton className="h-44 rounded-panel" />}
         {courses.isError && (
           <InlineError>{errorText(courses.error, 'Không tải được khóa học đang dở.')}</InlineError>
         )}
@@ -250,20 +243,6 @@ function rank(c: ProgressCourse) {
   return 2;
 }
 
-function Header({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  return (
-    <header>
-      <div className="min-w-0">
-        <h1 className="truncate font-display text-[1.5rem] font-bold leading-tight text-fg sm:text-[1.75rem]">
-          Chào, {user?.displayName}
-        </h1>
-        <p className="text-sm text-fg-subtle">{children}</p>
-      </div>
-    </header>
-  );
-}
-
 /**
  * Thẻ duy nhất có nút `primary` trên màn. Bài kế tiếp = bài đang học dở, nếu không có thì
  * bài chưa bắt đầu đầu tiên. Khi danh sách bài chưa tải xong, nút vẫn dẫn tới trang khóa
@@ -282,19 +261,23 @@ function ResumeCard({ course }: { course: ProgressCourse }) {
 
   return (
     <section aria-labelledby="resume-title">
-      <ColorBlock tone="indigo" className="flex items-center gap-4 p-6 md:px-8 md:py-6">
+      <ColorBlock
+        tone="brand"
+        softOnDesktop
+        className="flex items-center gap-4 p-6 md:px-8 md:py-6"
+      >
         <div className="min-w-0 flex-1">
-          <h2 id="resume-title" className="text-sm font-semibold text-white/85">
-            {lesson?.progressStatus === 'IN_PROGRESS' ? 'Học tiếp' : 'Bài kế tiếp'}
-          </h2>
           {lessons.isLoading ? (
-            <Skeleton className="mt-2 h-9 w-3/4" />
+            <Skeleton className="h-9 w-3/4" />
           ) : (
-            <p className="mt-1 line-clamp-2 font-display text-[1.75rem] font-bold leading-tight text-white md:text-2xl">
+            <h2
+              id="resume-title"
+              className="line-clamp-2 font-display text-[1.75rem] font-bold leading-tight md:text-2xl"
+            >
               {lesson ? lesson.title : course.courseTitle}
-            </p>
+            </h2>
           )}
-          <p className="mt-2 line-clamp-2 text-sm text-white/85 md:truncate">
+          <p className="mt-2 line-clamp-2 text-sm md:truncate md:text-fg-muted">
             {course.courseTitle}
             {lesson && index >= 0 ? ` · Bài ${index + 1} / ${list.length}` : ''}
           </p>
@@ -303,6 +286,7 @@ function ResumeCard({ course }: { course: ProgressCourse }) {
             href={href}
             label={lesson ? `Mở bài ${lesson.title}` : `Mở khóa ${course.courseTitle}`}
             tone="light"
+            stretched
             className="mt-6 md:hidden"
           />
           <ButtonLink href={href} className="mt-4 hidden md:inline-flex">
@@ -310,7 +294,7 @@ function ResumeCard({ course }: { course: ProgressCourse }) {
             <Icon name="arrow-right" size={16} />
           </ButtonLink>
         </div>
-        <Mascot state="happy" size={104} surface="ink" priority="companion" />
+        <Mascot state="happy" size={104} surface="color-on-phone" priority="companion" />
       </ColorBlock>
     </section>
   );

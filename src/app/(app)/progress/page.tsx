@@ -31,10 +31,7 @@ export default function ProgressPage() {
 
   return (
     <>
-      <PageHeader
-        title="Tiến trình"
-        description="Tiến độ theo từng khóa học và lịch sử các lần làm bài tập."
-      />
+      <PageHeader title="Tiến trình" />
 
       {/* Hai ô cao bằng nhau: biểu đồ giãn cột, ô khóa học đẩy lời động viên xuống đáy. */}
       <div
@@ -119,9 +116,7 @@ export default function ProgressPage() {
 
       {/* ------------------------------------------ lịch sử làm bài */}
       <section aria-labelledby="history" className="mt-12">
-        <SectionTitle id="history" description="Bấm vào một lần làm bài để mở lại bài học đó.">
-          Lịch sử làm bài
-        </SectionTitle>
+        <SectionTitle id="history">Lịch sử làm bài</SectionTitle>
 
         {history.isLoading && <Skeleton className="h-72 rounded-card" />}
 
@@ -268,9 +263,7 @@ function WeeklyChart({ items }: { items: ReadonlyArray<{ createdAt: string }> })
       <h2 id="week-title" className="font-display text-[1.75rem] font-bold leading-tight text-fg">
         <span className="tabular-nums">{total}</span> lần làm bài
       </h2>
-      <p className="mt-1 text-sm text-fg-subtle">
-        Trong 7 ngày gần nhất, tính trên lịch sử đã tải.
-      </p>
+      <p className="mt-1 text-sm text-fg-subtle">7 ngày gần nhất</p>
       <ol className="mt-6 grid min-h-52 flex-1 grid-cols-7 gap-2 md:min-h-40 md:gap-3">
         {week.map((d) => (
           <li key={d.key} className="flex min-w-0 flex-col items-center justify-end gap-2">

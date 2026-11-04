@@ -2,19 +2,17 @@ import Link from 'next/link';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { cn } from '@/components/ui/cn';
 
-export type BlockTone = 'brand' | 'amber' | 'indigo';
+export type BlockTone = 'brand' | 'amber';
 
-/** Mỗi tông có sẵn chữ đạt tương phản: xanh dương 5.0:1, amber 11.2:1, indigo 15.8:1. */
+/** Mỗi tông có sẵn chữ đạt tương phản: xanh dương 5.0:1, amber 11.2:1. */
 const TONE: Record<BlockTone, string> = {
   brand: 'bg-brand text-on-brand',
   amber: 'bg-amber text-ink-on-color',
-  indigo: 'bg-block-ink text-white',
 };
 
 const SOFT: Record<BlockTone, string> = {
   brand: 'md:bg-brand-soft md:text-fg',
   amber: 'md:bg-amber-soft md:text-fg',
-  indigo: 'md:bg-muted md:text-fg',
 };
 
 /** Khối màu lớn: đầu trang và thẻ nổi bật. Đường cong mờ phía sau chỉ để trang trí. */

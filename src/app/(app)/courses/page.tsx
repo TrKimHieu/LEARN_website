@@ -104,9 +104,6 @@ export default function CoursesPage() {
             >
               <Icon name="plus" size={20} className="text-fg-muted" />
               <span className="text-sm font-semibold text-fg">Tạo khóa học</span>
-              <span className="text-[0.8125rem] text-fg-subtle">
-                Tải tài liệu lên để AI sinh bài học
-              </span>
             </Link>
           </StaggerItem>
         </StaggerList>
@@ -125,10 +122,9 @@ function fillerSpan(count: number) {
   return `hidden md:block ${md} ${xl}`;
 }
 
-const CARD_TONES: BlockTone[] = ['indigo', 'brand', 'amber'];
+const CARD_TONES: BlockTone[] = ['brand', 'amber'];
 
 const CARD_ICON: Record<BlockTone, string> = {
-  indigo: 'bg-block-ink text-white',
   brand: 'bg-brand text-on-brand',
   amber: 'bg-amber text-ink-on-color',
 };
@@ -137,8 +133,7 @@ function CourseCard({ course, index }: { course: CourseSummary; index: number })
   const { completed, total } = course.progress;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   const tone = CARD_TONES[index % CARD_TONES.length]!;
-  const soft =
-    tone === 'amber' ? 'text-ink-on-color/80' : tone === 'brand' ? 'text-white' : 'text-white/80';
+  const soft = tone === 'amber' ? 'text-ink-on-color/80' : 'text-white';
 
   return (
     <ColorBlock
