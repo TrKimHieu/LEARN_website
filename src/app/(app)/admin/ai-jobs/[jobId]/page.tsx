@@ -19,8 +19,10 @@ import {
 } from '@/components/ui';
 import { ErrorState, InlineError, LoadingState } from '@/components/ui/states';
 import { errorDetail, errorText } from '@/lib/api-client';
+import { usePageTitle } from '@/lib/use-page-title';
 
 export default function AdminAiJobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
+  usePageTitle('Quản trị · Chi tiết lượt sinh');
   const { jobId } = use(params);
   const job = useAdminAiJobDetail(jobId);
   const auditLog = useAiJobAuditLog(jobId);

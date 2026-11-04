@@ -21,6 +21,7 @@ import { ErrorState } from '@/components/ui/states';
 import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { useQueryParam } from '@/lib/url-state';
+import { usePageTitle } from '@/lib/use-page-title';
 
 const STATUS_OPTIONS = ['', 'QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED'] as const;
 
@@ -28,6 +29,7 @@ const STATUS_OPTIONS = ['', 'QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELL
 const FAILURE_ALERT_PERCENT = 20;
 
 export default function AdminAiJobsPage() {
+  usePageTitle('Quản trị · Lượt sinh AI');
   const [status, setStatus] = useQueryParam('status');
   const jobs = useAdminAiJobs(status || undefined);
 

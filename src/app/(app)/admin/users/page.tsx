@@ -19,8 +19,10 @@ import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { useDebouncedQueryParam } from '@/lib/url-state';
 import { humanizeCode } from '@/lib/humanize';
+import { usePageTitle } from '@/lib/use-page-title';
 
 export default function AdminUsersPage() {
+  usePageTitle('Quản trị · Người dùng');
   const [q, setQ, committedQ] = useDebouncedQueryParam('q');
   const users = useAdminUsers(committedQ || undefined);
 

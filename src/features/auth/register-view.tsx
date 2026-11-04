@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -29,6 +29,12 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next');
 
+  const { status } = useAuth();
+
+  useEffect(() => {
+    if (status === 'authed') router.replace(next || '/dashboard');
+  }, [status, next, router]);
+
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +46,11 @@ function RegisterForm() {
     e.preventDefault();
     setError(null);
     setFieldError({});
-    const parsed = registerSchema.safeParse({ displayName, email, password });
+    const parsed = registerSchema.safeParse({
+      displayName: displayName.trim(),
+      email: email.trim(),
+      password,
+    });
     if (!parsed.success) {
       const errors = fieldErrorsFrom(parsed.error, FIELDS);
       setFieldError(errors);

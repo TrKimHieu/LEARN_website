@@ -26,6 +26,7 @@ import {
 } from '@/components/ui';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { absoluteTime, relativeTime } from '@/lib/format';
+import { usePageTitle } from '@/lib/use-page-title';
 
 /** Số lần làm bài gần nhất ở "Hoạt động gần đây". */
 const HISTORY_LIMIT = 5;
@@ -40,6 +41,7 @@ const HISTORY_LIMIT = 5;
  *   trên thanh đầu, bốn thẻ số, vòng tiến độ) — lặp lại không thêm thông tin.
  */
 export default function DashboardPage() {
+  usePageTitle('Tổng quan');
   const router = useRouter();
   const overview = useProgressOverview();
   const courses = useProgressCourses();

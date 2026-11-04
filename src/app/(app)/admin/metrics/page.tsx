@@ -14,8 +14,10 @@ import {
 } from '@/components/ui';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { absoluteTime, relativeTime } from '@/lib/format';
+import { usePageTitle } from '@/lib/use-page-title';
 
 export default function AdminMetricsPage() {
+  usePageTitle('Quản trị · Số liệu');
   const metrics = useAdminMetrics();
 
   if (metrics.isLoading) {

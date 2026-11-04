@@ -17,6 +17,7 @@ import {
   Button,
   ButtonLink,
   Card,
+  EmptyState,
   ErrorState,
   Field,
   Icon,
@@ -27,7 +28,8 @@ import {
   cn,
   type BadgeTone,
 } from '@/components/ui';
-import { errorDetail, errorText } from '@/lib/api-client';
+import { errorDetail, errorText, isNotFoundError } from '@/lib/api-client';
+import { usePageTitle } from '@/lib/use-page-title';
 import { absoluteTime, relativeTime } from '@/lib/format';
 import { humanizeCode } from '@/lib/humanize';
 
@@ -54,6 +56,7 @@ export default function LessonReadPage({
   const { courseId, lessonId } = use(params);
   const router = useRouter();
   const lesson = useLesson(courseId, lessonId);
+  usePageTitle(lesson.data?.title ?? 'Bài học');
   // Cùng query key với màn khóa học nên thường đã có sẵn trong cache.
   const lessons = useLessons(courseId);
   const startLesson = useStartLesson(courseId, lessonId);
@@ -139,6 +142,20 @@ export default function LessonReadPage({
         <Skeleton className="mb-8 h-5 w-1/2" />
         <Skeleton className="h-96 rounded-card" />
       </div>
+    );
+  }
+
+  if (isNotFoundError(lesson.error)) {
+    return (
+      <>
+        <h1 className="sr-only">Bài học</h1>
+        <BackLink href={`/courses/${courseId}`} label="Về khóa học" />
+        <EmptyState
+          className="mt-6"
+          title="Không tìm thấy bài học"
+          description="Bài học này không tồn tại hoặc đã bị xoá."
+        />
+      </>
     );
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -29,6 +29,12 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next');
 
+  const { status } = useAuth();
+
+  useEffect(() => {
+    if (status === 'authed') router.replace(next || '/dashboard');
+  }, [status, next, router]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +45,7 @@ function LoginForm() {
     e.preventDefault();
     setError(null);
     setFieldError({});
-    const parsed = loginSchema.safeParse({ email, password });
+    const parsed = loginSchema.safeParse({ email: email.trim(), password });
     if (!parsed.success) {
       // Lỗi về đúng ô của nó, rồi con trỏ đi theo — người dùng không phải dò
       // xem câu báo lỗi đang nói về ô nào.

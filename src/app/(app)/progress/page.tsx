@@ -18,10 +18,12 @@ import {
 import { StaggerItem, StaggerList } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { absoluteTime, relativeTime } from '@/lib/format';
+import { usePageTitle } from '@/lib/use-page-title';
 
 const PAGE_SIZE = 10;
 
 export default function ProgressPage() {
+  usePageTitle('Tiến trình');
   const courses = useProgressCourses();
   const history = useProgressHistoryPages(PAGE_SIZE);
   const items = history.data?.pages.flatMap((p) => p.items) ?? [];

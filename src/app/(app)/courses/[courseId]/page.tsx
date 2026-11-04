@@ -1,12 +1,19 @@
 'use client';
 
-import { use, useRef, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DOCUMENT_ACCEPT, type DocumentList } from '@learn/api-contracts';
-import { useCourse, useCourseDocuments } from '@/features/courses/courses-api';
-import { useUploadDocument, type UploadProgress } from '@/features/documents/documents-api';
+import { useCourse, useCourseDocuments, useDeleteCourse } from '@/features/courses/courses-api';
+import {
+  useDeleteDocument,
+  useUploadDocument,
+  type UploadProgress,
+} from '@/features/documents/documents-api';
 import { UploadCancelledError } from '@/features/documents/upload-transfer';
 import { useLessons, useReorderLessons } from '@/features/learning/learning-api';
-import { useActiveAiJob, useFinishAiJob, useGenerateLessons } from '@/features/ai/ai-api';
+import { useCourseJobs, useFinishAiJob, useGenerateLessons } from '@/features/ai/ai-api';
+import { failureReasonText } from '@/features/ai/ai-job-outcome';
+import { partialFailuresOf } from '@/features/ai/ai-job-partial';
 import { AiJobProgress } from '@/features/ai/ai-job-progress';
 import { LessonList } from '@/features/learning/lesson-list';
 import { QuotaNotice } from '@/components/shared/quota-notice';
@@ -21,20 +28,23 @@ import {
   Icon,
   InlineError,
   LoadingState,
+  PartialNotice,
   ProgressBar,
   SectionTitle,
   Skeleton,
   cn,
 } from '@/components/ui';
-import { errorDetail, errorText, isQuotaExceededError } from '@/lib/api-client';
+import { errorDetail, errorText, isNotFoundError, isQuotaExceededError } from '@/lib/api-client';
 import { relativeTime } from '@/lib/format';
+import { formatFileSize } from '@/lib/format-size';
+import { usePageTitle } from '@/lib/use-page-title';
 import { humanizeCode } from '@/lib/humanize';
 
 const DOC_STATUS_LABEL: Record<string, string> = {
   PENDING: 'Chờ tải lên',
   UPLOADED: 'Đã tải lên',
-  EXTRACTING: 'Đang trích xuất',
-  EXTRACTED: 'Đã trích xuất',
+  EXTRACTING: 'Đang đọc',
+  EXTRACTED: 'Sẵn sàng',
   FAILED: 'Lỗi',
 };
 
@@ -53,11 +63,6 @@ function docTone(status: string) {
   return 'neutral' as const;
 }
 
-function formatSize(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
 export default function CourseDetailPage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params);
   const course = useCourse(courseId);
@@ -65,8 +70,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const upload = useUploadDocument(courseId);
   const lessons = useLessons(courseId);
   const generateLessons = useGenerateLessons(courseId);
-  const activeJob = useActiveAiJob(courseId);
+  const courseJobs = useCourseJobs(courseId);
   const finishAiJob = useFinishAiJob(courseId);
+  const deleteCourse = useDeleteCourse(courseId);
+  const router = useRouter();
+  usePageTitle(course.data?.title ?? 'Khóa học');
   const reorderLessons = useReorderLessons(courseId);
 
   const [uploadError, setUploadError] = useState<unknown>(null);
@@ -75,8 +83,18 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const [reorderError, setReorderError] = useState<unknown>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
 
-  const activeJobId = startedJobId ?? activeJob.data?.id ?? null;
-  const hasExtractedDoc = Boolean(documents.data?.documents.some((d) => d.status === 'EXTRACTED'));
+  const [confirmingGenerate, setConfirmingGenerate] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<unknown>(null);
+  /** Lưu phần bỏ chọn thay vì phần được chọn, để tài liệu mới tải lên tự được tính. */
+  const [excludedDocIds, setExcludedDocIds] = useState<ReadonlySet<string>>(new Set());
+
+  const activeJobId = startedJobId ?? courseJobs.data?.active?.id ?? null;
+  const lastPartial = courseJobs.data?.lastPartial ?? null;
+  const extractedDocs = documents.data?.documents.filter((d) => d.status === 'EXTRACTED') ?? [];
+  const selectedDocIds = extractedDocs.filter((d) => !excludedDocIds.has(d.id)).map((d) => d.id);
+  const hasExtractedDoc = extractedDocs.length > 0;
+  const hasSelectedDoc = selectedDocIds.length > 0;
   const lessonList = lessons.data?.lessons ?? [];
   const completedCount = lessonList.filter((l) => l.progressStatus === 'COMPLETED').length;
 
@@ -96,10 +114,40 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
     }
   }
 
+  function toggleDoc(documentId: string) {
+    setExcludedDocIds((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(documentId)) next.add(documentId);
+      return next;
+    });
+  }
+
+  async function handleDeleteCourse() {
+    setDeleteError(null);
+    try {
+      await deleteCourse.mutateAsync();
+      router.replace('/courses');
+    } catch (err) {
+      setDeleteError(err);
+    }
+  }
+
+  /** Đã có bài thì sinh thêm tốn một lượt và có thể chỉ ra bài trùng, nên phải hỏi trước. */
+  function requestGenerate() {
+    setUploadError(null);
+    setGenerateError(null);
+    if (lessonList.length > 0) setConfirmingGenerate(true);
+    else void handleGenerate();
+  }
+
   async function handleGenerate() {
+    setConfirmingGenerate(false);
     setGenerateError(null);
     try {
-      const job = await generateLessons.mutateAsync({ difficulty });
+      const job = await generateLessons.mutateAsync({
+        difficulty,
+        ...(excludedDocIds.size > 0 ? { documentIds: selectedDocIds } : {}),
+      });
       setStartedJobId(job.id);
     } catch (err) {
       setGenerateError(err);
@@ -111,8 +159,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
     void finishAiJob();
   }
 
+  function handleRetry() {
+    setStartedJobId(null);
+    void finishAiJob();
+    void handleGenerate();
+  }
+
   async function handleFile(file: File) {
     setUploadError(null);
+    setGenerateError(null);
     try {
       await upload.mutateAsync(file);
     } catch (err) {
@@ -131,6 +186,20 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
           <Skeleton className="h-64 rounded-card" />
         </div>
       </div>
+    );
+  }
+
+  if (isNotFoundError(course.error)) {
+    return (
+      <>
+        <h1 className="sr-only">Khóa học</h1>
+        <BackLink href="/courses" label="Khóa học" />
+        <EmptyState
+          className="mt-6"
+          title="Không tìm thấy khóa học"
+          description="Khóa học này không tồn tại, đã bị xoá hoặc không thuộc tài khoản của bạn."
+        />
+      </>
     );
   }
 
@@ -229,6 +298,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         </div>
       </dl>
 
+      {lastPartial && !activeJobId && (
+        <PartialJobNotice
+          key={lastPartial.id}
+          jobId={lastPartial.id}
+          failures={partialFailuresOf(lastPartial.error)}
+        />
+      )}
+
       <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
         {/* ----------------------------------------------------- lộ trình */}
         <section aria-labelledby="path-title" className="min-w-0">
@@ -258,13 +335,13 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => void handleGenerate()}
+                  onClick={requestGenerate}
                   loading={generateLessons.isPending}
-                  disabled={activeJobId !== null || activeJob.isLoading || !hasExtractedDoc}
+                  disabled={activeJobId !== null || courseJobs.isLoading || !hasSelectedDoc}
                   aria-describedby={hasExtractedDoc ? undefined : 'generate-blocked'}
                 >
                   {!generateLessons.isPending && <Icon name="sparkles" size={16} />}
-                  {generateLessons.isPending ? 'Đang tạo job…' : 'Sinh bài học bằng AI'}
+                  {generateLessons.isPending ? 'Đang bắt đầu…' : 'Sinh bài học bằng AI'}
                 </Button>
               </div>
             }
@@ -279,8 +356,37 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
               className="mb-4 flex items-start gap-2 rounded-control bg-muted px-3.5 py-2.5 text-sm text-fg-muted"
             >
               <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
-              Cần ít nhất một tài liệu đã trích xuất xong thì mới sinh được bài học.
+              Cần ít nhất một tài liệu sẵn sàng thì mới sinh được bài học.
             </p>
+          )}
+          {hasExtractedDoc && !hasSelectedDoc && (
+            <p className="mb-4 flex items-start gap-2 rounded-control bg-muted px-3.5 py-2.5 text-sm text-fg-muted">
+              <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
+              Hãy chọn ít nhất một tài liệu để sinh bài học.
+            </p>
+          )}
+
+          {confirmingGenerate && (
+            <div
+              role="alert"
+              className="mb-4 rounded-control border border-line bg-panel-2 px-3.5 py-3 text-sm text-fg"
+            >
+              <p className="font-medium">
+                Khóa học đã có {lessonList.length} bài. Vẫn sinh thêm?
+              </p>
+              <p className="mt-1 text-fg-subtle">
+                Lượt này dùng 1 lượt AI. Bài có tiêu đề trùng bài đã có sẽ bị bỏ qua, nên nếu không
+                có tài liệu mới thì có thể không tạo thêm được bài nào.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => void handleGenerate()}>
+                  Sinh thêm
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setConfirmingGenerate(false)}>
+                  Huỷ
+                </Button>
+              </div>
+            </div>
           )}
 
           {isQuotaExceededError(generateError) && (
@@ -302,7 +408,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
             </InlineError>
           )}
 
-          {activeJobId && <AiJobProgress jobId={activeJobId} onDone={handleJobDone} />}
+          {activeJobId && <AiJobProgress jobId={activeJobId} onDone={handleJobDone} onRetry={handleRetry} />}
 
           {!activeJobId && lessons.isLoading && (
             <LoadingState rows={3} variant="list" label="Đang tải bài học" />
@@ -335,7 +441,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         </section>
 
         {/* ----------------------------------------------------- tài liệu */}
-        <section aria-labelledby="docs-title" className="min-w-0">
+        {/* Chưa có tài liệu thì đây là việc phải làm trước, nên đưa lên đầu trên màn hình hẹp. */}
+        <section
+          aria-labelledby="docs-title"
+          className={cn('min-w-0', docCount === 0 && 'order-first lg:order-none')}
+        >
           <SectionTitle id="docs-title">Tài liệu nguồn</SectionTitle>
 
           {upload.progress ? (
@@ -377,21 +487,127 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
             {documents.data && documents.data.documents.length > 0 && (
               <ul className="divide-y divide-line">
                 {documents.data.documents.map((doc) => (
-                  <DocumentRow key={doc.id} doc={doc} />
+                  <DocumentRow
+                    key={doc.id}
+                    doc={doc}
+                    selectable={extractedDocs.length > 1}
+                    selected={!excludedDocIds.has(doc.id)}
+                    onToggle={() => toggleDoc(doc.id)}
+                  />
                 ))}
               </ul>
             )}
           </div>
         </section>
       </div>
+
+      <section aria-label="Xoá khóa học" className="mt-14 border-t border-line pt-6">
+        {confirmingDelete ? (
+          <div role="alert" className="max-w-xl text-sm text-fg">
+            <p className="font-medium">Xoá khóa học &quot;{course.data.title}&quot;?</p>
+            <p className="mt-1 text-fg-subtle">
+              Bài học, tài liệu và tiến độ của khóa này sẽ không còn hiển thị. Suất khóa học được
+              trả lại, còn lượt AI và lượt tải đã dùng thì không.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="danger"
+                loading={deleteCourse.isPending}
+                onClick={() => void handleDeleteCourse()}
+              >
+                Xác nhận xoá
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setConfirmingDelete(false)}>
+                Huỷ
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={activeJobId !== null}
+            onClick={() => setConfirmingDelete(true)}
+          >
+            <Icon name="trash" size={15} />
+            Xoá khóa học
+          </Button>
+        )}
+        {Boolean(deleteError) && (
+          <InlineError className="mt-3">
+            {errorText(deleteError, 'Không xoá được khóa học, vui lòng thử lại.')}
+          </InlineError>
+        )}
+      </section>
     </>
   );
 }
 
-function DocumentRow({ doc }: { doc: DocumentList }) {
+const dismissedPartialKey = (jobId: string) => `learn:dismissed-partial:${jobId}`;
+
+/** Cảnh báo ở lại sau khi đóng màn tiến độ, tới khi người dùng bấm đã đọc hoặc sinh lần mới. */
+function PartialJobNotice({
+  jobId,
+  failures,
+}: {
+  jobId: string;
+  failures: ReadonlyArray<{ node: string; errors: string[] }>;
+}) {
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    setDismissed(localStorage.getItem(dismissedPartialKey(jobId)) !== null);
+  }, [jobId]);
+
+  if (dismissed) return null;
+  return (
+    <div className="mt-6">
+      <PartialNotice>
+        Lần sinh gần nhất thiếu {failures.length} phần:{' '}
+        {failures.map((f) => `${f.node} (${failureReasonText(f.errors).replace(/\.$/, '')})`).join('; ')}.
+      </PartialNotice>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="mt-2"
+        onClick={() => {
+          localStorage.setItem(dismissedPartialKey(jobId), '1');
+          setDismissed(true);
+        }}
+      >
+        Đã hiểu
+      </Button>
+    </div>
+  );
+}
+
+function DocumentRow({
+  doc,
+  selectable,
+  selected,
+  onToggle,
+}: {
+  doc: DocumentList;
+  selectable: boolean;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const remove = useDeleteDocument();
+  const [confirming, setConfirming] = useState(false);
+  const canSelect = selectable && doc.status === 'EXTRACTED';
+
   return (
     <li className="py-3">
       <div className="flex items-start gap-3">
+        {canSelect && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggle}
+            aria-label={`Dùng ${doc.filename} khi sinh bài học`}
+            className="mt-1 size-4 shrink-0 cursor-pointer accent-[var(--accent)]"
+          />
+        )}
         <Icon
           name="file"
           size={20}
@@ -402,7 +618,7 @@ function DocumentRow({ doc }: { doc: DocumentList }) {
             {doc.filename}
           </p>
           <p className="mt-0.5 text-xs text-fg-subtle">
-            {formatSize(doc.sizeBytes)}
+            {formatFileSize(doc.sizeBytes)}
             {doc.pageCount ? ` · ${doc.pageCount} trang` : ''}
             {doc.createdAt ? ` · ${relativeTime(doc.createdAt)}` : ''}
           </p>
@@ -428,6 +644,39 @@ function DocumentRow({ doc }: { doc: DocumentList }) {
           <Icon name="alert" size={14} className="mt-px shrink-0" />
           <span>{doc.errorMessage}</span>
         </p>
+      )}
+      {doc.status !== 'EXTRACTING' && doc.status !== 'UPLOADED' && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+          {confirming ? (
+            <>
+              <span className="text-fg-subtle">Xoá tài liệu này?</span>
+              <Button
+                size="sm"
+                variant="danger"
+                loading={remove.isPending}
+                onClick={() => remove.mutate(doc.id)}
+              >
+                Xác nhận xoá
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+                Huỷ
+              </Button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="rounded-md text-fg-subtle underline underline-offset-2 hover:text-fg focus-ring"
+            >
+              Xoá tài liệu
+            </button>
+          )}
+        </div>
+      )}
+      {remove.isError && (
+        <InlineError className="mt-2">
+          {errorText(remove.error, 'Không xoá được tài liệu, vui lòng thử lại.')}
+        </InlineError>
       )}
     </li>
   );
@@ -502,7 +751,7 @@ function UploadStatus({ progress, onCancel }: { progress: UploadProgress; onCanc
         </span>
         {progress.phase !== 'confirming' && (
           <Button variant="secondary" size="sm" onClick={onCancel}>
-            Hủy
+            Huỷ
           </Button>
         )}
       </div>

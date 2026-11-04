@@ -5,11 +5,11 @@ import { useSubscription } from '@/features/settings/subscription-api';
 import { ProgressBar } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Icon } from '@/components/ui/icon';
+import { planLabel } from '@/features/settings/plan-label';
 
 const METRIC_LABEL: Record<string, string> = {
   COURSES_CREATED: 'Khóa học',
   DOCUMENTS_UPLOADED: 'Tài liệu / tháng',
-  PAGES_PROCESSED: 'Trang đã xử lý',
   AI_JOBS_RUN: 'Lượt sinh AI / tháng',
 };
 
@@ -33,13 +33,15 @@ export function PlanUsage({ onNavigate }: { onNavigate?: () => void }) {
 
   if (isError || !data) return null;
 
-  const metered = Object.entries(data.usage).filter(([, v]) => v.limit !== null);
+  const metered = Object.entries(data.usage).filter(
+    ([, v]) => v.limit !== null && v.window !== 'per_document',
+  );
 
   return (
     <section aria-label="Gói và hạn mức">
       <div className="mb-2.5 flex items-baseline justify-between gap-2">
         <p className="text-sm font-medium text-fg">
-          Gói <span className="font-semibold">{data.planCode}</span>
+          Gói <span className="font-semibold">{planLabel(data.planCode)}</span>
         </p>
         <Link
           href="/settings"

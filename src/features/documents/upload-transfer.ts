@@ -1,7 +1,7 @@
 /** Người dùng bấm hủy, không phải lỗi: giao diện không hiện thông báo lỗi. */
 export class UploadCancelledError extends Error {
   constructor() {
-    super('Đã hủy tải lên.');
+    super('Đã huỷ tải lên.');
     this.name = 'UploadCancelledError';
   }
 }

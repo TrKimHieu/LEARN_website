@@ -26,6 +26,8 @@ import {
 } from '@/components/ui';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { humanizeCode } from '@/lib/humanize';
+import { planLabel } from '@/features/settings/plan-label';
+import { usePageTitle } from '@/lib/use-page-title';
 
 /**
  * Nhãn tiếng Việt cho enum của API — không đổ mã máy ("ACTIVE", "/month") ra màn hình
@@ -48,8 +50,7 @@ const INTERVAL_LABEL: Record<string, string> = {
 const METRIC_LABEL: Record<string, string> = {
   COURSES_CREATED: 'Khóa học',
   DOCUMENTS_UPLOADED: 'Tài liệu / tháng',
-  PAGES_PROCESSED: 'Trang / tài liệu',
-  AI_JOBS_RUN: 'AI Job / tháng',
+  AI_JOBS_RUN: 'Lượt sinh AI / tháng',
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -58,6 +59,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function SettingsPage() {
+  usePageTitle('Cài đặt');
   const { user, logoutAll } = useAuth();
   const plans = usePlans();
   const subscription = useSubscription();
@@ -168,7 +170,7 @@ export default function SettingsPage() {
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-6 py-5">
                 <div>
                   <p className="text-sm text-fg-subtle">Gói của bạn</p>
-                  <p className="mt-0.5 text-3xl font-semibold text-fg">{sub.planCode}</p>
+                  <p className="mt-0.5 text-3xl font-semibold text-fg">{planLabel(sub.planCode)}</p>
                 </div>
                 <div className="text-right">
                   <Badge
@@ -179,7 +181,7 @@ export default function SettingsPage() {
                   >
                     {STATUS_LABEL[sub.status] ?? humanizeCode(sub.status)}
                   </Badge>
-                  {sub.currentPeriodEnd && (
+                  {sub.currentPeriodEnd && sub.planCode !== 'FREE' && (
                     <p className="mt-1.5 text-xs text-fg-subtle">
                       {sub.cancelAtPeriodEnd ? 'Huỷ vào' : 'Gia hạn vào'}{' '}
                       {new Date(sub.currentPeriodEnd).toLocaleDateString('vi-VN')}
@@ -190,6 +192,17 @@ export default function SettingsPage() {
 
               <div className="grid gap-5 p-6 sm:grid-cols-2">
                 {Object.entries(sub.usage).map(([metric, u]) => {
+                  // Giới hạn theo từng tài liệu, không có số đã dùng để đo.
+                  if (u.window === 'per_document') {
+                    return (
+                      <div key={metric} className="text-sm">
+                        <p className="font-semibold text-fg-muted">Số trang mỗi tài liệu</p>
+                        <p className="mt-1.5 text-xs text-fg-subtle">
+                          {u.limit !== null ? `Tối đa ${u.limit} trang` : 'Không giới hạn'}
+                        </p>
+                      </div>
+                    );
+                  }
                   const atLimit = u.limit !== null && u.used >= u.limit;
                   const name = METRIC_LABEL[metric] ?? humanizeCode(metric);
                   return (
@@ -334,12 +347,14 @@ export default function SettingsPage() {
                   </p>
 
                   <ul className="mt-5 space-y-2.5 border-t border-line pt-5 text-sm text-fg-muted">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5">
-                        <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
-                        {f}
-                      </li>
-                    ))}
+                    {plan.features
+                      .map((feature) => feature.replace('AI job', 'lượt sinh AI'))
+                      .map((f) => (
+                        <li key={f} className="flex items-start gap-2.5">
+                          <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
+                          {f}
+                        </li>
+                      ))}
                   </ul>
 
                   <div className="mt-auto pt-6">

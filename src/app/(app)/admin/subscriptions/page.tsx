@@ -16,8 +16,10 @@ import {
 import { ErrorState } from '@/components/ui/states';
 import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
+import { usePageTitle } from '@/lib/use-page-title';
 
 export default function AdminSubscriptionsPage() {
+  usePageTitle('Quản trị · Gói đăng ký');
   const subscriptions = useAdminSubscriptions();
 
   return (

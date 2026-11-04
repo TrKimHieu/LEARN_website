@@ -6,7 +6,7 @@ import type {
   DocumentList,
 } from '@learn/api-contracts';
 import { apiFetch } from '@/lib/api-client';
-import { refreshUsage } from '@/lib/query-refresh';
+import { refreshCourseData, refreshUsage } from '@/lib/query-refresh';
 import { documentsRefetchInterval } from './document-polling';
 
 export function useCourses() {
@@ -32,6 +32,18 @@ export function useCourseDocuments(courseId: string) {
     // Upload xong tài liệu mới chỉ UPLOADED; worker trích xuất bất đồng bộ. Không hỏi lại thì
     // nút "Sinh bài học" (cần EXTRACTED) xám tới khi F5.
     refetchInterval: (query) => documentsRefetchInterval(query.state.data),
+  });
+}
+
+export function useDeleteCourse(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch(`/api/v1/courses/${courseId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      // Bỏ khỏi cache trước khi làm mới, để không hỏi lại một khóa học đã xoá.
+      queryClient.removeQueries({ queryKey: ['courses', courseId] });
+      return refreshCourseData(queryClient);
+    },
   });
 }
 

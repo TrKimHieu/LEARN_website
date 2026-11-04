@@ -18,6 +18,15 @@ async function sha256Hex(file: File): Promise<string> {
 }
 
 /** Xin URL upload → PUT thẳng lên S3/MinIO → xác nhận. HANDBOOK §7.2 (documents/upload-url, documents/:id/confirm). */
+export function useDeleteDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: string) =>
+      apiFetch(`/api/v1/documents/${documentId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['courses'] }),
+  });
+}
+
 export function useUploadDocument(courseId: string) {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState<UploadProgress | null>(null);
@@ -36,6 +45,7 @@ export function useUploadDocument(courseId: string) {
           `Chưa hỗ trợ loại tệp này. Chỉ nhận ${DOCUMENT_TYPES.map((t) => t.label).join(', ')}.`,
         );
       }
+      if (file.size === 0) throw new Error('Tệp này không có nội dung.');
       const checksumSha256 = await sha256Hex(file);
       if (abort.signal.aborted) throw new UploadCancelledError();
       const { documentId, uploadUrl } = await apiFetch<UploadUrlResponse>(

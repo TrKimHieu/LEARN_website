@@ -19,7 +19,7 @@ import { DotField, Eyebrow, GrainWaves, Orbit, Sparkle } from '@/components/shar
 const STEPS: { title: string; body: string }[] = [
   {
     title: 'Tải tài liệu lên',
-    body: 'PDF có lớp chữ, Word, PowerPoint, TXT hoặc Markdown.',
+    body: 'PDF, Word, PowerPoint, TXT hoặc Markdown.',
   },
   {
     title: 'AI dựng lộ trình',

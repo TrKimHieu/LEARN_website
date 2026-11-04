@@ -11,6 +11,11 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+/** Không có quyền cũng trả 404 để không lộ sự tồn tại; đường dẫn sai định dạng trả 400. */
+export function isNotFoundError(err: unknown): boolean {
+  return err instanceof ApiClientError && (err.status === 404 || err.status === 400);
+}
+
 export class ApiClientError extends Error {
   readonly status: number;
   readonly code?: string;

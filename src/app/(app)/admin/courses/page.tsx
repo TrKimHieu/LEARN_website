@@ -18,8 +18,10 @@ import { ErrorState } from '@/components/ui/states';
 import { Reveal } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { useDebouncedQueryParam } from '@/lib/url-state';
+import { usePageTitle } from '@/lib/use-page-title';
 
 export default function AdminCoursesPage() {
+  usePageTitle('Quản trị · Khóa học');
   const [q, setQ, committedQ] = useDebouncedQueryParam('q');
   const courses = useAdminCourses(committedQ || undefined);
 

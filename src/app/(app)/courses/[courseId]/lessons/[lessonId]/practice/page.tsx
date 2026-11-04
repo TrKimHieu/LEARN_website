@@ -22,6 +22,8 @@ import {
   cn,
 } from '@/components/ui';
 import { ApiClientError, errorDetail, errorText } from '@/lib/api-client';
+import { usePageTitle } from '@/lib/use-page-title';
+import { answeredOnly } from '@/features/learning/answers';
 import { celebrateSuccess } from '@/lib/celebrate';
 import { popIn } from '@/lib/motion';
 
@@ -87,6 +89,7 @@ export default function PracticePage({
   // Bài tập đang mở sống trong URL: F5 hay gửi link vẫn đúng bài tập (UX-UI-PRINCIPLES §12).
   const [exerciseParam, setExerciseParam] = useQueryParam('exercise');
   const exercise = useExercise(lessonId, exerciseParam);
+  usePageTitle(exercise.data?.title ?? 'Bài tập');
   const backToLesson = `/courses/${courseId}/lessons/${lessonId}`;
 
   if (exercise.isLoading) {
@@ -164,11 +167,15 @@ function ExerciseSession({
   const [submitError, setSubmitError] = useState<string | null>(null);
   /** Câu bị đánh dấu thiếu sau một lần bấm Nộp bài hụt. */
   const [missingId, setMissingId] = useState<string | null>(null);
+  /** Số câu còn trống khi đang hỏi có muốn nộp luôn không; null = không hỏi. */
+  const [confirmingBlank, setConfirmingBlank] = useState<number | null>(null);
 
   function setAnswer(a: Answer) {
     setAnswers((prev) => ({ ...prev, [a.questionId]: a }));
     // Trả lời đúng câu đang bị đánh dấu thì gỡ dấu ngay.
     setMissingId((cur) => (cur === a.questionId ? null : cur));
+    setSubmitError(null);
+    setConfirmingBlank(null);
   }
 
   /**
@@ -184,16 +191,26 @@ function ExerciseSession({
     field?.focus({ preventScroll: true });
   }
 
-  async function handleSubmit() {
+  function firstBlankQuestion() {
+    const answered = new Set(answeredOnly(answers).map((a) => a.questionId));
+    return data.questions.find((q) => !answered.has(q.id));
+  }
+
+  /** Bỏ trống vài câu là quyền của người học (tính 0 điểm), chỉ cần hỏi lại một lần. */
+  async function handleSubmit({ allowBlank = false } = {}) {
     setSubmitError(null);
-    const list = Object.values(answers);
-    if (list.length < data.questions.length) {
-      const first = data.questions.find((q) => !answers[q.id]);
-      const at = data.questions.findIndex((q) => !answers[q.id]) + 1;
-      setSubmitError(`Câu ${at} chưa được trả lời. Trả lời hết rồi mới nộp được.`);
+    const list = answeredOnly(answers);
+    if (list.length === 0) {
+      setSubmitError('Hãy trả lời ít nhất một câu rồi mới nộp bài.');
+      const first = firstBlankQuestion();
       if (first) goToMissing(first.id);
       return;
     }
+    if (list.length < data.questions.length && !allowBlank) {
+      setConfirmingBlank(data.questions.length - list.length);
+      return;
+    }
+    setConfirmingBlank(null);
     setMissingId(null);
     try {
       const res = await submitExercise.mutateAsync({ answers: list, exerciseId: data.id });
@@ -208,6 +225,7 @@ function ExerciseSession({
     setAnswers({});
     setResult(null);
     setSubmitError(null);
+    setConfirmingBlank(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -226,7 +244,7 @@ function ExerciseSession({
     );
   }
 
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = answeredOnly(answers).length;
   const total = data.questions.length;
   const position = data.exercises.findIndex((e) => e.id === data.id);
 
@@ -273,20 +291,47 @@ function ExerciseSession({
       </ol>
 
       {submitError && <InlineError className="mt-5">{submitError}</InlineError>}
+      {confirmingBlank !== null && (
+        <div
+          role="alert"
+          className="mt-5 rounded-control border border-line bg-panel-2 px-3.5 py-3 text-sm text-fg"
+        >
+          <p className="font-medium">Còn {confirmingBlank} câu chưa trả lời. Vẫn nộp bài?</p>
+          <p className="mt-1 text-fg-subtle">Câu bỏ trống được tính 0 điểm.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => void handleSubmit({ allowBlank: true })}>
+              Vẫn nộp bài
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setConfirmingBlank(null);
+                const first = firstBlankQuestion();
+                if (first) goToMissing(first.id);
+              }}
+            >
+              Làm tiếp
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className={STICKY_BAR}>
-        <div className={cn(STICKY_PANEL, 'p-3 pl-4')}>
+        <div className={cn(STICKY_PANEL, 'p-2 pl-4 sm:p-3 sm:pl-4')}>
           <div className="min-w-0 flex-1">
-            <p className="mb-1.5 text-xs font-semibold text-fg-subtle">
+            <p className="text-xs font-semibold text-fg-subtle sm:mb-1.5">
               {answeredCount < total
                 ? `Đã trả lời ${answeredCount}/${total}, còn ${total - answeredCount} câu`
                 : 'Đã trả lời hết, sẵn sàng nộp'}
             </p>
+            {/* Màn hẹp còn thanh điều hướng dưới cùng: dòng chữ đã đủ, không chiếm thêm chỗ học. */}
             <ProgressBar
               size="sm"
               value={answeredCount}
               max={total}
               label={`Đã trả lời ${answeredCount} trên ${total} câu`}
+              className="hidden sm:block"
             />
           </div>
           <Button onClick={() => void handleSubmit()} loading={submitExercise.isPending}>
@@ -566,20 +611,21 @@ function ResultScreen({
           const correctText = r ? describeCorrectAnswer(q, r.correctAnswer) : null;
           const given = answers[q.id];
           const givenText = describeGivenAnswer(q, given);
+          const blank = !given || ('text' in given && given.text.trim() === '');
 
           return (
             <li key={q.id}>
-              <Card className={isCorrect ? 'border-ok-line' : 'border-bad-line'}>
+              <Card className={isCorrect ? 'border-ok-line' : blank ? 'border-line' : 'border-bad-line'}>
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-semibold leading-relaxed text-fg">
                     Câu {i + 1}. {q.prompt}
                   </p>
                   <Badge
-                    tone={isCorrect ? 'success' : 'danger'}
-                    icon={isCorrect ? 'check' : 'x'}
+                    tone={isCorrect ? 'success' : blank ? 'neutral' : 'danger'}
+                    icon={isCorrect ? 'check' : blank ? undefined : 'x'}
                     className="shrink-0"
                   >
-                    {isCorrect ? 'Đúng' : 'Sai'}
+                    {isCorrect ? 'Đúng' : blank ? 'Bỏ trống' : 'Sai'}
                   </Badge>
                 </div>
 

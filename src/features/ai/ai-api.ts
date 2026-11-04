@@ -3,8 +3,14 @@ import type { AiJobSummary, GenerateLessonsInput } from '@learn/api-contracts';
 import { apiFetch } from '@/lib/api-client';
 import { refreshCourseData, refreshUsage } from '@/lib/query-refresh';
 import { findActiveGenerateJob, isActiveJobStatus } from './ai-job-active';
+import { latestPartialJob } from './ai-job-outcome';
 
-const activeJobKey = (courseId: string) => ['ai', 'jobs', 'active', courseId];
+const courseJobsKey = (courseId: string) => ['ai', 'jobs', 'course', courseId];
+
+interface CourseJobs {
+  active: AiJobSummary | null;
+  lastPartial: AiJobSummary | null;
+}
 
 export function useGenerateLessons(courseId: string) {
   const queryClient = useQueryClient();
@@ -15,7 +21,10 @@ export function useGenerateLessons(courseId: string) {
         body: input,
       }),
     onSuccess: (job) => {
-      queryClient.setQueryData(activeJobKey(courseId), job);
+      queryClient.setQueryData<CourseJobs>(courseJobsKey(courseId), {
+        active: job,
+        lastPartial: null,
+      });
       queryClient.invalidateQueries({ queryKey: ['courses', courseId, 'lessons'] });
       void refreshUsage(queryClient);
     },
@@ -27,19 +36,19 @@ export function useGenerateLessons(courseId: string) {
  * Chỉ đọc lúc mở trang: nếu đọc lại khi đang theo dõi, job vừa xong sẽ rời danh sách và panel tiến
  * độ biến mất trước khi kịp báo kết quả. Job xong lúc người dùng ở trang khác thì làm mới ở đây.
  */
-export function useActiveAiJob(courseId: string) {
+export function useCourseJobs(courseId: string) {
   const queryClient = useQueryClient();
   return useQuery({
-    queryKey: activeJobKey(courseId),
-    queryFn: async () => {
+    queryKey: courseJobsKey(courseId),
+    queryFn: async (): Promise<CourseJobs> => {
       const { jobs } = await apiFetch<{ jobs: AiJobSummary[] }>(
         `/api/v1/ai/jobs?courseId=${courseId}`,
       );
       const active = findActiveGenerateJob(jobs);
-      if (!active && queryClient.getQueryData(activeJobKey(courseId))) {
+      if (!active && queryClient.getQueryData<CourseJobs>(courseJobsKey(courseId))?.active) {
         void refreshCourseData(queryClient);
       }
-      return active;
+      return { active, lastPartial: latestPartialJob(jobs) };
     },
     enabled: Boolean(courseId),
     refetchOnMount: 'always',
@@ -51,7 +60,11 @@ export function useActiveAiJob(courseId: string) {
 export function useFinishAiJob(courseId: string) {
   const queryClient = useQueryClient();
   return () => {
-    queryClient.setQueryData(activeJobKey(courseId), null);
+    queryClient.setQueryData<CourseJobs>(courseJobsKey(courseId), (old) => ({
+      active: null,
+      lastPartial: old?.lastPartial ?? null,
+    }));
+    void queryClient.invalidateQueries({ queryKey: courseJobsKey(courseId) });
     return refreshCourseData(queryClient);
   };
 }

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Mascot } from '@/components/shared/mascot';
 import { Button, Card, Icon, PartialNotice, ProgressBar } from '@/components/ui';
 import { useAiJob, useCancelAiJob } from '@/features/ai/ai-api';
+import { failureReasonText, isOnlyDuplicateFailure } from '@/features/ai/ai-job-outcome';
 import { partialFailuresOf } from '@/features/ai/ai-job-partial';
 import { errorText } from '@/lib/api-client';
 
@@ -30,9 +31,11 @@ function Panel({ children }: { children: React.ReactNode }) {
 export function AiJobProgress({
   jobId,
   onDone,
+  onRetry,
 }: {
   jobId: string;
-  onDone: (result: { succeeded: boolean }) => void;
+  onDone: () => void;
+  onRetry: () => void;
 }) {
   const job = useAiJob(jobId);
   const cancel = useCancelAiJob(jobId);
@@ -44,7 +47,7 @@ export function AiJobProgress({
     // Job xong trọn vẹn thì tự chuyển tiếp sau một nhịp ăn mừng. Job xong MỘT PHẦN thì không:
     // người dùng cần đọc xem phần nào thiếu rồi tự bấm đi tiếp.
     if (status === 'SUCCEEDED' && partialFailures.length === 0) {
-      const t = setTimeout(() => onDone({ succeeded: true }), 900);
+      const t = setTimeout(onDone, 900);
       return () => clearTimeout(t);
     }
   }, [status, partialFailures.length, onDone]);
@@ -53,7 +56,7 @@ export function AiJobProgress({
     return (
       <Panel>
         <Mascot state="thinking" size={88} />
-        <p className="text-sm font-medium text-fg-subtle">Đang kết nối tới AI Job…</p>
+        <p className="text-sm font-medium text-fg-subtle">Đang kiểm tra tiến trình…</p>
       </Panel>
     );
   }
@@ -63,9 +66,9 @@ export function AiJobProgress({
       <Panel>
         <Mascot state="alerting" size={88} />
         <p className="text-sm font-medium text-fg">
-          {errorText(job.error, 'Không theo dõi được job.')}
+          {errorText(job.error, 'Không theo dõi được tiến trình.')}
         </p>
-        <Button variant="secondary" onClick={() => onDone({ succeeded: false })}>
+        <Button variant="secondary" onClick={onDone}>
           Đóng
         </Button>
       </Panel>
@@ -79,7 +82,7 @@ export function AiJobProgress({
     return (
       <Panel>
         <Mascot state={queued ? 'thinking' : 'working'} size={96} />
-        <p className="text-sm text-fg-subtle">AI Job · {queued ? 'đang chờ' : 'đang chạy'}</p>
+        <p className="text-sm text-fg-subtle">Sinh bài học · {queued ? 'đang chờ' : 'đang chạy'}</p>
         <p className="text-base font-semibold text-fg">
           {queued ? 'Đang xếp hàng…' : (j.progressLabel ?? 'Đang xử lý…')}
         </p>
@@ -96,7 +99,7 @@ export function AiJobProgress({
           onClick={() => cancel.mutate()}
           disabled={cancel.isPending}
         >
-          {cancel.isPending ? 'Đang huỷ…' : 'Huỷ job'}
+          {cancel.isPending ? 'Đang dừng…' : 'Dừng sinh bài'}
         </Button>
       </Panel>
     );
@@ -126,14 +129,12 @@ export function AiJobProgress({
                   className="rounded-control border border-line bg-panel-2 px-3 py-2 text-xs"
                 >
                   <span className="font-medium text-fg">{f.node}</span>
-                  {f.errors.length > 0 && (
-                    <span className="text-fg-subtle">: {f.errors.join('; ')}</span>
-                  )}
+                  <span className="text-fg-subtle">: {failureReasonText(f.errors)}</span>
                 </li>
               ))}
             </ul>
           </div>
-          <Button onClick={() => onDone({ succeeded: true })}>Xem bài học đã sinh</Button>
+          <Button onClick={onDone}>Xem bài học đã sinh</Button>
         </Panel>
       );
     }
@@ -152,19 +153,28 @@ export function AiJobProgress({
   // Huỷ là hành động chủ động của người dùng, không phải lỗi — nên không dùng
   // mascot cảnh báo cho trường hợp đó.
   const cancelled = j.status === 'CANCELLED';
+  const duplicateOnly = isOnlyDuplicateFailure(j.error);
+  const failureText = duplicateOnly
+    ? 'Các bài vừa sinh đều trùng với bài đã có, nên không có bài mới. Hãy tải thêm tài liệu khác.'
+    : 'AI chưa tạo được bài học đạt yêu cầu từ tài liệu này.';
   return (
     <Panel>
       <Mascot state={cancelled ? 'idle' : 'alerting'} size={88} />
       <p className="text-sm font-semibold text-fg">
-        {cancelled ? 'Đã huỷ job.' : 'Sinh bài học thất bại.'}
+        {cancelled ? 'Đã dừng sinh bài.' : 'Sinh bài học thất bại.'}
       </p>
-      {j.error?.message && !cancelled && (
-        <p className="max-w-sm text-xs text-fg-subtle">{j.error.message}</p>
-      )}
-      <Button onClick={() => onDone({ succeeded: false })}>
-        <Icon name="retry" size={16} />
-        Thử lại
-      </Button>
+      {!cancelled && <p className="max-w-sm text-xs text-fg-subtle">{failureText}</p>}
+      <div className="flex flex-wrap justify-center gap-2">
+        {!cancelled && !duplicateOnly && (
+          <Button onClick={onRetry}>
+            <Icon name="retry" size={16} />
+            Thử lại (dùng 1 lượt AI)
+          </Button>
+        )}
+        <Button variant="secondary" onClick={onDone}>
+          Đóng
+        </Button>
+      </div>
     </Panel>
   );
 }

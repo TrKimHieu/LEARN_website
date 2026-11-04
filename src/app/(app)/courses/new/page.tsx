@@ -1,6 +1,6 @@
 'use client';
 
-import type { z } from 'zod';
+import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,17 +21,28 @@ import {
   type IconName,
 } from '@/components/ui';
 import { errorText, isQuotaExceededError } from '@/lib/api-client';
+import { usePageTitle } from '@/lib/use-page-title';
 
-type FormValues = z.input<typeof createCourseSchema>;
+/** Bỏ khoảng trắng trước khi kiểm: tên chỉ gồm dấu cách không phải là tên. */
+const formSchema = createCourseSchema.extend({
+  title: z
+    .string()
+    .trim()
+    .min(1, { message: 'Vui lòng nhập tên khóa học.' })
+    .max(200, { message: 'Tên khóa học tối đa 200 ký tự.' }),
+});
+
+type FormValues = z.input<typeof formSchema>;
 
 /** Ba bước thật của luồng — người dùng biết form này chỉ là bước 1. */
 const STEPS: { icon: IconName; title: string; body: string }[] = [
   { icon: 'edit', title: 'Đặt tên khóa học', body: 'Bạn đang ở bước này.' },
-  { icon: 'cloud', title: 'Tải tài liệu lên', body: 'PDF hoặc tệp văn bản, ở trang khóa học.' },
+  { icon: 'cloud', title: 'Tải tài liệu lên', body: 'PDF, Word, PowerPoint hoặc tệp văn bản, ở trang khóa học.' },
   { icon: 'sparkles', title: 'Sinh bài học bằng AI', body: 'Chạy nền, xem tiến độ trực tiếp.' },
 ];
 
 export default function NewCoursePage() {
+  usePageTitle('Tạo khóa học');
   const router = useRouter();
   const createCourse = useCreateCourse();
   const {
@@ -39,7 +50,7 @@ export default function NewCoursePage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues, unknown, CreateCourseInput>({
-    resolver: zodResolver(createCourseSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: { title: '', description: '', language: 'vi' },
   });
 

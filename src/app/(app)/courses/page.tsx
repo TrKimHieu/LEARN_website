@@ -17,8 +17,10 @@ import {
 } from '@/components/ui';
 import { StaggerItem, StaggerList } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
+import { usePageTitle } from '@/lib/use-page-title';
 
 export default function CoursesPage() {
+  usePageTitle('Khóa học');
   const router = useRouter();
   const { data, isLoading, isError, error, refetch, isRefetching } = useCourses();
   const count = data?.courses.length ?? 0;
@@ -108,9 +110,6 @@ function CourseCard({ course }: { course: CourseSummary }) {
           title={course.title}
           className="aspect-[16/9] transition-transform duration-300 ease-out-quint group-hover:scale-[1.02]"
         />
-        {course.status === 'DRAFT' && (
-          <Badge className="absolute left-3 top-3 bg-panel">Nháp</Badge>
-        )}
         {course.status === 'ARCHIVED' && (
           <Badge className="absolute left-3 top-3 bg-panel">Đã lưu trữ</Badge>
         )}
