@@ -1,0 +1,55 @@
+name: deploy
+# Called by release.yml after a build. Run it by hand with an older digest to roll back.
+on:
+  workflow_call:
+    inputs:
+      environment: { type: string, required: true }
+      web_image: { type: string, required: true }
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [staging, production]
+        required: true
+      web_image:
+        description: ECR image with sha256 digest
+        required: true
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    # One release at a time per environment, and never cancel one halfway.
+    concurrency:
+      group: release-web-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: false
+      - name: Release web
+        run: node scripts/deploy/release.mjs --apply
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOY_SERVICE: web
+          DEPLOY_IMAGE: ${{ inputs.web_image }}
+          DEPLOY_INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      - name: Smoke test through the public URL
+        run: |
+          for attempt in $(seq 1 12); do
+            if curl --silent --show-error --fail --max-time 10 --output /dev/null "${APP_URL}/login"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+        env:
+          APP_URL: ${{ vars.APP_URL }}
