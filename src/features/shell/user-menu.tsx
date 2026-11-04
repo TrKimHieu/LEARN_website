@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
@@ -92,8 +93,12 @@ export function UserMenu() {
             className="absolute right-0 top-[3.25rem] md:top-12 z-50 w-72 rounded-card border border-line bg-panel p-1.5 shadow-overlay"
           >
             <div className="px-2.5 pb-3 pt-2">
-              <p className="truncate text-sm font-semibold text-fg">{user?.displayName}</p>
-              <p className="truncate text-xs text-fg-subtle">{user?.email}</p>
+              <p className="truncate text-sm font-semibold text-fg">
+                <UserText>{user?.displayName}</UserText>
+              </p>
+              <p className="truncate text-xs text-fg-subtle">
+                <UserText>{user?.email}</UserText>
+              </p>
             </div>
 
             <div className="border-t border-line px-2.5 py-3">

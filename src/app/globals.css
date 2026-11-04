@@ -75,7 +75,10 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /* Chuỗi dài không dấu cách (tên tệp, URL) tự xuống dòng thay vì đẩy vỡ khung. Bảng dùng
+     `break-word` để cột không bị bóp còn một ký tự. */
   body {
+    overflow-wrap: anywhere;
     line-height: 1.65;
     @apply bg-app text-fg antialiased;
     font-family: var(--font-sans);
@@ -152,6 +155,9 @@
   ::before,
   ::after {
     border-color: var(--line);
+  }
+  table {
+    overflow-wrap: break-word;
   }
 }
 
@@ -307,6 +313,10 @@
   border: 0;
   border-top: 1px solid var(--line);
   margin: 2em 0;
+}
+.lesson-content th,
+.lesson-content td {
+  min-width: 7rem;
 }
 .lesson-content table {
   width: 100%;

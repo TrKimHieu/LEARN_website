@@ -37,7 +37,11 @@ type FormValues = z.input<typeof formSchema>;
 /** Ba bước thật của luồng — người dùng biết form này chỉ là bước 1. */
 const STEPS: { icon: IconName; title: string; body: string }[] = [
   { icon: 'edit', title: 'Đặt tên khóa học', body: 'Bạn đang ở bước này.' },
-  { icon: 'cloud', title: 'Tải tài liệu lên', body: 'PDF, Word, PowerPoint hoặc tệp văn bản, ở trang khóa học.' },
+  {
+    icon: 'cloud',
+    title: 'Tải tài liệu lên',
+    body: 'PDF, Word, PowerPoint hoặc tệp văn bản, ở trang khóa học.',
+  },
   { icon: 'sparkles', title: 'Sinh bài học bằng AI', body: 'Chạy nền, xem tiến độ trực tiếp.' },
 ];
 
@@ -73,6 +77,7 @@ export default function NewCoursePage() {
             <Field label="Tên khóa học" htmlFor="title" error={errors.title?.message}>
               <Input
                 id="title"
+                maxLength={200}
                 type="text"
                 placeholder="Ví dụ: Nhập môn giao thức HTTP"
                 // Trang chỉ có một việc là điền form và ô đầu nằm ngay dưới tiêu đề.

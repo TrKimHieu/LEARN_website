@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src",
     "test": "vitest run",
+    "check:long-text": "node scripts/check-long-text.mjs",
     "test:tooling": "node --test scripts/*.test.mjs scripts/deploy/*.test.mjs"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.17.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "playwright-core": "^1.64.1",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",

@@ -79,6 +79,7 @@ function RegisterForm() {
         <Field label="Tên hiển thị" htmlFor="displayName" error={fieldError.displayName}>
           <Input
             id="displayName"
+            maxLength={100}
             type="text"
             autoComplete="name"
             required

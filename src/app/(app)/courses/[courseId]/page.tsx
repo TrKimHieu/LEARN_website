@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -242,12 +243,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       {/* ------------------------------------------------ đầu trang */}
       <ColorBlock tone="amber" softOnDesktop className="mt-4 flex items-center gap-4 p-6">
         <header className="min-w-0 flex-1">
-          <h1 className="pr-20 font-display text-[1.75rem] font-bold leading-tight md:pr-0 md:text-[2rem]">
-            {course.data.title}
+          <h1 className="line-clamp-3 pr-20 font-display text-[1.75rem] font-bold leading-tight md:pr-0 md:text-[2rem]">
+            <UserText>{course.data.title}</UserText>
           </h1>
           {course.data.description && (
-            <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed md:text-fg-subtle">
-              {course.data.description}
+            <p className="mt-2 line-clamp-3 max-w-2xl text-[0.9375rem] leading-relaxed md:text-fg-subtle">
+              <UserText>{course.data.description}</UserText>
             </p>
           )}
           {/* Điện thoại: các viên trong khối màu. Website: nút chính và một dòng số liệu. */}
@@ -284,7 +285,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
                 <>
                   {' · '}
                   {allDone ? 'Mở lại: ' : 'Tiếp theo: '}
-                  <span className="font-medium text-fg">{resumeLesson.title}</span>
+                  <span className="font-medium text-fg">
+                    <UserText>{resumeLesson.title}</UserText>
+                  </span>
                 </>
               )}
             </p>
@@ -292,7 +295,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
           {resumeLesson && (
             <p className="mt-3 truncate text-sm md:hidden">
               {allDone ? 'Mở lại: ' : 'Tiếp theo: '}
-              <span className="font-semibold">{resumeLesson.title}</span>
+              <span className="font-semibold">
+                <UserText>{resumeLesson.title}</UserText>
+              </span>
             </p>
           )}
         </header>
@@ -510,7 +515,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       <section aria-label="Xoá khóa học" className="mt-14 border-t border-line pt-6">
         {confirmingDelete ? (
           <div role="alert" className="max-w-xl text-sm text-fg">
-            <p className="font-medium">Xoá khóa học &quot;{course.data.title}&quot;?</p>
+            <p className="font-medium">
+              Xoá khóa học &quot;<UserText>{course.data.title}</UserText>&quot;?
+            </p>
             <p className="mt-1 text-fg-subtle">
               Bài học, tài liệu và tiến độ của khóa này sẽ không còn hiển thị. Suất khóa học được
               trả lại, còn lượt AI và lượt tải đã dùng thì không.
@@ -624,7 +631,7 @@ function DocumentRow({
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-fg" title={doc.filename}>
-            {doc.filename}
+            <UserText>{doc.filename}</UserText>
           </p>
           <p className="mt-0.5 text-xs text-fg-subtle">
             {formatFileSize(doc.sizeBytes)}

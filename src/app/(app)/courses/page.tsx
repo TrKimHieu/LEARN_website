@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CourseSummary } from '@learn/api-contracts';
@@ -156,12 +157,12 @@ function CourseCard({ course, index }: { course: CourseSummary; index: number })
           href={`/courses/${course.id}`}
           className="rounded-sm outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 md:group-hover:underline"
         >
-          {course.title}
+          <UserText>{course.title}</UserText>
         </Link>
       </h2>
       {course.description && (
         <p className={`mt-1 line-clamp-2 text-sm leading-relaxed md:text-fg-subtle ${soft}`}>
-          {course.description}
+          <UserText>{course.description}</UserText>
         </p>
       )}
       <div className="mt-auto flex items-end justify-between gap-3 pt-6 md:pt-4">

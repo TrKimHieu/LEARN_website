@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import { useState } from 'react';
 import {
   usePlans,
@@ -104,8 +105,12 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4">
             <Avatar name={user?.displayName} className="size-14 text-xl" />
             <div className="min-w-0">
-              <p className="truncate text-lg font-semibold text-fg">{user?.displayName}</p>
-              <p className="truncate text-sm text-fg-subtle">{user?.email}</p>
+              <p className="truncate text-lg font-semibold text-fg">
+                <UserText>{user?.displayName}</UserText>
+              </p>
+              <p className="truncate text-sm text-fg-subtle">
+                <UserText>{user?.email}</UserText>
+              </p>
               {user?.role && (
                 <Badge
                   tone={user.role === 'ADMIN' ? 'info' : 'neutral'}

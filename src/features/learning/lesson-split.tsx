@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Icon, cn } from '@/components/ui';
@@ -43,25 +44,28 @@ export function LessonSplit({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <nav
           aria-label="Đường dẫn"
-          className="flex min-w-0 items-center gap-1.5 text-sm text-fg-subtle"
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-fg-subtle"
         >
-          <Link href="/courses" className="hidden rounded-sm hover:text-fg focus-ring sm:inline">
+          <Link
+            href="/courses"
+            className="hidden shrink-0 whitespace-nowrap rounded-sm hover:text-fg focus-ring sm:inline"
+          >
             Khóa học
           </Link>
           <Icon name="chevron-right" size={14} className="hidden shrink-0 sm:block" />
           <Link
             href={`/courses/${courseId}`}
-            className="truncate rounded-sm hover:text-fg focus-ring"
+            className="min-w-0 max-w-[45%] truncate rounded-sm hover:text-fg focus-ring"
           >
-            {courseTitle ?? 'Khóa học'}
+            <UserText>{courseTitle ?? 'Khóa học'}</UserText>
           </Link>
           <Icon name="chevron-right" size={14} className="shrink-0" />
           <Link
             href={`/courses/${courseId}/lessons/${lessonId}`}
             aria-current="page"
-            className="truncate rounded-sm font-medium text-fg hover:underline focus-ring"
+            className="min-w-0 truncate rounded-sm font-medium text-fg hover:underline focus-ring"
           >
-            {lesson.data?.title ?? 'Bài học'}
+            <UserText>{lesson.data?.title ?? 'Bài học'}</UserText>
           </Link>
         </nav>
         <div className="flex items-center gap-2">

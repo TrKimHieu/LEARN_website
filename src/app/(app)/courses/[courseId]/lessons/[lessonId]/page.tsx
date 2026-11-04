@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -220,8 +221,8 @@ export default function LessonReadPage({
               {STATUS_LABEL[status] ?? humanizeCode(status)}
             </Badge>
           </div>
-          <h1 className="mt-2 font-display text-[1.75rem] font-semibold leading-[1.15] text-fg sm:text-[2rem]">
-            {data.title}
+          <h1 className="mt-2 line-clamp-3 font-display text-[1.75rem] font-semibold leading-[1.15] text-fg sm:text-[2rem]">
+            <UserText>{data.title}</UserText>
           </h1>
           {data.summary && !editing && (
             <p className="mt-3 text-xl leading-relaxed text-fg-subtle">{data.summary}</p>
@@ -404,7 +405,9 @@ export default function LessonReadPage({
                   aria-label={`Bài trước: ${position.prev.title}`}
                 >
                   <Icon name="arrow-left" size={16} />
-                  <span className="hidden truncate sm:inline">{position.prev.title}</span>
+                  <span className="hidden truncate sm:inline">
+                    <UserText>{position.prev.title}</UserText>
+                  </span>
                 </ButtonLink>
               ) : (
                 <span />
@@ -419,7 +422,9 @@ export default function LessonReadPage({
                     className="hidden min-w-0 max-w-[16rem] md:inline-flex"
                     aria-label={`Bài sau: ${position.next.title}`}
                   >
-                    <span className="truncate">{position.next.title}</span>
+                    <span className="truncate">
+                      <UserText>{position.next.title}</UserText>
+                    </span>
                     <Icon name="arrow-right" size={16} />
                   </ButtonLink>
                 )}
@@ -429,7 +434,10 @@ export default function LessonReadPage({
                     Làm bài tập
                   </ButtonLink>
                 ) : (
-                  <p className="whitespace-nowrap px-3 text-sm font-medium text-fg-subtle" role="status">
+                  <p
+                    className="whitespace-nowrap px-3 text-sm font-medium text-fg-subtle"
+                    role="status"
+                  >
                     Đọc hết bài để làm bài tập
                   </p>
                 )}
@@ -480,14 +488,14 @@ function TableOfContents({ toc }: { toc: TocEntry[] }) {
                 href={`#${entry.id}`}
                 aria-current={active === entry.id ? 'location' : undefined}
                 className={cn(
-                  '-ml-px block border-l-2 py-1.5 pr-2 leading-snug transition-colors duration-200 focus-ring-tight',
+                  '-ml-px line-clamp-2 border-l-2 py-1.5 pr-2 leading-snug transition-colors duration-200 focus-ring-tight',
                   active === entry.id
                     ? 'border-fg font-semibold text-fg'
                     : 'border-transparent text-fg-subtle hover:border-line-strong hover:text-fg',
                 )}
                 style={{ paddingLeft: `${0.75 + (entry.depth - 1) * 0.75}rem` }}
               >
-                {entry.text}
+                <UserText>{entry.text}</UserText>
               </a>
             </li>
           ))}

@@ -7,6 +7,7 @@ export { ProgressBar, ProgressRing } from './progress';
 export { Skeleton } from './skeleton';
 export { LoadingState, EmptyState, ErrorState, InlineError, PartialNotice } from './states';
 export { Field, Input, PasswordInput, Textarea, Select } from './form';
+export { UserText } from './user-text';
 export { PageHeader, BackLink } from './page-header';
 export { TableCard, Table, Thead, Th, Tbody, Td, TableSkeleton, TableEmpty } from './table';
 export { StatCard, StatStrip, type StatTone } from './stat-card';

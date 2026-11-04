@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/api-contracts';
@@ -439,7 +440,7 @@ function QuestionCard({
         </span>
         <p id={promptId} className="pt-0.5 font-semibold leading-relaxed text-fg">
           <span className="sr-only">Câu {index}. </span>
-          {question.prompt}
+          <UserText full>{question.prompt}</UserText>
         </p>
       </div>
       {missing && (
@@ -463,7 +464,9 @@ function QuestionCard({
                 }
               />
               <LetterChip>{opt.label}</LetterChip>
-              <span className="text-fg">{opt.content}</span>
+              <span className="text-fg">
+                <UserText full>{opt.content}</UserText>
+              </span>
             </label>
           ))}
         </div>
@@ -623,7 +626,7 @@ function ResultScreen({
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-semibold leading-relaxed text-fg">
-                    Câu {i + 1}. {q.prompt}
+                    Câu {i + 1}. <UserText full>{q.prompt}</UserText>
                   </p>
                   <Badge
                     tone={isCorrect ? 'success' : blank ? 'neutral' : 'danger'}
@@ -654,7 +657,9 @@ function ResultScreen({
                           <span className="grid size-7 shrink-0 place-items-center rounded-md border border-line-strong bg-panel text-xs font-semibold text-fg-muted">
                             {opt.label}
                           </span>
-                          <span className="text-fg">{opt.content}</span>
+                          <span className="text-fg">
+                            <UserText full>{opt.content}</UserText>
+                          </span>
                           {isRight && (
                             <span className="ml-auto flex shrink-0 items-center gap-1 text-xs font-semibold text-ok">
                               <Icon name="check" size={13} strokeWidth={3} />
@@ -693,7 +698,9 @@ function ResultScreen({
                 {r?.explanation && (
                   <p className="mt-4 flex gap-2 rounded-control border border-accent-line bg-accent-soft px-3.5 py-2.5 text-sm leading-relaxed text-fg-muted">
                     <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
-                    <span>{r.explanation}</span>
+                    <span>
+                      <UserText full>{r.explanation}</UserText>
+                    </span>
                   </p>
                 )}
               </Card>

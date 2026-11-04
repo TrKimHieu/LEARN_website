@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CircleArrowLink, ColorBlock, StatTile } from '@/components/shared/color-block';
@@ -210,9 +211,9 @@ export default function DashboardPage() {
                           {/* FR-PROGRESS-05: cả dòng bấm được, tới đúng bài học đã làm. */}
                           <Link
                             href={`/courses/${item.courseId}/lessons/${item.lessonId}`}
-                            className="text-sm leading-snug text-fg outline-none after:absolute after:inset-0 after:rounded-control focus-visible:underline"
+                            className="line-clamp-2 text-sm leading-snug text-fg outline-none after:absolute after:inset-0 after:rounded-control focus-visible:underline"
                           >
-                            {item.lessonTitle}
+                            <UserText>{item.lessonTitle}</UserText>
                           </Link>
                           <p className="mt-0.5 text-xs text-fg-subtle">
                             <span className="tabular-nums">
@@ -274,11 +275,11 @@ function ResumeCard({ course }: { course: ProgressCourse }) {
               id="resume-title"
               className="line-clamp-2 font-display text-[1.75rem] font-bold leading-tight md:text-2xl"
             >
-              {lesson ? lesson.title : course.courseTitle}
+              <UserText>{lesson ? lesson.title : course.courseTitle}</UserText>
             </h2>
           )}
           <p className="mt-2 line-clamp-2 text-sm md:truncate md:text-fg-muted">
-            {course.courseTitle}
+            <UserText>{course.courseTitle}</UserText>
             {lesson && index >= 0 ? ` · Bài ${index + 1} / ${list.length}` : ''}
           </p>
           {/* Điện thoại: nút tròn dễ chạm. Website: nút có chữ, nói rõ bấm là làm gì. */}
@@ -307,7 +308,9 @@ function CourseRow({ course }: { course: ProgressCourse }) {
       className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-panel-2 focus-ring sm:px-5"
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-fg">{course.courseTitle}</p>
+        <p className="truncate text-sm font-medium text-fg">
+          <UserText>{course.courseTitle}</UserText>
+        </p>
         <div className="mt-1.5 flex items-center gap-3">
           <ProgressBar
             size="xs"

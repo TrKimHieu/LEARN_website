@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useState } from 'react';
 import type { LessonSummary } from '@learn/api-contracts';
@@ -106,9 +107,9 @@ export function LessonList({
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/courses/${courseId}/lessons/${lesson.id}`}
-                    className="rounded-sm text-[0.9375rem] font-medium leading-snug text-fg outline-none after:absolute after:inset-0 after:rounded-control focus-visible:underline"
+                    className="line-clamp-2 rounded-sm text-[0.9375rem] font-medium leading-snug text-fg outline-none after:absolute after:inset-0 after:rounded-control focus-visible:underline"
                   >
-                    {lesson.title}
+                    <UserText>{lesson.title}</UserText>
                   </Link>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.8125rem] text-fg-subtle">
                     <span className={cn(state === 'IN_PROGRESS' && 'font-medium text-accent')}>

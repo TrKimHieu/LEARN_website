@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import { useId, useState } from 'react';
 import type { LessonSource } from '@learn/api-contracts';
 import { Button, Icon, InlineError, LoadingState, cn } from '@/components/ui';
@@ -114,7 +115,9 @@ export function LessonSources({
                 <li key={s.chunkId} className="rounded-card border border-line bg-panel p-4">
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-subtle">
                     <Icon name="file" size={14} className="shrink-0" />
-                    <span className="font-medium text-fg">{s.filename}</span>
+                    <span className="min-w-0 truncate font-medium text-fg">
+                      <UserText>{s.filename}</UserText>
+                    </span>
                     {page && <span>· {page}</span>}
                   </p>
                   {s.headingPath && (

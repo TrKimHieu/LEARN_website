@@ -1,5 +1,6 @@
 'use client';
 
+import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { Mascot, type MascotState } from '@/components/shared/mascot';
 import { useProgressCourses, useProgressHistoryPages } from '@/features/learning/learning-api';
@@ -77,11 +78,11 @@ export default function ProgressPage() {
                   <StaggerItem as="li" key={c.courseId}>
                     <Link
                       href={`/courses/${c.courseId}`}
-                      className="group -mx-2 flex items-center gap-4 rounded-control px-2 py-3 transition-colors duration-150 hover:bg-muted focus-ring"
+                      className="group flex items-center gap-4 rounded-control px-2 py-3 transition-colors duration-150 hover:bg-muted focus-ring"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="line-clamp-2 text-sm font-semibold leading-snug text-fg">
-                          {c.courseTitle}
+                          <UserText>{c.courseTitle}</UserText>
                         </p>
                         <p className="mt-1 text-xs text-fg-subtle">
                           {c.completed}/{c.total} bài đã hoàn thành
@@ -161,10 +162,10 @@ export default function ProgressPage() {
                           href={`/courses/${item.courseId}/lessons/${item.lessonId}`}
                           className="block truncate text-sm font-semibold text-fg outline-none after:absolute after:inset-0 focus-visible:underline"
                         >
-                          {item.lessonTitle}
+                          <UserText>{item.lessonTitle}</UserText>
                         </Link>
                         <p className="truncate text-xs text-fg-subtle">
-                          {item.courseTitle}
+                          <UserText>{item.courseTitle}</UserText>
                           {item.exerciseTitle ? ` · ${item.exerciseTitle}` : ''}
                           <span className="hidden sm:inline">
                             {' · '}
