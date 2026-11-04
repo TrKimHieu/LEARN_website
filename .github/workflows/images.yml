@@ -30,6 +30,7 @@ jobs:
           file: Dockerfile
           push: true
           tags: ${{ steps.names.outputs.image }}:${{ github.sha }}
+          # Leave API_ORIGIN unset for the one-origin host (relative /api paths, ADR 017).
           build-args: NEXT_PUBLIC_API_URL=${{ vars.API_ORIGIN }}
       - name: Release evidence
         env:
