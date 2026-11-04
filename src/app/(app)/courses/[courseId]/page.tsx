@@ -3,7 +3,8 @@
 import { use, useRef, useState } from 'react';
 import { DOCUMENT_ACCEPT, type DocumentList } from '@learn/api-contracts';
 import { useCourse, useCourseDocuments } from '@/features/courses/courses-api';
-import { useUploadDocument } from '@/features/documents/documents-api';
+import { useUploadDocument, type UploadProgress } from '@/features/documents/documents-api';
+import { UploadCancelledError } from '@/features/documents/upload-transfer';
 import { useLessons, useReorderLessons } from '@/features/learning/learning-api';
 import { useGenerateLessons } from '@/features/ai/ai-api';
 import { AiJobProgress } from '@/features/ai/ai-job-progress';
@@ -112,7 +113,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
     try {
       await upload.mutateAsync(file);
     } catch (err) {
-      setUploadError(err);
+      if (!(err instanceof UploadCancelledError)) setUploadError(err);
     }
   }
 
@@ -334,7 +335,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         <section aria-labelledby="docs-title" className="min-w-0">
           <SectionTitle id="docs-title">Tài liệu nguồn</SectionTitle>
 
-          <Dropzone onFile={(f) => void handleFile(f)} uploading={upload.isPending} />
+          {upload.progress ? (
+            <UploadStatus progress={upload.progress} onCancel={upload.cancel} />
+          ) : (
+            <Dropzone onFile={(f) => void handleFile(f)} />
+          )}
 
           {isQuotaExceededError(uploadError) && (
             <QuotaNotice
@@ -430,7 +435,7 @@ function DocumentRow({ doc }: { doc: DocumentList }) {
  * thật (chỉ ẩn bằng `sr-only`, không `hidden`), nên Tab tới được và trình đọc màn hình
  * đọc được nhãn; vòng focus hiện trên khung nhờ `has-[:focus-visible]`.
  */
-function Dropzone({ onFile, uploading }: { onFile: (f: File) => void; uploading: boolean }) {
+function Dropzone({ onFile }: { onFile: (f: File) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -438,14 +443,14 @@ function Dropzone({ onFile, uploading }: { onFile: (f: File) => void; uploading:
     <label
       onDragOver={(e) => {
         e.preventDefault();
-        if (!uploading) setDragging(true);
+        setDragging(true);
       }}
       onDragLeave={() => setDragging(false)}
       onDrop={(e) => {
         e.preventDefault();
         setDragging(false);
         const file = e.dataTransfer.files?.[0];
-        if (file && !uploading) onFile(file);
+        if (file) onFile(file);
       }}
       className={cn(
         'flex cursor-pointer flex-col items-center gap-1.5 rounded-card border border-dashed px-5 py-6 text-center transition-colors duration-150',
@@ -453,7 +458,6 @@ function Dropzone({ onFile, uploading }: { onFile: (f: File) => void; uploading:
         dragging
           ? 'border-fg bg-accent-soft'
           : 'border-line-input bg-panel hover:border-fg hover:bg-panel-2',
-        uploading && 'pointer-events-none opacity-70',
       )}
     >
       <input
@@ -461,26 +465,50 @@ function Dropzone({ onFile, uploading }: { onFile: (f: File) => void; uploading:
         type="file"
         accept={DOCUMENT_ACCEPT}
         className="sr-only"
-        disabled={uploading}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) onFile(file);
           e.target.value = '';
         }}
       />
-      <Icon
-        name={uploading ? 'spinner' : 'upload'}
-        size={20}
-        className={cn('mb-1 text-fg-subtle', uploading && 'animate-spin')}
-      />
-      <span className="text-sm font-medium text-fg">
-        {uploading ? 'Đang tải lên…' : 'Kéo tệp vào đây hoặc bấm để chọn'}
-      </span>
+      <Icon name="upload" size={20} className="mb-1 text-fg-subtle" />
+      <span className="text-sm font-medium text-fg">Kéo tệp vào đây hoặc bấm để chọn</span>
       <span className="text-xs leading-relaxed text-fg-subtle">
-        PDF có lớp chữ, Word (DOCX), PowerPoint (PPTX), TXT, Markdown.
+        PDF, Word (DOCX), PowerPoint (PPTX), TXT, Markdown.
         <br />
-        PDF scan chưa đọc được.
+        PDF scan được đọc bằng OCR, tối đa 50 trang.
       </span>
     </label>
+  );
+}
+
+/** Nằm ngoài `Dropzone`: nút trong `<label>` sẽ mở lại hộp chọn tệp khi bấm. */
+function UploadStatus({ progress, onCancel }: { progress: UploadProgress; onCancel: () => void }) {
+  const label =
+    progress.phase === 'preparing'
+      ? 'Đang chuẩn bị tệp…'
+      : progress.phase === 'uploading'
+        ? `Đang tải lên ${progress.percent}%`
+        : 'Đang xác nhận tệp…';
+
+  return (
+    <div className="rounded-card border border-line-input bg-panel px-5 py-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-fg" role="status">
+          {label}
+        </span>
+        {progress.phase !== 'confirming' && (
+          <Button variant="secondary" size="sm" onClick={onCancel}>
+            Hủy
+          </Button>
+        )}
+      </div>
+      <ProgressBar
+        className="mt-3"
+        size="sm"
+        value={progress.percent ?? 0}
+        label="Tiến độ tải tài liệu"
+      />
+    </div>
   );
 }
