@@ -17,7 +17,6 @@ import { StaggerItem, StaggerList } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
 import { ColorBlock, type BlockTone } from '@/components/shared/color-block';
-import { Mascot } from '@/components/shared/mascot';
 
 export default function CoursesPage() {
   usePageTitle('Khóa học');
@@ -28,11 +27,9 @@ export default function CoursesPage() {
 
   return (
     <>
-      <ColorBlock tone="brand" flatOnDesktop className="mb-8 flex items-center gap-4 p-6">
+      <ColorBlock tone="brand" softOnDesktop className="mb-8 flex items-center gap-4 p-6">
         <div className="min-w-0 flex-1">
-          <h1 className="pr-20 font-display text-[2rem] font-bold leading-tight md:pr-0">
-            Khóa học của tôi
-          </h1>
+          <h1 className="font-display text-[2rem] font-bold leading-tight">Khóa học của tôi</h1>
           {/* Website: một dòng số liệu. Điện thoại: các viên số liệu trong khối màu. */}
           <p className="mt-1 hidden text-sm text-fg-subtle md:block">
             {count} khóa học · {documentTotal} tài liệu
@@ -50,12 +47,6 @@ export default function CoursesPage() {
             </ButtonLink>
           </div>
         </div>
-        <Mascot
-          state="happy"
-          size={72}
-          surface="color-on-phone"
-          className="absolute right-4 top-4 md:static"
-        />
         <ButtonLink href="/courses/new" className="hidden shrink-0 md:inline-flex">
           <Icon name="plus" size={16} />
           Tạo khóa học
@@ -98,7 +89,7 @@ export default function CoursesPage() {
       {data && data.courses.length > 0 && (
         <StaggerList
           as="ul"
-          stagger={Math.min(0.05, 0.4 / data.courses.length)}
+          stagger={Math.min(0.03, 0.25 / data.courses.length)}
           className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
         >
           {data.courses.map((course, index) => (
@@ -136,6 +127,12 @@ function fillerSpan(count: number) {
 
 const CARD_TONES: BlockTone[] = ['indigo', 'brand', 'amber'];
 
+const CARD_ICON: Record<BlockTone, string> = {
+  indigo: 'bg-block-ink text-white',
+  brand: 'bg-brand text-on-brand',
+  amber: 'bg-amber text-ink-on-color',
+};
+
 function CourseCard({ course, index }: { course: CourseSummary; index: number }) {
   const { completed, total } = course.progress;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -146,12 +143,18 @@ function CourseCard({ course, index }: { course: CourseSummary; index: number })
   return (
     <ColorBlock
       tone={tone}
-      flatOnDesktop
-      className="group flex h-full min-h-52 flex-col rounded-card p-6 transition-colors duration-150 md:min-h-44 md:rounded-card md:border md:border-line md:bg-panel md:p-5 md:shadow-card md:hover:border-line-strong"
+      softOnDesktop
+      className="group flex h-full min-h-52 flex-col rounded-card p-6 transition-colors duration-150 md:min-h-44 md:p-5 md:hover:shadow-raised"
     >
       {course.status === 'ARCHIVED' && (
         <Badge className="mb-2 self-start bg-panel">Đã lưu trữ</Badge>
       )}
+      <span
+        aria-hidden="true"
+        className={`mb-3 hidden size-10 place-items-center rounded-control md:grid ${CARD_ICON[tone]}`}
+      >
+        <Icon name="book-check" size={20} />
+      </span>
       <h2 className="line-clamp-2 font-display text-xl font-bold leading-snug md:text-[1.0625rem]">
         {/* Cả thẻ bấm được nhờ `after`; đường dẫn dùng chung cho hai khổ. */}
         <Link

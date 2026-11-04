@@ -30,8 +30,8 @@ export const DURATION = {
 
 /** Xuất hiện: mờ dần + nhích lên. Dùng cho thẻ, khối nội dung, hàng bảng. */
 export const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: DURATION.base, ease: EASE_OUT } },
+  hidden: { opacity: 0, y: 6 },
+  show: { opacity: 1, y: 0, transition: { duration: DURATION.fast, ease: EASE_OUT } },
 };
 
 /** Xuất hiện theo kiểu "bật ra" — dành riêng cho phản hồi tích cực. */
@@ -48,7 +48,7 @@ export const popIn: Variants = {
  * Container cho danh sách: các con lần lượt hiện ra, cách nhau `stagger` giây.
  * Giữ tổng thời gian dưới ~600ms, nên danh sách dài phải giảm `stagger`.
  */
-export function staggerContainer(stagger = 0.06): Variants {
+export function staggerContainer(stagger = 0.03): Variants {
   return {
     hidden: {},
     show: { transition: { staggerChildren: stagger } },
@@ -86,7 +86,7 @@ export function Reveal({
       initial="hidden"
       animate="show"
       variants={fadeUp}
-      transition={{ delay, duration: DURATION.base, ease: EASE_OUT }}
+      transition={{ delay, duration: DURATION.fast, ease: EASE_OUT }}
       className={className}
     >
       {children}
@@ -97,7 +97,7 @@ export function Reveal({
 /** Danh sách có hiệu ứng nối tiếp. Phần tử con bọc bằng `StaggerItem`. */
 export function StaggerList({
   children,
-  stagger = 0.06,
+  stagger = 0.03,
   className,
   as = 'div',
 }: {

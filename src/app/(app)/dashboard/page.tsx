@@ -131,7 +131,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {/* Hai cột cao bằng nhau: thẻ nào ít dữ liệu thì tự giãn, không để lại khoảng trống. */}
         <div className="flex min-w-0 flex-col">
           {/* ------------------------------------------------- khóa học */}
@@ -310,7 +310,7 @@ function ResumeCard({ course }: { course: ProgressCourse }) {
             <Icon name="arrow-right" size={16} />
           </ButtonLink>
         </div>
-        <Mascot state="happy" size={104} surface="ink" />
+        <Mascot state="happy" size={104} surface="ink" priority="companion" />
       </ColorBlock>
     </section>
   );

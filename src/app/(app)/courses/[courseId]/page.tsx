@@ -240,7 +240,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       <BackLink href="/courses" label="Khóa học" />
 
       {/* ------------------------------------------------ đầu trang */}
-      <ColorBlock tone="amber" flatOnDesktop className="mt-4 flex items-center gap-4 p-6">
+      <ColorBlock tone="amber" softOnDesktop className="mt-4 flex items-center gap-4 p-6">
         <header className="min-w-0 flex-1">
           <h1 className="pr-20 font-display text-[1.75rem] font-bold leading-tight md:pr-0 md:text-[2rem]">
             {course.data.title}
@@ -300,6 +300,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
           state={allDone ? 'proud' : 'idle'}
           size={72}
           surface="color-on-phone"
+          priority="companion"
           className="absolute right-4 top-4 md:static"
         />
       </ColorBlock>

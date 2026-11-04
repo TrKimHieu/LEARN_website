@@ -1,15 +1,16 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { claimMascot, currentMascot, subscribeMascot, type MascotRole } from './mascot-slot';
 import { cn } from '@/components/ui/cn';
 import { useTheme } from '@/lib/theme';
 
 /**
  * Mascot Circle — bản động từ Blob Studio (40 state, 25 biểu cảm).
  *
- * Vai trò người đồng hành: mỗi màn tối đa một mascot, ở đầu trang hoặc lời động viên. Thay cho
- * hình minh hoạ tĩnh (cúp, mũ, sách).
+ * Vai trò người đồng hành, thay cho hình minh hoạ tĩnh (cúp, mũ, sách). Mỗi màn chỉ hiện một mascot:
+ * `mascot-slot.ts` chọn cái được hiện, cái còn lại không render gì.
  *
  * HANDBOOK §13.1 `[SPEC]`: mascot chỉ dùng ở hero, empty state, tiến độ AI Job
  * và trạng thái lỗi — không đặt trong section kỹ thuật, không làm ảnh chờ cho
@@ -72,7 +73,7 @@ const BODY_DARK: [string, string, string] = ['#F1F1EE', '#E3E5EC', '#C9CCD8'];
  * - `page`: nền trang, đổi theo giao diện sáng/tối.
  * - `ink`: khối indigo ở cả hai giao diện.
  * - `color`: khối xanh dương hoặc amber ở cả hai giao diện.
- * - `color-on-phone`: khối màu trên điện thoại, nền trang trên website (ColorBlock `flatOnDesktop`).
+ * - `color-on-phone`: khối màu đậm trên điện thoại, nền nhạt trên website (ColorBlock `softOnDesktop`).
  */
 export type MascotSurface = 'page' | 'ink' | 'color' | 'color-on-phone';
 
@@ -84,7 +85,7 @@ function subscribePhone(onChange: () => void) {
   return () => media.removeEventListener('change', onChange);
 }
 
-function useIsPhone() {
+export function useIsPhone() {
   return useSyncExternalStore(
     subscribePhone,
     () => window.matchMedia(PHONE_QUERY).matches,
@@ -98,13 +99,19 @@ export function Mascot({
   surface = 'page',
   /** Ghim một biểu cảm cố định thay vì để nó tự đổi. */
   expression,
+  priority = 'state',
   className,
+  children,
 }: {
   state: MascotState;
   size?: number;
   expression?: number;
   surface?: MascotSurface;
+  /** `companion` nhường chỗ cho mascot báo trạng thái trên cùng màn. */
+  priority?: MascotRole;
   className?: string;
+  /** Hoạ tiết đi kèm, ẩn cùng mascot khi nó không được hiện. */
+  children?: React.ReactNode;
 }) {
   const { resolved } = useTheme();
   const isPhone = useIsPhone();
@@ -114,9 +121,15 @@ export function Mascot({
 
   // Chỉ nạp file vendor khi mascot sắp vào màn hình. Trước đó giữ một hình tròn đúng màu và đúng cỡ
   // nên không nhảy bố cục, và trang không phải tải mascot nằm dưới nếp gấp.
+  const id = useId();
+  useLayoutEffect(() => claimMascot(id, priority), [id, priority]);
+  const winner = useSyncExternalStore(subscribeMascot, currentMascot, () => null);
+  const shown = winner === null || winner === id;
+
   const box = useRef<HTMLSpanElement>(null);
   const [near, setNear] = useState(false);
   useEffect(() => {
+    if (!shown) return;
     const el = box.current;
     if (!el || typeof IntersectionObserver === 'undefined') {
       setNear(true);
@@ -133,13 +146,15 @@ export function Mascot({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [shown]);
+
+  if (!shown) return null;
 
   return (
     <span
       ref={box}
       aria-hidden="true"
-      className={cn('inline-block shrink-0 select-none', className)}
+      className={cn('relative inline-block shrink-0 select-none', className)}
       style={{ width: size, height: size, color: body[1] }}
     >
       {near ? (
@@ -154,6 +169,7 @@ export function Mascot({
       ) : (
         <span className="block size-full rounded-full bg-current" />
       )}
+      {children}
     </span>
   );
 }

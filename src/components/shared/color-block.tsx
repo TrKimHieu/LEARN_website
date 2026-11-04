@@ -11,16 +11,22 @@ const TONE: Record<BlockTone, string> = {
   indigo: 'bg-block-ink text-white',
 };
 
+const SOFT: Record<BlockTone, string> = {
+  brand: 'md:bg-brand-soft md:text-fg',
+  amber: 'md:bg-amber-soft md:text-fg',
+  indigo: 'md:bg-muted md:text-fg',
+};
+
 /** Khối màu lớn: đầu trang và thẻ nổi bật. Đường cong mờ phía sau chỉ để trang trí. */
 export function ColorBlock({
   tone,
-  flatOnDesktop = false,
+  softOnDesktop = false,
   className,
   children,
 }: {
   tone: BlockTone;
-  /** Khối màu chỉ hợp màn hẹp, trên website trở thành đầu trang phẳng. */
-  flatOnDesktop?: boolean;
+  /** Màu đậm hợp màn hẹp. Trên website dùng nền nhạt cùng tông, để bề mặt lớn không gắt. */
+  softOnDesktop?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -29,7 +35,7 @@ export function ColorBlock({
       className={cn(
         'relative isolate overflow-hidden rounded-panel',
         TONE[tone],
-        flatOnDesktop && 'md:overflow-visible md:rounded-none md:bg-transparent md:p-0 md:text-fg',
+        softOnDesktop && SOFT[tone],
         className,
       )}
     >
@@ -37,10 +43,7 @@ export function ColorBlock({
         aria-hidden="true"
         viewBox="0 0 400 240"
         preserveAspectRatio="none"
-        className={cn(
-          'pointer-events-none absolute inset-0 -z-10 h-full w-full opacity-[0.14]',
-          flatOnDesktop && 'md:hidden',
-        )}
+        className="pointer-events-none absolute inset-0 -z-10 h-full w-full opacity-[0.14] md:opacity-[0.07]"
       >
         <path
           d="M-20 200C60 120 120 260 200 170S300 20 420 70"
@@ -88,7 +91,7 @@ export function CircleArrowLink({
 }
 
 /**
- * Thẻ một con số. Điện thoại: viền màu, góc tô đậm giữ icon, số lớn ở giữa. Website: thẻ trắng gọn,
+ * Thẻ một con số. Điện thoại: viền màu, góc tô đậm giữ icon, số lớn ở giữa. Website: thẻ nền nhạt gọn,
  * icon nhỏ cạnh nhãn, số canh trái để đọc lướt theo hàng.
  */
 export function StatTile({
@@ -103,7 +106,7 @@ export function StatTile({
   sub?: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-card border-[1.5px] border-brand bg-brand-soft p-4 md:flex md:flex-col md:gap-3 md:border md:border-line md:bg-panel md:shadow-card">
+    <div className="relative overflow-hidden rounded-card border-[1.5px] border-brand bg-brand-soft p-4 md:flex md:flex-col md:gap-3 md:border-transparent">
       <span
         aria-hidden="true"
         className="absolute -left-3 -top-3 grid size-16 place-items-center rounded-full bg-brand pl-2 pt-2 text-on-brand md:static md:size-8 md:rounded-lg md:p-0"

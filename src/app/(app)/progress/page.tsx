@@ -247,7 +247,7 @@ function CompanionNote({
   }
   return (
     <div className="mt-auto flex items-center gap-3 pt-5">
-      <Mascot state={state} size={72} />
+      <Mascot state={state} size={72} priority="companion" />
       <p className="min-w-0 flex-1 rounded-card bg-muted px-4 py-3 text-sm leading-relaxed text-fg-muted">
         {text}
       </p>

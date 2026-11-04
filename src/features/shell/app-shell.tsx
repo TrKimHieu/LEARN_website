@@ -37,11 +37,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const mobileItems = navItemsFor(user?.role);
   const wide = pathname.startsWith('/admin');
   const workspace = pathname.endsWith('/practice');
-  // max-w-5xl: dòng chữ và lưới hẹp lại, khoảng trắng hai bên lớn hơn (ADR 013). Admin giữ
-  // rộng cho bảng nhiều cột.
+  // max-w-6xl (1152px) cho màn laptop trở lên. Admin rộng hơn cho bảng nhiều cột.
   const container = cn(
     'mx-auto w-full px-5 sm:px-8',
-    workspace ? 'max-w-[88rem]' : wide ? 'max-w-6xl' : 'max-w-5xl',
+    workspace ? 'max-w-[88rem]' : wide ? 'max-w-7xl' : 'max-w-6xl',
   );
 
   return (

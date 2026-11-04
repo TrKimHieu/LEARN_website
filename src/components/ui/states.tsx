@@ -94,12 +94,11 @@ export function EmptyState({
   return (
     <Card className={cn('flex flex-col items-center px-6 py-14 text-center', className)}>
       {/* ADR 018: hai sao bốn cánh quanh mascot — hoạ tiết duy nhất được phép trong thẻ. */}
-      <span className="relative">
-        <Mascot state={mascot} size={88} />
+      <Mascot state={mascot} size={88}>
         <Sparkle size={18} twinkle={0} className="absolute -right-6 -top-1" />
         <Sparkle size={10} twinkle={2200} className="absolute -left-4 top-8 opacity-70" />
-      </span>
-      <p className="mt-6 font-display text-[1.75rem] font-semibold leading-tight text-fg">
+      </Mascot>
+      <p className="mt-6 first:mt-0 font-display text-[1.75rem] font-semibold leading-tight text-fg">
         {title}
       </p>
       {description && (
@@ -142,7 +141,7 @@ export function ErrorState({
       className={cn('flex flex-col items-center border-bad-line px-6 py-12 text-center', className)}
     >
       <Mascot state="alerting" size={88} />
-      <p className="mt-5 flex items-center gap-1.5 text-base font-semibold text-bad">
+      <p className="mt-5 flex items-center gap-1.5 text-base font-semibold text-bad first:mt-0">
         <Icon name="alert" size={17} />
         {title}
       </p>
