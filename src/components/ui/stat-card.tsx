@@ -4,20 +4,20 @@ import { Icon, type IconName } from './icon';
 export type StatTone = 'sky' | 'mint' | 'lemon' | 'peach' | 'success' | 'warning' | 'neutral';
 
 // Màu của icon đứng một mình (ADR 014: không ô nền quanh icon) — điểm màu duy nhất của một ô
-// số liệu. Dùng bậc `on-pastel-*` (đã đo ≥ 4.98:1). `success`/`warning` giữ để tương thích.
+// số liệu. `success`/`warning` giữ để tương thích.
 const TINT: Record<StatTone, string> = {
-  sky: 'text-on-pastel-sky',
-  mint: 'text-on-pastel-mint',
-  success: 'text-on-pastel-mint',
-  lemon: 'text-on-pastel-lemon',
-  warning: 'text-on-pastel-lemon',
-  peach: 'text-on-pastel-peach',
+  sky: 'text-accent',
+  mint: 'text-ok',
+  success: 'text-ok',
+  lemon: 'text-warn',
+  warning: 'text-warn',
+  peach: 'text-bad',
   neutral: 'text-fg-muted',
 };
 
 /**
  * Một con số — ADR 012/013. Không thẻ riêng: số liệu đặt trong `StatStrip` hoặc lưới trần.
- * `icon` tuỳ chọn đứng một mình cạnh nhãn, tô màu pastel đậm — màu giúp phân biệt các chỉ số
+ * `icon` tuỳ chọn đứng một mình cạnh nhãn, có màu — màu giúp phân biệt các chỉ số
  * khi lướt mắt, nghĩa vẫn nằm ở nhãn chữ. Chỉ dùng số thật.
  */
 export function StatCard({

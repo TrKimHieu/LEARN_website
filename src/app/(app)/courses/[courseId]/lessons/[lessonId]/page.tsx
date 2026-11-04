@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useLesson,
@@ -11,6 +11,7 @@ import {
 } from '@/features/learning/learning-api';
 import { LessonSources, LowConfidenceNotice } from '@/features/learning/lesson-sources';
 import { renderMarkdown, type TocEntry } from '@/components/shared/markdown';
+import { isEndReached } from '@/features/learning/reading-progress';
 import {
   BackLink,
   Badge,
@@ -71,6 +72,25 @@ export default function LessonReadPage({
   const [saveError, setSaveError] = useState<unknown>(null);
   const [deleteError, setDeleteError] = useState<unknown>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /** Đọc tới cuối bài mới mở bài tập; người đã làm bài rồi thì không phải đọc lại. */
+  const endMarker = useRef<HTMLDivElement>(null);
+  const [reachedEnd, setReachedEnd] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      const marker = endMarker.current;
+      if (marker && isEndReached(marker.getBoundingClientRect().top, window.innerHeight)) {
+        setReachedEnd(true);
+      }
+    };
+    check();
+    window.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check);
+    return () => {
+      window.removeEventListener('scroll', check);
+      window.removeEventListener('resize', check);
+    };
+  }, [lesson.data, editing]);
 
   const titleTooShort = draftTitle.trim().length < TITLE_MIN;
 
@@ -200,7 +220,7 @@ export default function LessonReadPage({
               {STATUS_LABEL[status] ?? humanizeCode(status)}
             </Badge>
           </div>
-          <h1 className="mt-2 font-display text-[2.375rem] font-semibold leading-[1.08] text-fg sm:text-[3.125rem]">
+          <h1 className="mt-2 font-display text-[1.75rem] font-semibold leading-[1.15] text-fg sm:text-[2rem]">
             {data.title}
           </h1>
           {data.summary && !editing && (
@@ -369,10 +389,12 @@ export default function LessonReadPage({
           />
         )}
 
+        <div ref={endMarker} aria-hidden="true" />
+
         {/* --------------------------------- thanh hành động dính đáy */}
         {!editing && (
-          <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-10 mt-12 lg:bottom-4">
-            <div className="flex items-center gap-2 rounded-card border border-line bg-panel/90 p-2 shadow-overlay backdrop-blur-xl">
+          <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 mt-12 lg:bottom-4">
+            <div className="flex items-center gap-2 rounded-card border border-line bg-panel p-2 shadow-overlay">
               {position?.prev ? (
                 <ButtonLink
                   href={`/courses/${courseId}/lessons/${position.prev.id}`}
@@ -385,9 +407,7 @@ export default function LessonReadPage({
                   <span className="hidden truncate sm:inline">{position.prev.title}</span>
                 </ButtonLink>
               ) : (
-                <p className="hidden pl-2 text-sm font-medium text-fg-subtle sm:block">
-                  Đọc xong? Kiểm tra lại bằng bài tập.
-                </p>
+                <span />
               )}
 
               <div className="ml-auto flex min-w-0 items-center gap-2">
@@ -403,10 +423,16 @@ export default function LessonReadPage({
                     <Icon name="arrow-right" size={16} />
                   </ButtonLink>
                 )}
-                <ButtonLink href={`/courses/${courseId}/lessons/${lessonId}/practice`}>
-                  <Icon name="target" size={17} />
-                  Làm bài tập
-                </ButtonLink>
+                {reachedEnd || data.progress.bestScore !== null ? (
+                  <ButtonLink href={`/courses/${courseId}/lessons/${lessonId}/practice`}>
+                    <Icon name="target" size={17} />
+                    Làm bài tập
+                  </ButtonLink>
+                ) : (
+                  <p className="whitespace-nowrap px-3 text-sm font-medium text-fg-subtle" role="status">
+                    Đọc hết bài để làm bài tập
+                  </p>
+                )}
               </div>
             </div>
           </div>

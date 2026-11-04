@@ -33,7 +33,7 @@ export function LogoMark({
       aria-hidden="true"
       focusable="false"
     >
-      <circle cx="50" cy="50" r="50" className="fill-lam-900 dark:fill-lam-200" />
+      <circle cx="50" cy="50" r="50" className="fill-block-ink" />
       <ellipse cx="35.5" cy="43" rx="6.5" ry="9.5" className="fill-app" />
       <ellipse cx="64.5" cy="43" rx="6.5" ry="9.5" className="fill-app" />
       <path

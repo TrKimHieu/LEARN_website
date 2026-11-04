@@ -4,6 +4,8 @@ import { use, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/api-contracts';
 import { useExercise, useLessons, useSubmitExercise } from '@/features/learning/learning-api';
+import { LessonSplit } from '@/features/learning/lesson-split';
+import { useCourse } from '@/features/courses/courses-api';
 import { useQueryParam } from '@/lib/url-state';
 import { Mascot } from '@/components/shared/mascot';
 import {
@@ -76,9 +78,9 @@ function describeGivenAnswer(question: Question, answer: Answer | undefined): st
 
 /** Thanh hành động dính đáy — nằm trên thanh tab mobile, sát đáy từ `lg`. */
 const STICKY_BAR =
-  'sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-10 mt-8 lg:bottom-4';
+  'sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 mt-8 lg:bottom-4';
 const STICKY_PANEL =
-  'flex items-center gap-4 rounded-card border border-line bg-panel/90 shadow-overlay backdrop-blur-xl';
+  'flex items-center gap-4 rounded-card border border-line bg-panel shadow-overlay';
 
 export default function PracticePage({
   params,
@@ -89,6 +91,7 @@ export default function PracticePage({
   // Bài tập đang mở sống trong URL: F5 hay gửi link vẫn đúng bài tập (UX-UI-PRINCIPLES §12).
   const [exerciseParam, setExerciseParam] = useQueryParam('exercise');
   const exercise = useExercise(lessonId, exerciseParam);
+  const course = useCourse(courseId);
   usePageTitle(exercise.data?.title ?? 'Bài tập');
   const backToLesson = `/courses/${courseId}/lessons/${lessonId}`;
 
@@ -133,18 +136,20 @@ export default function PracticePage({
   if (!data) return null;
 
   return (
-    // `key`: đổi bài tập là một phiên làm bài mới, câu trả lời của bài trước không được sót lại.
-    <ExerciseSession
-      key={data.id}
-      courseId={courseId}
-      lessonId={lessonId}
-      data={data}
-      backToLesson={backToLesson}
-      onOpenExercise={(id) => {
-        setExerciseParam(id);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }}
-    />
+    <LessonSplit courseId={courseId} courseTitle={course.data?.title} lessonId={lessonId}>
+      {/* `key`: đổi bài tập là một phiên làm bài mới, câu trả lời của bài trước không được sót lại. */}
+      <ExerciseSession
+        key={data.id}
+        courseId={courseId}
+        lessonId={lessonId}
+        data={data}
+        backToLesson={backToLesson}
+        onOpenExercise={(id) => {
+          setExerciseParam(id);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+    </LessonSplit>
   );
 }
 
@@ -250,8 +255,6 @@ function ExerciseSession({
 
   return (
     <section className="mx-auto max-w-2xl">
-      <BackLink href={backToLesson} label="Về bài học" />
-
       <ExercisePicker data={data} onOpen={onOpenExercise} className="mt-6" />
 
       <header className="mt-6">
@@ -261,7 +264,7 @@ function ExerciseSession({
             : 'Bài tập'}
           {` · ${total} câu, cần ${data.passScore} điểm để qua`}
         </p>
-        <h1 className="mt-1 font-display text-[2.375rem] font-semibold leading-[1.08] text-fg sm:text-[3.125rem]">
+        <h1 className="mt-1 font-display text-[1.75rem] font-semibold leading-[1.15] text-fg sm:text-[2rem]">
           {data.title ?? 'Bài tập'}
         </h1>
         {data.instruction && (
@@ -395,10 +398,10 @@ function ExercisePicker({
 /* ------------------------------------------------------------ làm bài */
 
 const OPTION_ROW =
-  'group/opt flex min-h-12 cursor-pointer items-center gap-3 rounded-control border border-line ' +
-  'bg-panel px-4 py-3 text-[0.9375rem] transition-[border-color,background-color,box-shadow] duration-200 ' +
-  'hover:border-accent-line hover:bg-panel-2 ' +
-  'has-[:checked]:border-fg has-[:checked]:bg-muted has-[:checked]:shadow-[0_0_0_1px_var(--fg)] ' +
+  'tactile group/opt mb-1 flex min-h-12 cursor-pointer items-center gap-3 rounded-control border-[1.5px] border-line-strong ' +
+  '[--edge:var(--line-strong)] bg-panel px-4 py-3 text-[0.9375rem] ' +
+  'hover:border-accent hover:bg-panel-2 ' +
+  'has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:[--edge:var(--brand)] ' +
   'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-fg';
 
 function LetterChip({ children }: { children: React.ReactNode }) {
@@ -615,7 +618,9 @@ function ResultScreen({
 
           return (
             <li key={q.id}>
-              <Card className={isCorrect ? 'border-ok-line' : blank ? 'border-line' : 'border-bad-line'}>
+              <Card
+                className={isCorrect ? 'border-ok-line' : blank ? 'border-line' : 'border-bad-line'}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-semibold leading-relaxed text-fg">
                     Câu {i + 1}. {q.prompt}

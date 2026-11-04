@@ -16,7 +16,7 @@ export function Avatar({ name, className }: { name?: string | null; className?: 
     <span
       aria-hidden
       className={cn(
-        'grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-sm font-semibold text-fg',
+        'grid size-8 shrink-0 place-items-center rounded-full bg-amber-soft text-sm font-semibold text-fg',
         className,
       )}
     >
@@ -70,7 +70,7 @@ export function UserMenu() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 cursor-pointer items-center gap-1.5 rounded-control pl-0.5 pr-1.5 transition-colors hover:bg-muted focus-ring"
+        className="flex h-11 cursor-pointer md:h-10 items-center gap-1.5 rounded-pill border border-line bg-panel py-1 pl-1 pr-2 md:border-transparent md:bg-transparent md:hover:bg-muted transition-colors hover:bg-muted focus-ring"
       >
         <Avatar name={user?.displayName} />
         <Icon
@@ -89,7 +89,7 @@ export function UserMenu() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -2, transition: { duration: 0.1 } }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-11 z-50 w-72 rounded-card border border-line bg-panel p-1.5 shadow-overlay"
+            className="absolute right-0 top-[3.25rem] md:top-12 z-50 w-72 rounded-card border border-line bg-panel p-1.5 shadow-overlay"
           >
             <div className="px-2.5 pb-3 pt-2">
               <p className="truncate text-sm font-semibold text-fg">{user?.displayName}</p>

@@ -1,11 +1,15 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { cn } from '@/components/ui/cn';
 import { useTheme } from '@/lib/theme';
 
 /**
  * Mascot Circle — bản động từ Blob Studio (40 state, 25 biểu cảm).
+ *
+ * Vai trò người đồng hành: mỗi màn tối đa một mascot, ở đầu trang hoặc lời động viên. Thay cho
+ * hình minh hoạ tĩnh (cúp, mũ, sách).
  *
  * HANDBOOK §13.1 `[SPEC]`: mascot chỉ dùng ở hero, empty state, tiến độ AI Job
  * và trạng thái lỗi — không đặt trong section kỹ thuật, không làm ảnh chờ cho
@@ -45,27 +49,53 @@ export type MascotState =
  */
 const CircleAvatar = dynamic(() => import('./mascot/CircleAvatar'), {
   ssr: false,
-  loading: () => null,
+  // Giữ hình tròn trong lúc tải file vendor, màu lấy từ `color` của khung mascot.
+  loading: () => <span className="block size-full rounded-full bg-current" />,
 });
 
 /**
- * Màu mascot — ADR 018 (lam học thuật; trước là trắng/đen, ADR 015).
+ * Màu mascot.
  *
- * Tông sáng: thân navy `lam-900`, mắt + miệng trắng. Tông tối: thân lam nhạt `lam-200`, mặt navy
- * — thân navy chìm trên nền đêm navy. Vendor nhận `gradient` 3 điểm dừng: navy → coban nhẹ cho
- * thân có chiều sâu như dải sóng nền, không phải sửa file vendor (ADR 006).
+ * Tông sáng: thân indigo, mắt + miệng trắng. Tông tối: thân trắng ngà, mặt indigo, vì thân tối sẽ
+ * chìm trên nền tối. Vendor nhận `gradient` 3 điểm dừng nên không phải sửa file vendor (ADR 006).
  *
  * `effects={false}`: hiệu ứng của vendor (vệt sao chổi, pháo giấy quanh mascot) chạy qua nhiều
- * hue ngoài bảng màu. Pháo giấy khi qua bài ở `lib/celebrate.ts` dùng thang lam.
+ * hue ngoài bảng màu. Pháo giấy khi qua bài ở `lib/celebrate.ts` dùng bảng màu giao diện.
  */
-const NAVY = '#18286A';
+const NAVY = '#2D3142';
 const WHITE = '#FFFFFF';
-const BODY_LIGHT: [string, string, string] = ['#2C49B0', NAVY, '#0E1745'];
-const BODY_DARK: [string, string, string] = ['#EEF2FB', '#D6E0F7', '#B5C6F0'];
+const BODY_LIGHT: [string, string, string] = ['#3A4058', '#2D3142', '#181A27'];
+const BODY_DARK: [string, string, string] = ['#F1F1EE', '#E3E5EC', '#C9CCD8'];
+
+/**
+ * Nền phía sau mascot, vì thân tối sẽ chìm trên nền tối.
+ * - `page`: nền trang, đổi theo giao diện sáng/tối.
+ * - `ink`: khối indigo ở cả hai giao diện.
+ * - `color`: khối xanh dương hoặc amber ở cả hai giao diện.
+ * - `color-on-phone`: khối màu trên điện thoại, nền trang trên website (ColorBlock `flatOnDesktop`).
+ */
+export type MascotSurface = 'page' | 'ink' | 'color' | 'color-on-phone';
+
+const PHONE_QUERY = '(max-width: 767.98px)';
+
+function subscribePhone(onChange: () => void) {
+  const media = window.matchMedia(PHONE_QUERY);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+}
+
+function useIsPhone() {
+  return useSyncExternalStore(
+    subscribePhone,
+    () => window.matchMedia(PHONE_QUERY).matches,
+    () => false,
+  );
+}
 
 export function Mascot({
   state,
   size = 96,
+  surface = 'page',
   /** Ghim một biểu cảm cố định thay vì để nó tự đổi. */
   expression,
   className,
@@ -73,24 +103,57 @@ export function Mascot({
   state: MascotState;
   size?: number;
   expression?: number;
+  surface?: MascotSurface;
   className?: string;
 }) {
   const { resolved } = useTheme();
-  const dark = resolved === 'dark';
+  const isPhone = useIsPhone();
+  const onColor = surface === 'color' || (surface === 'color-on-phone' && isPhone);
+  const dark = surface === 'ink' || (!onColor && resolved === 'dark');
+  const body = dark ? BODY_DARK : BODY_LIGHT;
+
+  // Chỉ nạp file vendor khi mascot sắp vào màn hình. Trước đó giữ một hình tròn đúng màu và đúng cỡ
+  // nên không nhảy bố cục, và trang không phải tải mascot nằm dưới nếp gấp.
+  const box = useRef<HTMLSpanElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setNear(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setNear(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <span
+      ref={box}
       aria-hidden="true"
       className={cn('inline-block shrink-0 select-none', className)}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, color: body[1] }}
     >
-      <CircleAvatar
-        state={state}
-        size={size}
-        expression={expression}
-        gradient={dark ? BODY_DARK : BODY_LIGHT}
-        eyeColor={dark ? NAVY : WHITE}
-        effects={false}
-      />
+      {near ? (
+        <CircleAvatar
+          state={state}
+          size={size}
+          expression={expression}
+          gradient={body}
+          eyeColor={dark ? NAVY : WHITE}
+          effects={false}
+        />
+      ) : (
+        <span className="block size-full rounded-full bg-current" />
+      )}
     </span>
   );
 }

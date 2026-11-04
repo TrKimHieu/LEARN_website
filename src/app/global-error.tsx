@@ -27,8 +27,8 @@ export default function GlobalError({
           alignItems: 'center',
           justifyContent: 'center',
           fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-          background: '#080c24',
-          color: '#eef1fc',
+          background: '#16171f',
+          color: '#f1f1ee',
           padding: '1rem',
         }}
       >
@@ -40,7 +40,7 @@ export default function GlobalError({
               height: '3.5rem',
               margin: '0 auto',
               borderRadius: '9999px',
-              background: '#d6e0f7',
+              background: '#2f66e8',
             }}
           />
           <h1
@@ -53,7 +53,7 @@ export default function GlobalError({
           >
             Ứng dụng gặp lỗi nghiêm trọng
           </h1>
-          <p style={{ marginTop: '0.5rem', color: '#97a2cd', fontSize: '0.875rem' }}>
+          <p style={{ marginTop: '0.5rem', color: '#a7abba', fontSize: '0.875rem' }}>
             Vui lòng tải lại trang. Nếu vẫn lỗi, quay lại sau ít phút.
           </p>
           {error.digest && (
@@ -63,9 +63,9 @@ export default function GlobalError({
                 marginTop: '0.75rem',
                 padding: '0.25rem 0.5rem',
                 borderRadius: '0.375rem',
-                background: '#182046',
+                background: '#2a2d3a',
                 fontSize: '0.75rem',
-                color: '#97a2cd',
+                color: '#a7abba',
               }}
             >
               {error.digest}
@@ -80,8 +80,8 @@ export default function GlobalError({
                 padding: '0 1.5rem',
                 borderRadius: '0.5rem',
                 border: 'none',
-                background: '#d6e0f7',
-                color: '#0e1745',
+                background: '#2f66e8',
+                color: '#ffffff',
                 fontWeight: 500,
                 fontSize: '0.875rem',
                 cursor: 'pointer',

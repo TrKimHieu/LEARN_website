@@ -4,43 +4,63 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CourseSummary } from '@learn/api-contracts';
 import { useCourses } from '@/features/courses/courses-api';
-import { CourseCover } from '@/components/shared/course-cover';
 import {
   Badge,
   ButtonLink,
   EmptyState,
   ErrorState,
   Icon,
-  PageHeader,
   ProgressBar,
   Skeleton,
 } from '@/components/ui';
 import { StaggerItem, StaggerList } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
+import { ColorBlock, type BlockTone } from '@/components/shared/color-block';
+import { Mascot } from '@/components/shared/mascot';
 
 export default function CoursesPage() {
   usePageTitle('Khóa học');
   const router = useRouter();
   const { data, isLoading, isError, error, refetch, isRefetching } = useCourses();
   const count = data?.courses.length ?? 0;
+  const documentTotal = data?.courses.reduce((sum, c) => sum + c.documentCount, 0) ?? 0;
 
   return (
     <>
-      <PageHeader
-        title="Khóa học"
-        description={
-          count > 0
-            ? `${count} khóa học. Mỗi khóa gom tài liệu nguồn và lộ trình bài học sinh từ đó.`
-            : 'Mỗi khóa gom tài liệu nguồn và lộ trình bài học sinh từ đó.'
-        }
-        action={
-          <ButtonLink href="/courses/new">
-            <Icon name="plus" size={16} />
-            Tạo khóa học
-          </ButtonLink>
-        }
-      />
+      <ColorBlock tone="brand" flatOnDesktop className="mb-8 flex items-center gap-4 p-6">
+        <div className="min-w-0 flex-1">
+          <h1 className="pr-20 font-display text-[2rem] font-bold leading-tight md:pr-0">
+            Khóa học của tôi
+          </h1>
+          {/* Website: một dòng số liệu. Điện thoại: các viên số liệu trong khối màu. */}
+          <p className="mt-1 hidden text-sm text-fg-subtle md:block">
+            {count} khóa học · {documentTotal} tài liệu
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2 md:hidden">
+            <span className="inline-flex h-11 items-center rounded-pill bg-block-ink px-5 text-sm font-semibold text-white">
+              <span className="tabular-nums">{count}</span>&nbsp;khóa học
+            </span>
+            <span className="inline-flex h-11 items-center rounded-pill bg-white px-5 text-sm font-semibold text-ink-on-color">
+              <span className="tabular-nums">{documentTotal}</span>&nbsp;tài liệu
+            </span>
+            <ButtonLink href="/courses/new" variant="secondary">
+              <Icon name="plus" size={16} />
+              Tạo khóa học
+            </ButtonLink>
+          </div>
+        </div>
+        <Mascot
+          state="happy"
+          size={72}
+          surface="color-on-phone"
+          className="absolute right-4 top-4 md:static"
+        />
+        <ButtonLink href="/courses/new" className="hidden shrink-0 md:inline-flex">
+          <Icon name="plus" size={16} />
+          Tạo khóa học
+        </ButtonLink>
+      </ColorBlock>
 
       {isLoading && (
         <ul
@@ -79,13 +99,25 @@ export default function CoursesPage() {
         <StaggerList
           as="ul"
           stagger={Math.min(0.05, 0.4 / data.courses.length)}
-          className="grid gap-x-6 gap-y-8 sm:grid-cols-2 xl:grid-cols-3"
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
         >
-          {data.courses.map((course) => (
+          {data.courses.map((course, index) => (
             <StaggerItem as="li" key={course.id}>
-              <CourseCard course={course} />
+              <CourseCard course={course} index={index} />
             </StaggerItem>
           ))}
+          <StaggerItem as="li" className={fillerSpan(data.courses.length)}>
+            <Link
+              href="/courses/new"
+              className="flex h-full min-h-44 flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line-strong p-5 text-center transition-colors duration-150 hover:border-brand focus-ring"
+            >
+              <Icon name="plus" size={20} className="text-fg-muted" />
+              <span className="text-sm font-semibold text-fg">Tạo khóa học</span>
+              <span className="text-[0.8125rem] text-fg-subtle">
+                Tải tài liệu lên để AI sinh bài học
+              </span>
+            </Link>
+          </StaggerItem>
         </StaggerList>
       )}
     </>
@@ -93,48 +125,49 @@ export default function CoursesPage() {
 }
 
 /**
- * Thẻ khóa học — ADR 012: không viền + bóng quanh cả thẻ. Bìa là vật thể, chữ nằm ngay
- * dưới trên nền trang (như bìa sách + tên sách), nên lưới đọc thành một kệ chứ không phải
- * một bảng ô vuông. Trạng thái "Nháp" chỉ hiện khi khác thường — "Sẵn sàng" là mặc định,
- * gắn nhãn cho nó ở mọi thẻ chỉ là nhiễu.
+ * Ô "Tạo khóa học" chiếm hết chỗ còn lại của hàng cuối, để lưới website không có ô trống.
+ * Điện thoại đã có nút tạo trong khối màu nên ẩn ô này. Lưới: 2 cột từ `md`, 3 cột từ `xl`.
  */
-function CourseCard({ course }: { course: CourseSummary }) {
+function fillerSpan(count: number) {
+  const md = count % 2 === 0 ? 'md:col-span-2' : 'md:col-span-1';
+  const xl = ['xl:col-span-3', 'xl:col-span-2', 'xl:col-span-1'][count % 3];
+  return `hidden md:block ${md} ${xl}`;
+}
+
+const CARD_TONES: BlockTone[] = ['indigo', 'brand', 'amber'];
+
+function CourseCard({ course, index }: { course: CourseSummary; index: number }) {
   const { completed, total } = course.progress;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const tone = CARD_TONES[index % CARD_TONES.length]!;
+  const soft =
+    tone === 'amber' ? 'text-ink-on-color/80' : tone === 'brand' ? 'text-white' : 'text-white/80';
 
   return (
-    <Link href={`/courses/${course.id}`} className="group block rounded-card focus-ring">
-      <div className="relative overflow-hidden rounded-card border border-line">
-        <CourseCover
-          id={course.id}
-          title={course.title}
-          className="aspect-[16/9] transition-transform duration-300 ease-out-quint group-hover:scale-[1.02]"
-        />
-        {course.status === 'ARCHIVED' && (
-          <Badge className="absolute left-3 top-3 bg-panel">Đã lưu trữ</Badge>
-        )}
-        {total > 0 && (
-          <ProgressBar
-            size="xs"
-            value={completed}
-            max={total}
-            tone={percent === 100 ? 'success' : 'sky'}
-            label={`${course.title}: ${completed} trên ${total} bài`}
-            className="absolute inset-x-0 bottom-0 rounded-none bg-black/10 dark:bg-white/10"
-          />
-        )}
-      </div>
-
-      <div className="mt-3 px-0.5">
-        <h2 className="line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-fg group-hover:underline group-hover:decoration-line-strong group-hover:underline-offset-4">
+    <ColorBlock
+      tone={tone}
+      flatOnDesktop
+      className="group flex h-full min-h-52 flex-col rounded-card p-6 transition-colors duration-150 md:min-h-44 md:rounded-card md:border md:border-line md:bg-panel md:p-5 md:shadow-card md:hover:border-line-strong"
+    >
+      {course.status === 'ARCHIVED' && (
+        <Badge className="mb-2 self-start bg-panel">Đã lưu trữ</Badge>
+      )}
+      <h2 className="line-clamp-2 font-display text-xl font-bold leading-snug md:text-[1.0625rem]">
+        {/* Cả thẻ bấm được nhờ `after`; đường dẫn dùng chung cho hai khổ. */}
+        <Link
+          href={`/courses/${course.id}`}
+          className="rounded-sm outline-none after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 md:group-hover:underline"
+        >
           {course.title}
-        </h2>
-        {course.description && (
-          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-fg-subtle">
-            {course.description}
-          </p>
-        )}
-        <p className="mt-2 text-[0.8125rem] text-fg-subtle">
+        </Link>
+      </h2>
+      {course.description && (
+        <p className={`mt-1 line-clamp-2 text-sm leading-relaxed md:text-fg-subtle ${soft}`}>
+          {course.description}
+        </p>
+      )}
+      <div className="mt-auto flex items-end justify-between gap-3 pt-6 md:pt-4">
+        <p className={`text-[0.8125rem] font-medium md:text-fg-subtle ${soft}`}>
           {total > 0 ? (
             <>
               <span className="tabular-nums">
@@ -148,7 +181,25 @@ function CourseCard({ course }: { course: CourseSummary }) {
           {' · '}
           {course.documentCount} tài liệu
         </p>
+        <span
+          aria-hidden="true"
+          className={`grid size-12 shrink-0 place-items-center rounded-full md:hidden ${
+            tone === 'amber' ? 'bg-block-ink text-white' : 'bg-white text-ink-on-color'
+          }`}
+        >
+          <Icon name="arrow-right" size={20} />
+        </span>
       </div>
-    </Link>
+      {total > 0 && (
+        <ProgressBar
+          size="xs"
+          value={completed}
+          max={total}
+          tone={percent === 100 ? 'success' : 'sky'}
+          label={`${course.title}: ${completed} trên ${total} bài`}
+          className="mt-3 hidden md:block"
+        />
+      )}
+    </ColorBlock>
   );
 }

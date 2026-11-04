@@ -3,7 +3,7 @@ import { Icon, type IconName } from './icon';
 
 export type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 
-// Viên thuốc pastel, không viền — ADR 013. Chữ thường 12px (không in hoa giãn chữ:
+// Viên thuốc pastel, không viền — ADR 013. Chữ thường 13px (không in hoa giãn chữ:
 // tiếng Việt có dấu viết hoa ở cỡ nhỏ khó đọc). Mọi cặp chữ/nền đã đo ≥ 4.98:1.
 const TONES: Record<BadgeTone, string> = {
   neutral: 'bg-muted text-fg-muted',

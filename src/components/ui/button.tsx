@@ -19,26 +19,28 @@ type Variant = 'primary' | 'secondary' | 'soft' | 'ghost' | 'danger' | 'outline'
 type Size = 'sm' | 'md' | 'lg';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-primary-fg hover:bg-primary-hover focus-ring',
+  primary:
+    'tactile mb-1 [--edge:var(--primary-edge)] bg-primary text-primary-fg hover:bg-primary-hover focus-ring',
   secondary:
-    'bg-panel text-fg border border-line-strong hover:bg-muted hover:border-line-input focus-ring',
+    'tactile mb-1 [--edge:var(--line-strong)] bg-panel text-fg border border-line-strong hover:bg-panel-2 focus-ring',
   soft: 'bg-muted text-fg hover:bg-line focus-ring',
   ghost: 'bg-transparent text-fg-muted hover:bg-muted hover:text-fg focus-ring',
-  danger: 'bg-panel text-fg border-2 border-fg hover:bg-muted focus-ring',
+  danger:
+    'tactile mb-1 [--edge:var(--bad-line)] bg-bad-soft text-bad border border-bad-line hover:bg-bad-soft focus-ring',
   outline: 'border border-white/25 text-white hover:bg-white/10 focus-ring-dark',
-  link: 'h-auto px-0 text-accent underline underline-offset-4 decoration-accent/40 hover:decoration-accent focus-ring',
+  link: 'h-auto px-0 text-accent underline underline-offset-4 decoration-accent/40 hover:decoration-accent focus-ring after:absolute after:inset-x-0 after:-inset-y-3 md:after:content-none',
 };
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[0.8125rem] gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2',
-  lg: 'h-11 px-5 text-[0.9375rem] gap-2',
+  sm: 'h-11 md:h-9 px-3.5 text-[0.8125rem] gap-1.5',
+  md: 'h-11 md:h-10 px-5 md:px-4 text-sm gap-2',
+  lg: 'h-12 px-6 text-[0.9375rem] gap-2',
 };
 
 const BASE =
-  'relative inline-flex items-center justify-center rounded-control font-medium select-none ' +
+  'relative inline-flex items-center justify-center rounded-control font-semibold select-none ' +
   'whitespace-nowrap cursor-pointer transition-[background-color,border-color,color,transform] ' +
-  'duration-150 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 ' +
+  'duration-150 ease-out disabled:pointer-events-none disabled:opacity-45 ' +
   // Mũi tên "đi tiếp" nhích 2px theo hướng của nó khi hover — nói "bấm là sang bước sau".
   '[&_[data-icon=arrow-right]]:transition-transform [&_[data-icon=arrow-right]]:duration-200 ' +
   'hover:[&_[data-icon=arrow-right]]:translate-x-0.5';

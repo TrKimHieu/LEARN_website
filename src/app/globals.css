@@ -6,42 +6,17 @@
    nền (bẫy `whileInView`, UI-GUIDE §4). Mọi keyframe lặp đều QUAY VỀ trạng thái nghỉ ở 100%, và
    khối `prefers-reduced-motion` cuối file tắt hẳn chúng.
 
-   - wave-drift-a/b: hai lớp sóng trôi lệch nhịp (28s / 36s) — dải sóng "thở", không chạy.
    - twinkle: sao co lại + mờ đi một nhịp ngắn rồi nghỉ phần lớn chu kỳ.
    - orbit-flow: chấm của vành quỹ đạo chảy theo vành (dịch đúng bội số chu kỳ nét đứt 1+6).
    - halo: vòng sáng toả ra từ "hành tinh" của quỹ đạo.
-   - rise / draw-x: vào cảnh một lần khi trang mở (chữ nhích lên, gạch của eyebrow kéo ra).
-   - scene-in / scene-out: hoà cảnh nền khi đổi màn (mỗi màn một cảnh, 650ms — khớp
-     `SCENE_FADE_MS` trong `grain-waves.tsx`). */
+   - rise / draw-x: vào cảnh một lần khi trang mở (chữ nhích lên, gạch của eyebrow kéo ra). */
 @theme {
-  --animate-wave-drift-a: wave-drift-a 28s ease-in-out infinite;
-  --animate-wave-drift-b: wave-drift-b 36s ease-in-out infinite;
   --animate-twinkle: twinkle 6s ease-in-out infinite;
   --animate-orbit-flow: orbit-flow 8s linear infinite;
   --animate-halo: halo 3.6s ease-out infinite;
   --animate-rise: rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-draw-x: draw-x 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-scene-in: scene-in 650ms ease-out both;
-  --animate-scene-out: scene-out 650ms ease-in both;
 
-  @keyframes wave-drift-a {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    50% {
-      transform: translate3d(-2.5%, 1.5%, 0) scale(1.04);
-    }
-  }
-  @keyframes wave-drift-b {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
-    }
-    50% {
-      transform: translate3d(3%, -2%, 0) scale(1.05) rotate(-1deg);
-    }
-  }
   @keyframes twinkle {
     0%,
     66%,
@@ -79,16 +54,6 @@
       transform: none;
     }
   }
-  @keyframes scene-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes scene-out {
-    to {
-      opacity: 0;
-    }
-  }
   @keyframes draw-x {
     from {
       transform: scaleX(0);
@@ -111,6 +76,7 @@
   }
 
   body {
+    line-height: 1.65;
     @apply bg-app text-fg antialiased;
     font-family: var(--font-sans);
     /* Tắt `calt`: Plus Jakarta Sans (v3) từng đổi "2xx" thành "2×x" — sai nội dung bài học.
@@ -138,9 +104,32 @@
 
   /* Serif hiển thị (ADR 018): Playfair có độ tương phản nét cao, giãn âm nhẹ là đủ — kéo chặt
      như sans thì chân chữ chạm nhau. Chỉ dùng ở cỡ ≥ 24px. */
+  /* Nút có độ dày: bóng cứng ở đáy; bấm xuống thì nút lún đúng bằng độ dày đó. */
+  .tactile {
+    box-shadow: 0 4px 0 var(--edge, var(--line-strong));
+    transition:
+      transform 80ms ease-out,
+      box-shadow 80ms ease-out,
+      background-color 150ms,
+      border-color 150ms;
+  }
+  .tactile:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 0 var(--edge, var(--line-strong));
+  }
+  .tactile:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 var(--edge, var(--line-strong));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tactile:hover,
+    .tactile:active {
+      transform: none;
+    }
+  }
+
   .font-display {
-    letter-spacing: -0.008em;
-    font-optical-sizing: auto;
+    letter-spacing: -0.02em;
   }
 
   p,
@@ -167,18 +156,6 @@
 }
 
 @layer utilities {
-  /* Parallax của `GrainWaves` hero (ADR 018, 2026-10-13). `--px`/`--py` (−1…1) do
-     `grain-waves.tsx` ghi lên khung gốc theo con trỏ; `--depth` (px) đặt trên từng lớp — lớp gần
-     dời nhiều hơn. `--depth` dương = NGƯỢC chiều chuột (dải sóng: chiều sâu), âm = CÙNG chiều
-     (vệt sáng: con trỏ là nguồn sáng). Chỉ `transform`. */
-  .wave-parallax {
-    transform: translate3d(
-      calc(var(--px, 0) * var(--depth, 0) * -1px),
-      calc(var(--py, 0) * var(--depth, 0) * -1px),
-      0
-    );
-    transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
-  }
 
   /* Vòng focus — một nguồn. Màu chữ chính (đen ở tông sáng, trắng ở tông tối). */
   .focus-ring {
@@ -204,19 +181,12 @@
 /* Giảm chuyển động — công tắc toàn cục cho animation thuần CSS. */
 @media (prefers-reduced-motion: reduce) {
   /* Chuyển động nền ADR 018: tắt hẳn (không chỉ rút về 0.01ms) — phần tử đứng ở trạng thái nghỉ. */
-  .animate-wave-drift-a,
-  .animate-wave-drift-b,
   .animate-twinkle,
   .animate-orbit-flow,
   .animate-halo,
   .animate-rise,
-  .animate-draw-x,
-  .animate-scene-in,
-  .animate-scene-out {
+  .animate-draw-x {
     animation: none !important;
-  }
-  .wave-parallax {
-    transform: none !important;
   }
 
   *,

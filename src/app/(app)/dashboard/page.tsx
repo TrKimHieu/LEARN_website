@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/features/auth/auth-context';
+import { CircleArrowLink, ColorBlock, StatTile } from '@/components/shared/color-block';
+import { Mascot } from '@/components/shared/mascot';
 import type { ProgressCourse } from '@learn/api-contracts';
 import {
   useLessons,
@@ -9,7 +12,6 @@ import {
   useProgressHistory,
   useProgressOverview,
 } from '@/features/learning/learning-api';
-import { CourseCover } from '@/components/shared/course-cover';
 import {
   ButtonLink,
   Card,
@@ -20,8 +22,6 @@ import {
   ProgressBar,
   SectionTitle,
   Skeleton,
-  StatCard,
-  StatStrip,
   cn,
 } from '@/components/ui';
 import { errorDetail, errorText } from '@/lib/api-client';
@@ -84,9 +84,7 @@ export default function DashboardPage() {
   if (data.courseCount === 0) {
     return (
       <>
-        <Header>
-          Bắt đầu bằng một khóa học: đặt tên, tải tài liệu lên, rồi để AI dựng lộ trình bài học.
-        </Header>
+        <Header>Bắt đầu bằng một khóa học đầu tiên.</Header>
         <EmptyState
           className="mt-10"
           title="Chưa có khóa học nào"
@@ -100,64 +98,44 @@ export default function DashboardPage() {
   return (
     <>
       <Header>
-        {data.totalLessons > 0 ? (
-          <>
-            Bạn đã xong <b className="font-medium text-fg">{data.completedLessons}</b> trên{' '}
-            {data.totalLessons} bài
-            {data.activeStreak > 0 && (
-              <>
-                , học liên tiếp <b className="font-medium text-fg">{data.activeStreak} ngày</b>
-              </>
-            )}
-            .
-          </>
-        ) : (
-          'Các khóa của bạn chưa có bài học nào. Tải tài liệu lên để AI dựng lộ trình.'
-        )}
+        {data.totalLessons > 0
+          ? `Tiến độ: ${Math.round((data.completedLessons / data.totalLessons) * 100)}%`
+          : 'Các khóa của bạn chưa có bài học nào.'}
       </Header>
 
-      <section aria-labelledby="stats-title" className="mt-10">
+      <div className="mt-6">
+        {courses.isLoading && <Skeleton className="h-56 rounded-panel" />}
+        {courses.isError && (
+          <InlineError>{errorText(courses.error, 'Không tải được khóa học đang dở.')}</InlineError>
+        )}
+        {next && <ResumeCard course={next} />}
+      </div>
+
+      <section aria-labelledby="stats-title" className="mt-4">
         <h2 id="stats-title" className="sr-only">
           Số liệu học tập
         </h2>
-        <StatStrip>
-          <StatCard
-            icon="flame"
-            tone="peach"
-            label="Chuỗi ngày học"
-            value={String(data.activeStreak)}
-            sub="ngày liên tiếp"
-          />
-          <StatCard
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <StatTile icon="flame" label="Chuỗi ngày học" value={String(data.activeStreak)} />
+          <StatTile
             icon="book-check"
-            tone="mint"
             label="Bài đã xong"
             value={`${data.completedLessons}/${data.totalLessons}`}
           />
-          <StatCard
+          <StatTile
             icon="star"
-            tone="lemon"
             label="Điểm trung bình"
-            value={data.averageScore !== null ? data.averageScore.toFixed(1) : 'Chưa có'}
-            sub={data.averageScore === null ? 'chưa nộp bài nào' : undefined}
+            value={data.averageScore !== null ? String(Math.round(data.averageScore)) : 'Chưa có'}
           />
-          <StatCard icon="layers" tone="sky" label="Khóa học" value={String(data.courseCount)} />
-        </StatStrip>
+          <StatTile icon="layers" label="Khóa học" value={String(data.courseCount)} />
+        </div>
       </section>
 
-      <div className="mt-14 grid grid-cols-1 gap-x-14 gap-y-14 lg:grid-cols-[minmax(0,1fr)_17rem]">
-        <div className="min-w-0 space-y-14">
-          {/* ------------------------------------------------- học tiếp */}
-          {courses.isLoading && <Skeleton className="h-44 rounded-card" />}
-          {courses.isError && (
-            <InlineError>
-              {errorText(courses.error, 'Không tải được khóa học đang dở.')}
-            </InlineError>
-          )}
-          {next && <ResumeCard course={next} />}
-
+      <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        {/* Hai cột cao bằng nhau: thẻ nào ít dữ liệu thì tự giãn, không để lại khoảng trống. */}
+        <div className="flex min-w-0 flex-col">
           {/* ------------------------------------------------- khóa học */}
-          <section aria-labelledby="courses-title">
+          <section aria-labelledby="courses-title" className="flex flex-1 flex-col">
             <SectionTitle
               id="courses-title"
               action={
@@ -168,26 +146,36 @@ export default function DashboardPage() {
             >
               Khóa học của bạn
             </SectionTitle>
-            {courses.data && ordered.length === 0 && (
-              <p className="text-sm text-fg-subtle">Các khóa chưa có bài học nào.</p>
-            )}
-            {ordered.length > 0 && (
-              <Card padded={false}>
-                <ul className="divide-y divide-line">
-                  {ordered.slice(0, 5).map((c) => (
-                    <li key={c.courseId}>
-                      <CourseRow course={c} />
-                    </li>
-                  ))}
-                </ul>
+            {courses.data && (
+              <Card padded={false} className="flex flex-1 flex-col">
+                {ordered.length === 0 ? (
+                  <p className="p-5 text-sm text-fg-subtle">Các khóa chưa có bài học nào.</p>
+                ) : (
+                  <ul className="divide-y divide-line">
+                    {ordered.slice(0, 5).map((c) => (
+                      <li key={c.courseId}>
+                        <CourseRow course={c} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {ordered.length < 4 && (
+                  <Link
+                    href="/courses/new"
+                    className="m-4 hidden min-h-24 flex-1 items-center justify-center gap-2 rounded-control border border-dashed border-line-strong text-sm font-medium text-fg-muted transition-colors duration-150 hover:border-brand hover:text-fg focus-ring lg:flex"
+                  >
+                    <Icon name="plus" size={16} />
+                    Tạo khóa học
+                  </Link>
+                )}
               </Card>
             )}
           </section>
         </div>
 
         {/* ------------------------------------------------- cột phụ */}
-        <aside className="min-w-0" aria-label="Hoạt động gần đây">
-          <section aria-labelledby="activity-title">
+        <aside className="flex min-w-0 flex-col" aria-label="Hoạt động gần đây">
+          <section aria-labelledby="activity-title" className="flex flex-1 flex-col">
             <SectionTitle
               id="activity-title"
               action={
@@ -203,47 +191,51 @@ export default function DashboardPage() {
               <InlineError>{errorText(history.error, 'Không tải được hoạt động.')}</InlineError>
             )}
             {history.data && history.data.items.length === 0 && (
-              <p className="text-sm leading-relaxed text-fg-subtle">
-                Chưa có lần làm bài nào. Kết quả bài tập sẽ hiện ở đây.
-              </p>
+              <Card className="flex-1">
+                <p className="text-sm leading-relaxed text-fg-subtle">
+                  Chưa có lần làm bài nào. Kết quả bài tập sẽ hiện ở đây.
+                </p>
+              </Card>
             )}
             {history.data && history.data.items.length > 0 && (
-              <ol className="space-y-4">
-                {history.data.items.map((item) => {
-                  const passed = item.passed;
-                  return (
-                    <li
-                      key={item.id}
-                      className="relative -mx-2 flex gap-3 rounded-control px-2 py-1 transition-colors duration-150 hover:bg-muted has-[a:focus-visible]:bg-muted"
-                    >
-                      <Icon
-                        name={passed ? 'circle-check' : 'retry'}
-                        size={18}
-                        filled={passed}
-                        className={cn('mt-0.5 shrink-0', passed ? 'text-ok' : 'text-warn')}
-                      />
-                      <div className="min-w-0 flex-1">
-                        {/* FR-PROGRESS-05: cả dòng bấm được, tới đúng bài học đã làm. */}
-                        <Link
-                          href={`/courses/${item.courseId}/lessons/${item.lessonId}`}
-                          className="text-sm leading-snug text-fg outline-none after:absolute after:inset-0 after:rounded-control focus-visible:underline"
-                        >
-                          {item.lessonTitle}
-                        </Link>
-                        <p className="mt-0.5 text-xs text-fg-subtle">
-                          <span className="tabular-nums">
-                            {item.score}/{item.maxScore} điểm
-                          </span>
-                          <span className="sr-only">{passed ? ', đạt' : ', chưa đạt'}</span> ·{' '}
-                          <time dateTime={item.createdAt} title={absoluteTime(item.createdAt)}>
-                            {relativeTime(item.createdAt)}
-                          </time>
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
+              <Card className="flex-1">
+                <ol className="space-y-4">
+                  {history.data.items.map((item) => {
+                    const passed = item.passed;
+                    return (
+                      <li
+                        key={item.id}
+                        className="relative -mx-2 flex gap-3 rounded-control px-2 py-1 transition-colors duration-150 hover:bg-muted has-[a:focus-visible]:bg-muted"
+                      >
+                        <Icon
+                          name={passed ? 'circle-check' : 'retry'}
+                          size={18}
+                          filled={passed}
+                          className={cn('mt-0.5 shrink-0', passed ? 'text-ok' : 'text-warn')}
+                        />
+                        <div className="min-w-0 flex-1">
+                          {/* FR-PROGRESS-05: cả dòng bấm được, tới đúng bài học đã làm. */}
+                          <Link
+                            href={`/courses/${item.courseId}/lessons/${item.lessonId}`}
+                            className="text-sm leading-snug text-fg outline-none after:absolute after:inset-0 after:rounded-control focus-visible:underline"
+                          >
+                            {item.lessonTitle}
+                          </Link>
+                          <p className="mt-0.5 text-xs text-fg-subtle">
+                            <span className="tabular-nums">
+                              {item.score}/{item.maxScore} điểm
+                            </span>
+                            <span className="sr-only">{passed ? ', đạt' : ', chưa đạt'}</span> ·{' '}
+                            <time dateTime={item.createdAt} title={absoluteTime(item.createdAt)}>
+                              {relativeTime(item.createdAt)}
+                            </time>
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </Card>
             )}
           </section>
         </aside>
@@ -259,12 +251,15 @@ function rank(c: ProgressCourse) {
 }
 
 function Header({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   return (
     <header>
-      <h1 className="font-display text-[2.375rem] font-semibold leading-[1.08] text-fg sm:text-[3.125rem]">
-        Tổng quan
-      </h1>
-      <p className="mt-2 max-w-xl text-[0.9375rem] leading-relaxed text-fg-subtle">{children}</p>
+      <div className="min-w-0">
+        <h1 className="truncate font-display text-[1.5rem] font-bold leading-tight text-fg sm:text-[1.75rem]">
+          Chào, {user?.displayName}
+        </h1>
+        <p className="text-sm text-fg-subtle">{children}</p>
+      </div>
     </header>
   );
 }
@@ -287,49 +282,36 @@ function ResumeCard({ course }: { course: ProgressCourse }) {
 
   return (
     <section aria-labelledby="resume-title">
-      <h2 id="resume-title" className="mb-3 text-base font-semibold text-fg">
-        Học tiếp
-      </h2>
-      <div className="flex flex-col overflow-hidden rounded-card border border-line bg-panel sm:flex-row">
-        <CourseCover
-          id={course.courseId}
-          title={course.courseTitle}
-          className="h-24 shrink-0 sm:h-auto sm:w-44"
-        />
-        <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
-          <p className="truncate text-[0.8125rem] text-fg-subtle">{course.courseTitle}</p>
+      <ColorBlock tone="indigo" className="flex items-center gap-4 p-6 md:px-8 md:py-6">
+        <div className="min-w-0 flex-1">
+          <h2 id="resume-title" className="text-sm font-semibold text-white/85">
+            {lesson?.progressStatus === 'IN_PROGRESS' ? 'Học tiếp' : 'Bài kế tiếp'}
+          </h2>
           {lessons.isLoading ? (
-            <Skeleton className="mt-2 h-7 w-3/4" />
+            <Skeleton className="mt-2 h-9 w-3/4" />
           ) : (
-            <p className="mt-1 text-2xl font-semibold leading-snug text-fg">
+            <p className="mt-1 line-clamp-2 font-display text-[1.75rem] font-bold leading-tight text-white md:text-2xl">
               {lesson ? lesson.title : course.courseTitle}
             </p>
           )}
-          {lesson && index >= 0 && (
-            <p className="mt-1 text-[0.8125rem] text-fg-subtle">
-              Bài {index + 1} / {list.length}
-              {lesson.progressStatus === 'IN_PROGRESS' ? ' · đang học dở' : ''}
-            </p>
-          )}
-          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-4">
-            <ButtonLink href={href}>
-              {lesson?.progressStatus === 'IN_PROGRESS' ? 'Học tiếp' : 'Bắt đầu bài'}
-              <Icon name="arrow-right" size={16} />
-            </ButtonLink>
-            <div className="flex min-w-40 flex-1 items-center gap-3">
-              <ProgressBar
-                size="sm"
-                value={course.completed}
-                max={course.total}
-                label={`${course.courseTitle}: ${course.completed} trên ${course.total} bài`}
-              />
-              <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
-                {course.completed}/{course.total} bài
-              </span>
-            </div>
-          </div>
+          <p className="mt-2 line-clamp-2 text-sm text-white/85 md:truncate">
+            {course.courseTitle}
+            {lesson && index >= 0 ? ` · Bài ${index + 1} / ${list.length}` : ''}
+          </p>
+          {/* Điện thoại: nút tròn dễ chạm. Website: nút có chữ, nói rõ bấm là làm gì. */}
+          <CircleArrowLink
+            href={href}
+            label={lesson ? `Mở bài ${lesson.title}` : `Mở khóa ${course.courseTitle}`}
+            tone="light"
+            className="mt-6 md:hidden"
+          />
+          <ButtonLink href={href} className="mt-4 hidden md:inline-flex">
+            {lesson?.progressStatus === 'IN_PROGRESS' ? 'Học tiếp' : 'Bắt đầu bài'}
+            <Icon name="arrow-right" size={16} />
+          </ButtonLink>
         </div>
-      </div>
+        <Mascot state="happy" size={104} surface="ink" />
+      </ColorBlock>
     </section>
   );
 }
@@ -340,12 +322,6 @@ function CourseRow({ course }: { course: ProgressCourse }) {
       href={`/courses/${course.courseId}`}
       className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-panel-2 focus-ring sm:px-5"
     >
-      <CourseCover
-        id={course.courseId}
-        title={course.courseTitle}
-        showInitial={false}
-        className="size-10 shrink-0 rounded-md"
-      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-fg">{course.courseTitle}</p>
         <div className="mt-1.5 flex items-center gap-3">

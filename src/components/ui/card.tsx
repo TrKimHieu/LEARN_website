@@ -16,7 +16,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-card border border-line bg-panel',
+        'rounded-card border border-line bg-panel shadow-card',
         padded && 'p-5 sm:p-6',
         interactive &&
           'transition-[border-color,box-shadow] duration-150 hover:border-line-strong hover:shadow-raised',

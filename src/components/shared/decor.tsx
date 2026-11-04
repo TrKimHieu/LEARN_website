@@ -1,18 +1,15 @@
 import { cn } from '@/components/ui/cn';
 
 /**
- * Hoạ tiết nền — ADR 018 (lam học thuật, từ ảnh tham chiếu của chủ sản phẩm).
+ * Hoạ tiết trang trí.
  *
  * Đều là trang trí thuần (`aria-hidden`, `pointer-events-none`). Chuyển động là CSS thuần
- * (keyframes ở `app/globals.css`), tắt hẳn khi hệ điều hành bật giảm chuyển động. Ngoại lệ JS duy
- * nhất: parallax theo chuột của `GrainWaves` hero (`grain-waves.tsx`, client component).
+ * (keyframes ở `app/globals.css`), tắt hẳn khi hệ điều hành bật giảm chuyển động.
  *
  * Ranh giới (ADR 018 §3–4): chỉ đặt ở **lớp nền** của hero (đăng nhập, đăng ký, 404), dải đầu
  * trang trong app, và quanh mascot của empty state. Không đặt trong thẻ dữ liệu hay bảng quản trị —
  * chữ luôn nằm trên nền `panel` phẳng.
  */
-
-export { GrainWaves } from './grain-waves';
 
 /**
  * Sao bốn cánh — hoạ tiết lặp lại của ảnh tham chiếu.

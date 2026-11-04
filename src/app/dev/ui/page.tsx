@@ -37,9 +37,6 @@ import {
   Thead,
   type BadgeTone,
 } from '@/components/ui';
-import { CourseCover } from '@/components/shared/course-cover';
-import { GrainWaves } from '@/components/shared/grain-waves';
-import { SCREENS } from '@/components/shared/wave-scenes';
 import { QuotaNotice } from '@/components/shared/quota-notice';
 import { LessonList } from '@/features/learning/lesson-list';
 import { CostChart } from '@/features/admin/cost-chart';
@@ -55,24 +52,6 @@ import { StaggerItem, StaggerList } from '@/lib/motion';
  * sáng/tối ngay ở đầu trang để soát cả hai. Thêm primitive mới vào `components/ui/` thì
  * thêm vào đây luôn — xem docs/UI-GUIDE.md.
  */
-
-const SPEC_TOKENS = [
-  ['white', '#ffffff'],
-  ['lam-50', '#f6f8fd'],
-  ['lam-100', '#eef2fb'],
-  ['lam-200', '#d6e0f7'],
-  ['lam-300', '#b5c6f0'],
-  ['lam-400', '#8aa4e6'],
-  ['lam-500', '#5b7fdb'],
-  ['lam-600', '#3a5fd0'],
-  ['lam-700', '#2c49b0'],
-  ['lam-800', '#213887'],
-  ['lam-900', '#18286a'],
-  ['lam-950', '#0e1745'],
-  ['xanh-700', '#16704f'],
-  ['do-700', '#b0202d'],
-  ['ho-phach-700', '#855600'],
-] as const;
 
 /** Token ngữ nghĩa — ô màu đọc giá trị sống qua `var()`, nên đổi theo tông đang chọn. */
 const SEMANTIC_TOKENS = [
@@ -95,10 +74,10 @@ const SEMANTIC_TOKENS = [
   'warn',
   'warn-soft',
   'chart-1',
-  'wave-1',
-  'wave-2',
-  'wave-3',
-  'wave-4',
+  'brand',
+  'brand-soft',
+  'amber',
+  'block-ink',
   'spark',
   'primary',
   'line-input',
@@ -186,21 +165,6 @@ function DevUi() {
 
         <Section id="tokens" title="Màu">
           <h3 className="mb-3 text-sm font-semibold text-fg">
-            Khối [SPEC] §14.2: lam học thuật (ADR 018)
-          </h3>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-            {SPEC_TOKENS.map(([name, hex]) => (
-              <li
-                key={name}
-                className="overflow-hidden rounded-control border border-line bg-panel"
-              >
-                <div className="h-12" style={{ background: hex }} />
-                <p className="px-2.5 pt-2 text-xs font-semibold text-fg">{name}</p>
-                <p className="px-2.5 pb-2 font-mono text-2xs text-fg-subtle">{hex}</p>
-              </li>
-            ))}
-          </ul>
-          <h3 className="mb-3 mt-8 text-sm font-semibold text-fg">
             Token ngữ nghĩa, đổi theo tông (ADR 011)
           </h3>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
@@ -223,7 +187,7 @@ function DevUi() {
           <Card className="space-y-3">
             <p className="text-sm text-fg-subtle">Nhãn phụ 14px, không viết hoa</p>
             <p className="text-[2.75rem] font-semibold leading-tight tracking-[-0.025em] text-fg">
-              Tiêu đề trang, Hanken Grotesk 600
+              Tiêu đề trang, Plus Jakarta Sans 600
             </p>
             <p className="text-base font-semibold text-fg">Tiêu đề mục, 600</p>
             <p className="lesson-content max-w-prose">
@@ -251,30 +215,6 @@ function DevUi() {
               ))}
             </div>
           </div>
-        </Section>
-
-        <Section id="backdrop" title="Lớp nền">
-          {/* Mỗi màn một cảnh (ADR 018, `wave-scenes.ts`) — soát cả bộ cạnh nhau để chắc không hai
-              cảnh nào na ná. Ô cuối: mức `app` với mặt nạ để sạch cột giữa (thu nhỏ `clear`). */}
-          <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-            {SCREENS.map(({ key }) => (
-              <li
-                key={key}
-                className="relative isolate aspect-[16/10] overflow-hidden rounded-card border border-line"
-              >
-                <GrainWaves variant="hero" scene={key} parallax={false} className="-z-10" />
-                <p className="absolute bottom-2 left-3 rounded bg-panel/80 px-1.5 font-mono text-2xs font-semibold text-fg">
-                  {key}
-                </p>
-              </li>
-            ))}
-            <li className="relative isolate aspect-[16/10] overflow-hidden rounded-card border border-line">
-              <GrainWaves variant="app" scene="dashboard" clear={70} className="-z-10" />
-              <p className="absolute bottom-2 left-3 rounded bg-panel/80 px-1.5 font-mono text-2xs font-semibold text-fg">
-                variant=&quot;app&quot;
-              </p>
-            </li>
-          </ul>
         </Section>
 
         <Section id="buttons" title="Nút">
@@ -404,16 +344,6 @@ function DevUi() {
               <ProgressRing value={8} max={8} tone="success" label="8 trên 8" />
               <ProgressRing value={45} size={96} stroke={9} label="45 phần trăm" />
             </Card>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {['c1a', 'b27', 'x9', 'khoa-hoc-4'].map((id, i) => (
-              <CourseCover
-                key={id}
-                id={id}
-                title={['HTTP', 'Giải tích', 'React', 'Kinh tế vi mô'][i]!}
-                className="h-28 rounded-card"
-              />
-            ))}
           </div>
         </Section>
 

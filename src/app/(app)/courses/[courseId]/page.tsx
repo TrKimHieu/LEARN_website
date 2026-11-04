@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DOCUMENT_ACCEPT, type DocumentList } from '@learn/api-contracts';
 import { useCourse, useCourseDocuments, useDeleteCourse } from '@/features/courses/courses-api';
@@ -17,7 +18,8 @@ import { partialFailuresOf } from '@/features/ai/ai-job-partial';
 import { AiJobProgress } from '@/features/ai/ai-job-progress';
 import { LessonList } from '@/features/learning/lesson-list';
 import { QuotaNotice } from '@/components/shared/quota-notice';
-import { CourseCover } from '@/components/shared/course-cover';
+import { ColorBlock } from '@/components/shared/color-block';
+import { Mascot } from '@/components/shared/mascot';
 import {
   BackLink,
   Badge,
@@ -238,65 +240,69 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       <BackLink href="/courses" label="Khóa học" />
 
       {/* ------------------------------------------------ đầu trang */}
-      <header className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1fr)_14rem] md:items-end">
-        <div className="min-w-0">
-          <h1 className="font-display text-[2.375rem] font-semibold leading-[1.08] text-fg sm:text-[3.125rem]">
+      <ColorBlock tone="amber" flatOnDesktop className="mt-4 flex items-center gap-4 p-6">
+        <header className="min-w-0 flex-1">
+          <h1 className="pr-20 font-display text-[1.75rem] font-bold leading-tight md:pr-0 md:text-[2rem]">
             {course.data.title}
           </h1>
           {course.data.description && (
-            <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-fg-subtle">
+            <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed md:text-fg-subtle">
               {course.data.description}
             </p>
           )}
-          {resumeLesson && (
-            <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3">
+          {/* Điện thoại: các viên trong khối màu. Website: nút chính và một dòng số liệu. */}
+          <div className="mt-5 flex flex-wrap items-center gap-2 md:hidden">
+            {resumeLesson && (
+              <Link
+                href={`/courses/${courseId}/lessons/${resumeLesson.id}`}
+                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-pill bg-block-ink px-5 text-sm font-semibold text-white focus-ring"
+              >
+                {resumeLabel}
+                <Icon name="arrow-right" size={16} />
+              </Link>
+            )}
+            <span className="inline-flex h-11 items-center rounded-pill bg-white/45 px-5 text-sm font-semibold tabular-nums">
+              {completedCount}/{lessonList.length} bài
+            </span>
+            <span className="inline-flex h-11 items-center rounded-pill bg-white/45 px-5 text-sm font-semibold tabular-nums">
+              {docCount} tài liệu
+            </span>
+          </div>
+          <div className="mt-3 hidden flex-wrap items-center gap-x-5 gap-y-2 md:flex">
+            {resumeLesson && (
               <ButtonLink href={`/courses/${courseId}/lessons/${resumeLesson.id}`}>
                 {resumeLabel}
                 <Icon name="arrow-right" size={16} />
               </ButtonLink>
-              <p className="min-w-0 max-w-sm truncate text-sm text-fg-subtle">
-                {allDone ? 'Mở lại ' : 'Tiếp theo: '}
-                <span className="font-medium text-fg">{resumeLesson.title}</span>
-              </p>
-            </div>
-          )}
-        </div>
-        <CourseCover
-          id={courseId}
-          title={course.data.title}
-          className="hidden aspect-[4/3] rounded-card border border-line md:block"
-        />
-      </header>
-
-      <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4 border-y border-line py-4 text-sm">
-        <div>
-          <dt className="text-fg-subtle">Tiến độ</dt>
-          <dd className="mt-1 flex items-center gap-3">
-            <span className="font-semibold tabular-nums text-fg">
-              {completedCount}/{lessonList.length} bài
-            </span>
-            {lessonList.length > 0 && (
-              <ProgressBar
-                size="xs"
-                value={completedCount}
-                max={lessonList.length}
-                label={`Đã hoàn thành ${completedCount} trên ${lessonList.length} bài`}
-                className="w-28"
-              />
             )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-fg-subtle">Tài liệu nguồn</dt>
-          <dd className="mt-1 font-semibold tabular-nums text-fg">{docCount}</dd>
-        </div>
-        <div>
-          <dt className="text-fg-subtle">Ngôn ngữ</dt>
-          <dd className="mt-1 font-semibold text-fg">
-            {course.data.language === 'en' ? 'Tiếng Anh' : 'Tiếng Việt'}
-          </dd>
-        </div>
-      </dl>
+            <p className="text-sm text-fg-subtle">
+              <span className="tabular-nums">
+                {completedCount}/{lessonList.length}
+              </span>{' '}
+              bài · <span className="tabular-nums">{docCount}</span> tài liệu
+              {resumeLesson && (
+                <>
+                  {' · '}
+                  {allDone ? 'Mở lại: ' : 'Tiếp theo: '}
+                  <span className="font-medium text-fg">{resumeLesson.title}</span>
+                </>
+              )}
+            </p>
+          </div>
+          {resumeLesson && (
+            <p className="mt-3 truncate text-sm md:hidden">
+              {allDone ? 'Mở lại: ' : 'Tiếp theo: '}
+              <span className="font-semibold">{resumeLesson.title}</span>
+            </p>
+          )}
+        </header>
+        <Mascot
+          state={allDone ? 'proud' : 'idle'}
+          size={72}
+          surface="color-on-phone"
+          className="absolute right-4 top-4 md:static"
+        />
+      </ColorBlock>
 
       {lastPartial && !activeJobId && (
         <PartialJobNotice
@@ -306,12 +312,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         />
       )}
 
-      <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
+      <div className="mt-8 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
         {/* ----------------------------------------------------- lộ trình */}
         <section aria-labelledby="path-title" className="min-w-0">
           <SectionTitle
             id="path-title"
-            description="Bấm vào một bài để học. Mũi tên bên phải đổi thứ tự."
+            description="Bấm vào một bài để học. Có thể đổi thứ tự các bài."
             action={
               <div className="flex items-center gap-2">
                 {/* Độ khó bài tập AI sẽ soạn (đi vào prompt `lesson@3`). */}
@@ -371,9 +377,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
               role="alert"
               className="mb-4 rounded-control border border-line bg-panel-2 px-3.5 py-3 text-sm text-fg"
             >
-              <p className="font-medium">
-                Khóa học đã có {lessonList.length} bài. Vẫn sinh thêm?
-              </p>
+              <p className="font-medium">Khóa học đã có {lessonList.length} bài. Vẫn sinh thêm?</p>
               <p className="mt-1 text-fg-subtle">
                 Lượt này dùng 1 lượt AI. Bài có tiêu đề trùng bài đã có sẽ bị bỏ qua, nên nếu không
                 có tài liệu mới thì có thể không tạo thêm được bài nào.
@@ -408,7 +412,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
             </InlineError>
           )}
 
-          {activeJobId && <AiJobProgress jobId={activeJobId} onDone={handleJobDone} onRetry={handleRetry} />}
+          {activeJobId && (
+            <AiJobProgress jobId={activeJobId} onDone={handleJobDone} onRetry={handleRetry} />
+          )}
 
           {!activeJobId && lessons.isLoading && (
             <LoadingState rows={3} variant="list" label="Đang tải bài học" />
@@ -564,7 +570,10 @@ function PartialJobNotice({
     <div className="mt-6">
       <PartialNotice>
         Lần sinh gần nhất thiếu {failures.length} phần:{' '}
-        {failures.map((f) => `${f.node} (${failureReasonText(f.errors).replace(/\.$/, '')})`).join('; ')}.
+        {failures
+          .map((f) => `${f.node} (${failureReasonText(f.errors).replace(/\.$/, '')})`)
+          .join('; ')}
+        .
       </PartialNotice>
       <Button
         size="sm"
@@ -666,7 +675,7 @@ function DocumentRow({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="rounded-md text-fg-subtle underline underline-offset-2 hover:text-fg focus-ring"
+              className="inline-flex min-h-11 items-center rounded-md text-fg-subtle underline underline-offset-2 hover:text-fg focus-ring md:min-h-0"
             >
               Xoá tài liệu
             </button>

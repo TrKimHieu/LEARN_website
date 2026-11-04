@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { Mascot, type MascotState } from '@/components/shared/mascot';
 import { useProgressCourses, useProgressHistoryPages } from '@/features/learning/learning-api';
-import { CourseCover } from '@/components/shared/course-cover';
 import {
   Badge,
   Button,
@@ -19,6 +19,7 @@ import { StaggerItem, StaggerList } from '@/lib/motion';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { absoluteTime, relativeTime } from '@/lib/format';
 import { usePageTitle } from '@/lib/use-page-title';
+import { buildWeeklyActivity } from '@/features/learning/weekly-activity';
 
 const PAGE_SIZE = 10;
 
@@ -35,76 +36,86 @@ export default function ProgressPage() {
         description="Tiến độ theo từng khóa học và lịch sử các lần làm bài tập."
       />
 
-      {/* --------------------------------------------- theo khóa học */}
-      <section aria-labelledby="by-course">
-        <SectionTitle id="by-course">Theo khóa học</SectionTitle>
+      {/* Hai ô cao bằng nhau: biểu đồ giãn cột, ô khóa học đẩy lời động viên xuống đáy. */}
+      <div
+        className={`grid gap-6 ${items.length > 0 ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''}`}
+      >
+        {items.length > 0 && <WeeklyChart items={items} />}
 
-        {courses.isLoading && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-card" />
-            ))}
-          </div>
-        )}
+        {/* --------------------------------------------- theo khóa học */}
+        <section
+          aria-labelledby="by-course"
+          className="flex flex-col rounded-panel border border-line bg-panel p-6 shadow-card"
+        >
+          <SectionTitle id="by-course">Theo khóa học</SectionTitle>
 
-        {courses.isError && (
-          <ErrorState
-            title="Không tải được tiến trình"
-            description={errorText(courses.error, 'Vui lòng thử lại.')}
-            detail={errorDetail(courses.error)}
-            onRetry={() => void courses.refetch()}
-          />
-        )}
+          {courses.isLoading && (
+            <div className="grid gap-3" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-16 rounded-control" />
+              ))}
+            </div>
+          )}
 
-        {courses.data && courses.data.courses.length === 0 && (
-          <EmptyState
-            title="Chưa có khóa học nào để theo dõi"
-            description="Tiến trình sẽ xuất hiện ở đây khi bạn bắt đầu học một khóa."
-          />
-        )}
+          {courses.isError && (
+            <ErrorState
+              title="Không tải được tiến trình"
+              description={errorText(courses.error, 'Vui lòng thử lại.')}
+              detail={errorDetail(courses.error)}
+              onRetry={() => void courses.refetch()}
+            />
+          )}
 
-        {courses.data && courses.data.courses.length > 0 && (
-          <StaggerList as="ul" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {courses.data.courses.map((c) => (
-              <StaggerItem as="li" key={c.courseId}>
-                <Link
-                  href={`/courses/${c.courseId}`}
-                  className="group flex h-full items-center gap-4 rounded-card border border-line bg-panel p-4 shadow-card transition-[border-color,box-shadow] duration-200 hover:border-accent-line hover:shadow-raised focus-ring"
-                >
-                  <CourseCover
-                    id={c.courseId}
-                    title={c.courseTitle}
-                    className="size-14 shrink-0 rounded-control [&_span]:bottom-1 [&_span]:left-2 [&_span]:text-2xl"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-fg">
-                      {c.courseTitle}
-                    </p>
-                    <p className="mt-1 text-xs text-fg-subtle">
-                      {c.completed}/{c.total} bài đã hoàn thành
-                    </p>
-                    {c.percent === 100 && (
-                      <Badge tone="success" icon="check" className="mt-2">
-                        Hoàn tất
-                      </Badge>
-                    )}
-                  </div>
-                  <ProgressRing
-                    size={56}
-                    stroke={6}
-                    tone={c.percent === 100 ? 'success' : 'sky'}
-                    value={c.completed}
-                    max={Math.max(c.total, 1)}
-                    label={`${c.courseTitle}: ${c.completed} trên ${c.total} bài`}
-                  >
-                    <span className="text-xs font-semibold tabular-nums text-fg">{c.percent}%</span>
-                  </ProgressRing>
-                </Link>
-              </StaggerItem>
-            ))}
-          </StaggerList>
-        )}
-      </section>
+          {courses.data && courses.data.courses.length === 0 && (
+            <EmptyState
+              title="Chưa có khóa học nào để theo dõi"
+              description="Tiến trình sẽ xuất hiện ở đây khi bạn bắt đầu học một khóa."
+            />
+          )}
+
+          {courses.data && courses.data.courses.length > 0 && (
+            <>
+              <StaggerList as="ul" className="divide-y divide-line">
+                {courses.data.courses.map((c) => (
+                  <StaggerItem as="li" key={c.courseId}>
+                    <Link
+                      href={`/courses/${c.courseId}`}
+                      className="group -mx-2 flex items-center gap-4 rounded-control px-2 py-3 transition-colors duration-150 hover:bg-muted focus-ring"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-sm font-semibold leading-snug text-fg">
+                          {c.courseTitle}
+                        </p>
+                        <p className="mt-1 text-xs text-fg-subtle">
+                          {c.completed}/{c.total} bài đã hoàn thành
+                        </p>
+                        {c.percent === 100 && (
+                          <Badge tone="success" icon="check" className="mt-2">
+                            Hoàn tất
+                          </Badge>
+                        )}
+                      </div>
+                      <ProgressRing
+                        size={56}
+                        stroke={6}
+                        tone={c.percent === 100 ? 'success' : 'sky'}
+                        value={c.completed}
+                        max={Math.max(c.total, 1)}
+                        label={`${c.courseTitle}: ${c.completed} trên ${c.total} bài`}
+                      >
+                        <span className="text-xs font-semibold tabular-nums text-fg">
+                          {c.percent}%
+                        </span>
+                      </ProgressRing>
+                    </Link>
+                  </StaggerItem>
+                ))}
+              </StaggerList>
+              <CompanionNote courses={courses.data.courses} />
+            </>
+          )}
+        </section>
+      </div>
 
       {/* ------------------------------------------ lịch sử làm bài */}
       <section aria-labelledby="history" className="mt-12">
@@ -159,10 +170,16 @@ export default function ProgressPage() {
                         </Link>
                         <p className="truncate text-xs text-fg-subtle">
                           {item.courseTitle}
-                          {item.exerciseTitle ? ` · ${item.exerciseTitle}` : ''} ·{' '}
-                          <time dateTime={item.createdAt} title={absoluteTime(item.createdAt)}>
-                            {relativeTime(item.createdAt)}
-                          </time>
+                          {item.exerciseTitle ? ` · ${item.exerciseTitle}` : ''}
+                          <span className="hidden sm:inline">
+                            {' · '}
+                            <time dateTime={item.createdAt} title={absoluteTime(item.createdAt)}>
+                              {relativeTime(item.createdAt)}
+                            </time>
+                          </span>
+                        </p>
+                        <p className="text-xs text-fg-subtle sm:hidden">
+                          <time dateTime={item.createdAt}>{relativeTime(item.createdAt)}</time>
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -204,5 +221,76 @@ export default function ProgressPage() {
         )}
       </section>
     </>
+  );
+}
+
+/** Mascot đồng hành: nói đúng tình hình học hiện tại, đặt ở đáy ô để lấp chỗ trống. */
+function CompanionNote({
+  courses,
+}: {
+  courses: ReadonlyArray<{ completed: number; total: number }>;
+}) {
+  const completed = courses.reduce((sum, c) => sum + c.completed, 0);
+  const total = courses.reduce((sum, c) => sum + c.total, 0);
+  const remaining = total - completed;
+  let state: MascotState = 'happy';
+  let text = `Bạn đã xong ${completed}/${total} bài. Còn ${remaining} bài nữa thôi, cố lên nhé!`;
+  if (total === 0) {
+    state = 'idle';
+    text = 'Khóa học chưa có bài. Sinh bài từ tài liệu rồi mình cùng học nhé.';
+  } else if (remaining === 0) {
+    state = 'proud';
+    text = 'Bạn đã học xong tất cả các bài. Giỏi lắm!';
+  } else if (completed === 0) {
+    state = 'idle';
+    text = `Có ${total} bài đang đợi. Mình bắt đầu từ bài đầu tiên nhé.`;
+  }
+  return (
+    <div className="mt-auto flex items-center gap-3 pt-5">
+      <Mascot state={state} size={72} />
+      <p className="min-w-0 flex-1 rounded-card bg-muted px-4 py-3 text-sm leading-relaxed text-fg-muted">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/** Một mốc đo duy nhất: số lần làm bài theo ngày. Số in ngay trên cột nên không cần trục. */
+function WeeklyChart({ items }: { items: ReadonlyArray<{ createdAt: string }> }) {
+  const week = buildWeeklyActivity(items);
+  const max = Math.max(...week.map((d) => d.count), 1);
+  const total = week.reduce((sum, d) => sum + d.count, 0);
+  return (
+    <section
+      aria-labelledby="week-title"
+      className="flex flex-col rounded-panel border-[1.5px] border-brand bg-brand-soft p-6 md:border md:border-line md:bg-panel md:shadow-card"
+    >
+      <h2 id="week-title" className="font-display text-[1.75rem] font-bold leading-tight text-fg">
+        <span className="tabular-nums">{total}</span> lần làm bài
+      </h2>
+      <p className="mt-1 text-sm text-fg-subtle">
+        Trong 7 ngày gần nhất, tính trên lịch sử đã tải.
+      </p>
+      <ol className="mt-6 grid min-h-52 flex-1 grid-cols-7 gap-2 md:min-h-40 md:gap-3">
+        {week.map((d) => (
+          <li key={d.key} className="flex min-w-0 flex-col items-center justify-end gap-2">
+            <div className="flex w-full max-w-14 flex-1 items-end rounded-[1.25rem] bg-brand/20 md:bg-muted">
+              {d.count > 0 && (
+                <div
+                  className="flex w-full items-start justify-center rounded-[1.25rem] bg-brand pt-2 text-xs font-bold tabular-nums text-on-brand"
+                  style={{ height: `${Math.max(24, (d.count / max) * 100)}%` }}
+                >
+                  {d.count}
+                </div>
+              )}
+            </div>
+            <span className={`text-xs ${d.isToday ? 'font-bold text-fg' : 'text-fg-subtle'}`}>
+              {d.label}
+              <span className="sr-only">: {d.count} lần</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

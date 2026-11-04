@@ -8,18 +8,17 @@ import { MotionProvider } from '@/lib/motion';
 import './globals.css';
 
 /**
- * Chữ — ADR 014 + 018. Hanken Grotesk (variable, có subset tiếng Việt) cho giao diện và bài đọc;
- * Playfair Display (serif, đứng + nghiêng) cho tiêu đề lớn; JetBrains Mono cho code.
+ * Chữ — ADR 014 + 018. Inter cho giao diện và bài đọc, Plus Jakarta Sans cho tiêu đề (đều có tiếng Việt),
+ * JetBrains Mono cho code.
  *
  * Tự host qua Fontsource (npm), KHÔNG dùng `next/font/google`: bản Google tải font lúc
  * dev/build, nên máy/CI không có mạng ra ngoài sẽ lặng lẽ rơi về font dự phòng (đã dính ở
  * preview). File `.woff2` nằm trong `node_modules`, `@font-face` chia theo `unicode-range`
  * nên trình duyệt chỉ tải subset cần (latin, latin-ext, vietnamese).
  */
-import '@fontsource-variable/hanken-grotesk';
+import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
-import '@fontsource-variable/playfair-display';
-import '@fontsource-variable/playfair-display/wght-italic.css';
+import '@fontsource-variable/plus-jakarta-sans';
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
@@ -43,8 +42,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f6f8fd' },
-    { media: '(prefers-color-scheme: dark)', color: '#080c24' },
+    { media: '(prefers-color-scheme: light)', color: '#faf8f5' },
+    { media: '(prefers-color-scheme: dark)', color: '#16171f' },
   ],
 };
 
