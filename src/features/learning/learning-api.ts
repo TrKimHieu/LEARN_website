@@ -12,6 +12,7 @@ import type {
   PatchLessonInput,
 } from '@learn/api-contracts';
 import { apiFetch } from '@/lib/api-client';
+import { refreshCourseData } from '@/lib/query-refresh';
 
 export function useLessons(courseId: string) {
   return useQuery({
@@ -90,9 +91,7 @@ export function useDeleteLesson(courseId: string) {
   return useMutation({
     mutationFn: (lessonId: string) =>
       apiFetch(`/api/v1/courses/${courseId}/lessons/${lessonId}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses', courseId, 'lessons'] });
-    },
+    onSuccess: () => refreshCourseData(queryClient),
   });
 }
 

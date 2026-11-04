@@ -6,7 +6,7 @@ import { useCourse, useCourseDocuments } from '@/features/courses/courses-api';
 import { useUploadDocument, type UploadProgress } from '@/features/documents/documents-api';
 import { UploadCancelledError } from '@/features/documents/upload-transfer';
 import { useLessons, useReorderLessons } from '@/features/learning/learning-api';
-import { useGenerateLessons } from '@/features/ai/ai-api';
+import { useActiveAiJob, useFinishAiJob, useGenerateLessons } from '@/features/ai/ai-api';
 import { AiJobProgress } from '@/features/ai/ai-job-progress';
 import { LessonList } from '@/features/learning/lesson-list';
 import { QuotaNotice } from '@/components/shared/quota-notice';
@@ -65,14 +65,17 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const upload = useUploadDocument(courseId);
   const lessons = useLessons(courseId);
   const generateLessons = useGenerateLessons(courseId);
+  const activeJob = useActiveAiJob(courseId);
+  const finishAiJob = useFinishAiJob(courseId);
   const reorderLessons = useReorderLessons(courseId);
 
   const [uploadError, setUploadError] = useState<unknown>(null);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [startedJobId, setStartedJobId] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<unknown>(null);
   const [reorderError, setReorderError] = useState<unknown>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
 
+  const activeJobId = startedJobId ?? activeJob.data?.id ?? null;
   const hasExtractedDoc = Boolean(documents.data?.documents.some((d) => d.status === 'EXTRACTED'));
   const lessonList = lessons.data?.lessons ?? [];
   const completedCount = lessonList.filter((l) => l.progressStatus === 'COMPLETED').length;
@@ -97,15 +100,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
     setGenerateError(null);
     try {
       const job = await generateLessons.mutateAsync({ difficulty });
-      setActiveJobId(job.id);
+      setStartedJobId(job.id);
     } catch (err) {
       setGenerateError(err);
     }
   }
 
-  function handleJobDone(result: { succeeded: boolean }) {
-    setActiveJobId(null);
-    if (result.succeeded) void lessons.refetch();
+  function handleJobDone() {
+    setStartedJobId(null);
+    void finishAiJob();
   }
 
   async function handleFile(file: File) {
@@ -257,7 +260,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
                   size="sm"
                   onClick={() => void handleGenerate()}
                   loading={generateLessons.isPending}
-                  disabled={activeJobId !== null || !hasExtractedDoc}
+                  disabled={activeJobId !== null || activeJob.isLoading || !hasExtractedDoc}
                   aria-describedby={hasExtractedDoc ? undefined : 'generate-blocked'}
                 >
                   {!generateLessons.isPending && <Icon name="sparkles" size={16} />}

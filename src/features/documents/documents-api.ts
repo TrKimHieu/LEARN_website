@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { DOCUMENT_TYPES, mimeFromFilename, type UploadUrlResponse } from '@learn/api-contracts';
 import { apiFetch } from '@/lib/api-client';
+import { refreshUsage } from '@/lib/query-refresh';
 import { UploadCancelledError, putWithProgress } from './upload-transfer';
 
 export type UploadProgress =
@@ -75,7 +76,9 @@ export function useUploadDocument(courseId: string) {
       return documentId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses', courseId, 'documents'] });
+      // `['courses']` phủ cả tài liệu của khóa này và số tài liệu ở trang danh sách.
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      void refreshUsage(queryClient);
     },
     onSettled: () => {
       controller.current = null;

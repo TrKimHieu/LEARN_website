@@ -6,6 +6,7 @@ import type {
   DocumentList,
 } from '@learn/api-contracts';
 import { apiFetch } from '@/lib/api-client';
+import { refreshUsage } from '@/lib/query-refresh';
 import { documentsRefetchInterval } from './document-polling';
 
 export function useCourses() {
@@ -41,6 +42,7 @@ export function useCreateCourse() {
       apiFetch<CourseDetail>('/api/v1/courses', { method: 'POST', body: input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+      void refreshUsage(queryClient);
     },
   });
 }
