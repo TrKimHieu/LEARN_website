@@ -106,9 +106,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Thanh dock nổi trên điện thoại: mục nào cũng có icon và chữ, người mới không phải đoán. */}
       <nav
         aria-label="Điều hướng chính, thanh dưới"
-        className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-30 rounded-[1.75rem] bg-block-ink p-1.5 shadow-overlay md:hidden"
+        className="fixed inset-x-2 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-30 rounded-[1.75rem] bg-block-ink p-1 shadow-overlay md:hidden"
       >
-        <ul className="grid grid-cols-4 gap-1">
+        <ul className="grid auto-cols-fr grid-flow-col gap-1">
           {mobileItems.map((item) => {
             const active = isActive(pathname, item.href);
             return (
