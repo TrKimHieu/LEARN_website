@@ -1,6 +1,7 @@
-import type { DueFlashcard } from '@learn/api-contracts';
+import type { DueFlashcard, ReviewGrade } from '@learn/api-contracts';
 
-export type Grade = 'AGAIN' | 'HARD' | 'GOOD' | 'EASY';
+/** Bốn Mức nhớ lấy thẳng từ contracts, không định nghĩa lại. */
+export type Grade = ReviewGrade;
 
 export type SessionCard = Pick<DueFlashcard, 'id' | 'front' | 'back'>;
 

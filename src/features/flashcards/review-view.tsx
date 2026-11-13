@@ -1,6 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   BackLink,
   Button,
@@ -12,11 +13,11 @@ import {
   ProgressBar,
   Skeleton,
   UserText,
-} from "@/components/ui";
-import { absoluteTime } from "@/lib/format";
-import { errorDetail, errorText } from "@/lib/api-client";
-import { usePageTitle } from "@/lib/use-page-title";
-import { useDueCards, useSubmitReview } from "./flashcards-api";
+} from '@/components/ui';
+import { absoluteTime } from '@/lib/format';
+import { errorDetail, errorText } from '@/lib/api-client';
+import { usePageTitle } from '@/lib/use-page-title';
+import { useDueCards, useSubmitReview } from './flashcards-api';
 import {
   GRADES,
   choose,
@@ -29,22 +30,27 @@ import {
   type Grade,
   type PendingGrade,
   type SessionState,
-} from "./review-session";
+} from './review-session';
 
 export function ReviewView({ deckId }: { deckId: string }) {
-  usePageTitle("Ôn tập");
+  usePageTitle('Ôn tập');
   const due = useDueCards(deckId);
   const submit = useSubmitReview();
+  const router = useRouter();
   const [session, setSession] = useState<SessionState | null>(null);
 
-  // Chụp danh sách thẻ một lần khi dữ liệu về (hoặc sau "Ôn tiếp"); từ đó phiên tự đi.
+  // Chụp danh sách thẻ một lần khi dữ liệu về lần đầu; từ đó phiên tự đi.
   useEffect(() => {
     if (due.data && session === null) setSession(startSession(due.data.cards));
   }, [due.data, session]);
 
-  const back = (
-    <BackLink href={`/decks/${deckId}`} label="Bộ thẻ" className="mb-6" />
-  );
+  // "Ôn tiếp" chờ danh sách mới về rồi mới dựng phiên, để thẻ vừa chấm không quay lại.
+  async function restart() {
+    const fresh = await due.refetch();
+    if (fresh.data) setSession(startSession(fresh.data.cards));
+  }
+
+  const back = <BackLink href={`/decks/${deckId}`} label="Bộ thẻ" className="mb-6" />;
 
   if (due.isError) {
     return (
@@ -52,7 +58,7 @@ export function ReviewView({ deckId }: { deckId: string }) {
         {back}
         <ErrorState
           title="Không tải được thẻ cần ôn"
-          description={errorText(due.error, "Vui lòng thử lại.")}
+          description={errorText(due.error, 'Vui lòng thử lại.')}
           detail={errorDetail(due.error)}
           onRetry={() => void due.refetch()}
         />
@@ -77,11 +83,12 @@ export function ReviewView({ deckId }: { deckId: string }) {
         <EmptyState
           title="Chưa có thẻ đến hạn"
           description={
-            data.nextDueAt
-              ? `Thẻ kế tiếp đến hạn lúc ${absoluteTime(data.nextDueAt)}.`
-              : undefined
+            data.nextDueAt ? `Thẻ kế tiếp đến hạn lúc ${absoluteTime(data.nextDueAt)}.` : undefined
           }
-          action={{ label: "Về bộ thẻ", onClick: () => history.back() }}
+          action={{
+            label: 'Về bộ thẻ',
+            onClick: () => router.push(`/decks/${deckId}`),
+          }}
         />
       </>
     );
@@ -93,24 +100,19 @@ export function ReviewView({ deckId }: { deckId: string }) {
       <>
         {back}
         <Card className="max-w-xl">
-          <h1 className="font-display text-2xl font-semibold">
-            Xong {session.reviewed} thẻ
-          </h1>
-          {remaining > 0 && (
-            <p className="mt-2 text-fg-muted">Còn {remaining} thẻ đến hạn.</p>
-          )}
+          <h1 className="font-display text-2xl font-semibold">Xong {session.reviewed} thẻ</h1>
+          {remaining > 0 && <p className="mt-2 text-fg-muted">Còn {remaining} thẻ đến hạn.</p>}
           <div className="mt-5 flex flex-wrap gap-2">
             {remaining > 0 && (
               <Button
-                onClick={() => {
-                  setSession(null);
-                  void due.refetch();
-                }}
+                className="max-md:h-11"
+                loading={due.isFetching}
+                onClick={() => void restart()}
               >
                 Ôn tiếp
               </Button>
             )}
-            <ButtonLink href={`/decks/${deckId}`} variant="secondary">
+            <ButtonLink href={`/decks/${deckId}`} variant="secondary" className="max-md:h-11">
               Về bộ thẻ
             </ButtonLink>
           </div>
@@ -169,13 +171,9 @@ export function ReviewView({ deckId }: { deckId: string }) {
               {GRADES.map(({ grade, label }) => (
                 <Button
                   key={grade}
-                  variant={
-                    session.pending?.grade === grade ? "primary" : "secondary"
-                  }
+                  variant={session.pending?.grade === grade ? 'primary' : 'secondary'}
                   className="h-11"
-                  disabled={
-                    session.pending !== null && session.pending.grade !== grade
-                  }
+                  disabled={session.pending !== null && session.pending.grade !== grade}
                   loading={submit.isPending && session.pending?.grade === grade}
                   onClick={() => onGrade(grade)}
                 >
@@ -186,15 +184,9 @@ export function ReviewView({ deckId }: { deckId: string }) {
             {submit.isError && session.pending && (
               <div className="flex flex-wrap items-center gap-3">
                 <InlineError className="flex-1">
-                  {errorText(
-                    submit.error,
-                    "Chưa gửi được Mức nhớ, vui lòng thử lại.",
-                  )}
+                  {errorText(submit.error, 'Chưa gửi được Mức nhớ, vui lòng thử lại.')}
                 </InlineError>
-                <Button
-                  variant="secondary"
-                  onClick={() => send(session.pending!)}
-                >
+                <Button variant="secondary" onClick={() => send(session.pending!)}>
                   Thử lại
                 </Button>
               </div>
