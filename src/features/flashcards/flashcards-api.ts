@@ -87,12 +87,12 @@ export function useDeleteCard() {
 }
 
 /**
- * Danh sách khóa học để gắn bộ thẻ. Cùng khóa cache `['courses']` với feature courses nên dùng chung
- * dữ liệu, nhưng không import feature khác (ranh giới feature).
+ * Danh sách khóa học để gắn bộ thẻ. Khóa cache riêng (`['course-options']`) vì feature này
+ * không được import feature courses (ranh giới feature).
  */
 export function useCourseOptions() {
   return useQuery({
-    queryKey: ['courses'],
+    queryKey: ['course-options'],
     queryFn: () => apiFetch<{ courses: CourseSummary[] }>('/api/v1/workspace'),
   });
 }

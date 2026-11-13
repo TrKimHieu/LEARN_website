@@ -73,7 +73,6 @@ export function DecksView() {
       {data && data.decks.length === 0 && !creating && (
         <EmptyState
           title="Chưa có bộ thẻ nào"
-          description="Tạo bộ thẻ đầu tiên để bắt đầu ghi nhớ."
           action={{ label: 'Tạo bộ thẻ', onClick: () => setCreating(true) }}
         />
       )}

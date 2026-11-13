@@ -30,6 +30,7 @@ import { fieldErrorsFrom, focusFirstError } from '@/lib/form-errors';
 import { usePageTitle } from '@/lib/use-page-title';
 import { cardCountLabel, deckStats } from './deck-stats';
 import {
+  useCourseOptions,
   useCreateCard,
   useDecks,
   useDeck,
@@ -50,7 +51,7 @@ export function DeckDetailView({ deckId }: { deckId: string }) {
     return isNotFoundError(deck.error) ? (
       <>
         <BackLink href="/decks" label="Thẻ" className="mb-6" />
-        <EmptyState title="Không tìm thấy bộ thẻ" description="Bộ thẻ có thể đã bị xóa." />
+        <EmptyState title="Không tìm thấy bộ thẻ" />
       </>
     ) : (
       <ErrorState
@@ -74,11 +75,11 @@ export function DeckDetailView({ deckId }: { deckId: string }) {
           <Button
             variant="ghost"
             size="sm"
-            className="md:hidden"
+            className="h-11 md:hidden"
             aria-pressed={editMode}
             onClick={() => setEditMode((v) => !v)}
           >
-            {editMode ? 'Xong' : 'Chỉnh sửa'}
+            {editMode ? 'Xong' : 'Quản lý'}
           </Button>
         )}
       </div>
@@ -102,6 +103,7 @@ function DeckHeader({ deck }: { deck: DeckSummary }) {
   const router = useRouter();
   const patch = usePatchDeck(deck.id);
   const remove = useDeleteDeck(deck.id);
+  const courses = useCourseOptions();
   const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState(deck.title);
   const [titleError, setTitleError] = useState<string>();
@@ -151,11 +153,11 @@ function DeckHeader({ deck }: { deck: DeckSummary }) {
             <InlineError>{errorText(patch.error, 'Không đổi được tên, vui lòng thử lại.')}</InlineError>
           )}
           <div className="flex gap-2">
-            <Button type="submit" size="sm" loading={patch.isPending}>
+            <Button type="submit" size="sm" className="max-md:h-11" loading={patch.isPending}>
               Lưu
             </Button>
             <Button
-              size="sm"
+              size="sm" className="max-md:h-11"
               variant="secondary"
               onClick={() => {
                 setRenaming(false);
@@ -174,7 +176,7 @@ function DeckHeader({ deck }: { deck: DeckSummary }) {
           </h1>
           <Button
             variant="ghost"
-            size="sm"
+            size="sm" className="max-md:h-11"
             aria-label="Đổi tên bộ thẻ"
             onClick={() => {
               setTitle(deck.title);
@@ -196,38 +198,54 @@ function DeckHeader({ deck }: { deck: DeckSummary }) {
         ))}
       </dl>
 
+      <Field label="Khóa học" htmlFor="deck-course" className="mt-4 max-w-sm">
+        <Select
+          id="deck-course"
+          value={deck.courseId ?? ''}
+          disabled={patch.isPending}
+          onChange={(e) => patch.mutate({ courseId: e.target.value || null })}
+        >
+          <option value="">Không gắn khóa học</option>
+          {courses.data?.courses.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
       <div className="mt-6 border-t border-line pt-4">
         {confirming ? (
           <div role="alert" className="max-w-xl text-sm">
             <p className="font-medium">
-              Xóa bộ thẻ &quot;<UserText>{deck.title}</UserText>&quot;?
+              Xoá bộ thẻ &quot;<UserText>{deck.title}</UserText>&quot;?
             </p>
             <p className="mt-1 text-fg-subtle">
               Các thẻ và lịch ôn trong bộ sẽ mất, không khôi phục được.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
-                size="sm"
+                size="sm" className="max-md:h-11"
                 variant="danger"
                 loading={remove.isPending}
                 onClick={() => void confirmDelete()}
               >
-                Xác nhận xóa
+                Xác nhận xoá
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => setConfirming(false)}>
+              <Button size="sm" className="max-md:h-11" variant="secondary" onClick={() => setConfirming(false)}>
                 Huỷ
               </Button>
             </div>
           </div>
         ) : (
-          <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>
+          <Button size="sm" className="max-md:h-11" variant="ghost" onClick={() => setConfirming(true)}>
             <Icon name="trash" size={15} />
-            Xóa bộ thẻ
+            Xoá bộ thẻ
           </Button>
         )}
         {remove.isError && (
           <InlineError className="mt-3">
-            {errorText(remove.error, 'Không xóa được bộ thẻ, vui lòng thử lại.')}
+            {errorText(remove.error, 'Không xoá được bộ thẻ, vui lòng thử lại.')}
           </InlineError>
         )}
       </div>
@@ -387,10 +405,10 @@ function CardRow({
             </InlineError>
           )}
           <div className="flex gap-2 md:col-span-2">
-            <Button type="submit" size="sm" loading={patch.isPending}>
+            <Button type="submit" size="sm" className="max-md:h-11" loading={patch.isPending}>
               Lưu
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>
+            <Button size="sm" className="max-md:h-11" variant="secondary" onClick={() => setEditing(false)}>
               Huỷ
             </Button>
           </div>
@@ -418,33 +436,33 @@ function CardRow({
         {confirming ? (
           <>
             <Button
-              size="sm"
+              size="sm" className="max-md:h-11"
               variant="danger"
               loading={remove.isPending}
               onClick={() => remove.mutate(card.id)}
             >
-              Xác nhận xóa
+              Xác nhận xoá
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setConfirming(false)}>
+            <Button size="sm" className="max-md:h-11" variant="secondary" onClick={() => setConfirming(false)}>
               Huỷ
             </Button>
           </>
         ) : (
           <>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+            <Button size="sm" className="max-md:h-11" variant="ghost" onClick={() => setEditing(true)}>
               <Icon name="edit" size={15} />
               Sửa
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>
+            <Button size="sm" className="max-md:h-11" variant="ghost" onClick={() => setConfirming(true)}>
               <Icon name="trash" size={15} />
-              Xóa
+              Xoá
             </Button>
           </>
         )}
       </div>
       {remove.isError && (
         <InlineError className="md:col-span-3">
-          {errorText(remove.error, 'Không xóa được thẻ, vui lòng thử lại.')}
+          {errorText(remove.error, 'Không xoá được thẻ, vui lòng thử lại.')}
         </InlineError>
       )}
     </Card>
