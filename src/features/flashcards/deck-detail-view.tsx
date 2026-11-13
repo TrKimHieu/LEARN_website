@@ -12,6 +12,7 @@ import {
 import {
   BackLink,
   Button,
+  ButtonLink,
   Card,
   EmptyState,
   ErrorState,
@@ -68,6 +69,13 @@ export function DeckDetailView({ deckId }: { deckId: string }) {
     <>
       <BackLink href="/decks" label="Thẻ" className="mb-4" />
       <DeckHeader deck={summary} />
+
+      {summary.cardCount > 0 && (
+        <ButtonLink href={`/decks/${deckId}/review`} className="mt-6 h-11 md:h-auto">
+          <Icon name="play" size={16} />
+          {summary.dueCount > 0 ? `Ôn tập (${summary.dueCount})` : 'Ôn tập'}
+        </ButtonLink>
+      )}
 
       <div className="mt-8 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-fg-muted">{cardCountLabel(summary.cardCount)}</h2>

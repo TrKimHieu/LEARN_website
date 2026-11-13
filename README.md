@@ -1,6 +1,6 @@
 # LEARN web
 
-Standalone private web repository. Public contracts 1.3.0 are pinned in vendor/ with SHA-256 (`npm run sync:contracts` verifies the pinned artifact; pass `-- --source <released.tgz>` to restore or add one after checking its checksum). No backend or other client checkout is required.
+Standalone private web repository. Public contracts 1.4.0 are pinned in vendor/ with SHA-256 (`npm run sync:contracts` verifies the pinned artifact; pass `-- --source <released.tgz>` to restore or add one after checking its checksum). No backend or other client checkout is required.
 
 Setup: npm ci, npm run lint, npm run typecheck, npm test, npm run build.
 

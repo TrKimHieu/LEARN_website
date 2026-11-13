@@ -71,6 +71,8 @@ export function errorDetail(err: unknown): string | undefined {
 export interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
+  /** Header thêm, ví dụ `Idempotency-Key` cho lượt gửi có thể phải gửi lại. */
+  headers?: Record<string, string>;
   retried?: boolean;
 }
 
@@ -98,7 +100,7 @@ export async function apiFetch<T = unknown>(
   options: ApiRequestOptions = {},
 ): Promise<T> {
   const { method = 'GET', body, retried = false } = options;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
 
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;

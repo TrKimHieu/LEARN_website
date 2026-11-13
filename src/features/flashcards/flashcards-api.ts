@@ -6,9 +6,12 @@ import type {
   DeckDetailResponse,
   DeckListResponse,
   DeckSummary,
+  DueFlashcardsResponse,
   Flashcard,
+  FlashcardReviewResult,
   PatchDeckInput,
   PatchFlashcardInput,
+  SubmitFlashcardReviewInput,
 } from '@learn/api-contracts';
 import { apiFetch } from '@/lib/api-client';
 
@@ -94,5 +97,38 @@ export function useCourseOptions() {
   return useQuery({
     queryKey: ['course-options'],
     queryFn: () => apiFetch<{ courses: CourseSummary[] }>('/api/v1/workspace'),
+  });
+}
+
+/**
+ * Thẻ đến hạn của một bộ cho phiên ôn. Phiên chụp danh sách lúc mở, nên không tự hỏi lại khi quay lại
+ * tab và không giữ cache sau khi rời màn: lần ôn sau luôn lấy danh sách mới.
+ */
+export function useDueCards(deckId: string) {
+  return useQuery({
+    queryKey: [...DECKS, deckId, 'due'],
+    queryFn: () => apiFetch<DueFlashcardsResponse>(`/api/v1/decks/${deckId}/due?limit=50`),
+    enabled: Boolean(deckId),
+    staleTime: Infinity,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useSubmitReview() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      cardId,
+      key,
+      ...input
+    }: SubmitFlashcardReviewInput & { cardId: string; key: string }) =>
+      apiFetch<FlashcardReviewResult>(`/api/v1/cards/${cardId}/review`, {
+        method: 'POST',
+        body: input,
+        headers: { 'Idempotency-Key': key },
+      }),
+    // Chỉ làm mới số đếm của danh sách bộ; không đụng danh sách thẻ đang ôn.
+    onSuccess: () => client.invalidateQueries({ queryKey: DECKS, refetchType: 'none' }),
   });
 }
