@@ -23,13 +23,20 @@ import { errorDetail, errorText } from '@/lib/api-client';
 import { fieldErrorsFrom, focusFirstError } from '@/lib/form-errors';
 import { usePageTitle } from '@/lib/use-page-title';
 import { cardCountLabel, deckStats } from './deck-stats';
-import { useCourseOptions, useCreateDeck, useDecks, useDueCount } from './flashcards-api';
+import {
+  useCourseOptions,
+  useCreateDeck,
+  useDecks,
+  useDrafts,
+  useDueCount,
+} from './flashcards-api';
 
 export function DecksView() {
   usePageTitle('Thẻ');
   const { data, isLoading, isError, error, refetch, isRefetching } = useDecks();
   const [creating, setCreating] = useState(false);
   const { data: dueCount } = useDueCount();
+  const draftCount = useDrafts().data?.drafts.length ?? 0;
 
   return (
     <>
@@ -44,6 +51,15 @@ export function DecksView() {
                   Ôn hôm nay ({dueCount})
                 </ButtonLink>
               ) : null}
+              {draftCount > 0 ? (
+                <ButtonLink href="/decks/drafts" variant="secondary" className="max-md:h-11">
+                  Thẻ nháp ({draftCount})
+                </ButtonLink>
+              ) : null}
+              <ButtonLink href="/decks/generate" variant="secondary" className="max-md:h-11">
+                <Icon name="sparkles" size={16} />
+                Sinh thẻ bằng AI
+              </ButtonLink>
               <Button onClick={() => setCreating(true)}>
                 <Icon name="plus" size={16} />
                 Tạo bộ thẻ

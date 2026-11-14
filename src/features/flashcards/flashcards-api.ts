@@ -1,14 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  AcceptFlashcardDraftsInput,
+  AcceptFlashcardDraftsResult,
+  AiJobDetail,
   CourseSummary,
   CreateDeckInput,
   CreateFlashcardInput,
   DeckDetailResponse,
   DeckListResponse,
   DeckSummary,
+  DocumentList,
   DueFlashcardsResponse,
   Flashcard,
+  FlashcardDraftList,
   FlashcardReviewResult,
+  GenerateFlashcardsInput,
+  LessonSummary,
+  PatchFlashcardDraftInput,
   PatchDeckInput,
   PatchFlashcardInput,
   SubmitFlashcardReviewInput,
@@ -147,5 +155,94 @@ export function useSubmitReview() {
       void client.invalidateQueries({ queryKey: [...DECKS, 'due-count'] });
       return client.invalidateQueries({ queryKey: DECKS, refetchType: 'none' });
     },
+  });
+}
+
+// ── Sinh thẻ bằng AI và duyệt Thẻ nháp ────────────────────────────────────────────────────────
+// Nguồn (bài học, tài liệu) lấy qua endpoint của khóa học; không import feature courses/learning
+// (ranh giới feature), nên khóa cache riêng.
+export function useCourseLessons(courseId: string) {
+  return useQuery({
+    queryKey: ['flashcard-source', 'lessons', courseId],
+    queryFn: () => apiFetch<{ lessons: LessonSummary[] }>(`/api/v1/courses/${courseId}/lessons`),
+    enabled: Boolean(courseId),
+  });
+}
+
+export function useCourseDocuments(courseId: string) {
+  return useQuery({
+    queryKey: ['flashcard-source', 'documents', courseId],
+    queryFn: () => apiFetch<{ documents: DocumentList[] }>(`/api/v1/courses/${courseId}/documents`),
+    enabled: Boolean(courseId),
+  });
+}
+
+export function useGenerateFlashcards(courseId: string) {
+  return useMutation({
+    mutationFn: (input: GenerateFlashcardsInput) =>
+      apiFetch<AiJobDetail>(`/api/v1/ai/courses/${courseId}/generate-flashcards`, {
+        method: 'POST',
+        body: input,
+      }),
+  });
+}
+
+const ACTIVE = new Set(['QUEUED', 'RUNNING']);
+
+/** Theo dõi job sinh thẻ: hỏi lại mỗi 1,5 giây khi còn chạy, dừng khi đã xong. */
+export function useFlashcardJob(jobId: string | null) {
+  return useQuery({
+    queryKey: ['ai', 'flashcard-job', jobId],
+    queryFn: () => apiFetch<AiJobDetail>(`/api/v1/ai/jobs/${jobId}`),
+    enabled: jobId !== null,
+    refetchInterval: (query) => (ACTIVE.has(query.state.data?.status ?? '') ? 1500 : false),
+  });
+}
+
+export function useCancelFlashcardJob(jobId: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobDetail>(`/api/v1/ai/jobs/${jobId}/cancel`, { method: 'POST' }),
+    onSuccess: (data) => client.setQueryData(['ai', 'flashcard-job', jobId], data),
+  });
+}
+
+export function useDrafts(aiJobId?: string) {
+  return useQuery({
+    queryKey: [...DECKS, 'drafts', aiJobId ?? 'all'],
+    queryFn: () =>
+      apiFetch<FlashcardDraftList>(
+        aiJobId ? `/api/v1/flashcards/drafts?aiJobId=${aiJobId}` : '/api/v1/flashcards/drafts',
+      ),
+  });
+}
+
+export function usePatchDraft() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: PatchFlashcardDraftInput & { id: string }) =>
+      apiFetch(`/api/v1/flashcards/drafts/${id}`, { method: 'PATCH', body: input }),
+    onSuccess: () => client.invalidateQueries({ queryKey: [...DECKS, 'drafts'] }),
+  });
+}
+
+export function useDeleteDraft() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/v1/flashcards/drafts/${id}`, { method: 'DELETE' }),
+    onSuccess: () => client.invalidateQueries({ queryKey: [...DECKS, 'drafts'] }),
+  });
+}
+
+export function useAcceptDrafts() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AcceptFlashcardDraftsInput) =>
+      apiFetch<AcceptFlashcardDraftsResult>('/api/v1/flashcards/drafts/accept', {
+        method: 'POST',
+        body: input,
+      }),
+    // Thẻ mới đến hạn ngay: số đếm của bộ và điều hướng đổi theo.
+    onSuccess: () => client.invalidateQueries({ queryKey: DECKS }),
   });
 }
