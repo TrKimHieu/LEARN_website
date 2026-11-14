@@ -10,6 +10,7 @@ import { Reveal } from '@/lib/motion';
 import { isActive, navItemsFor, NAV_ITEMS, ADMIN_ITEM } from './nav';
 import { dueBadgeLabel } from '@/features/flashcards/due-badge';
 import { useDueCount } from '@/features/flashcards/flashcards-api';
+import { ReminderWatcher } from '@/features/flashcards/reminder-watcher';
 import { UserMenu } from './user-menu';
 
 /**
@@ -50,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative isolate min-h-dvh bg-app">
+      <ReminderWatcher />
       <a
         href="#main"
         className="sr-only rounded-control bg-panel px-4 py-2.5 text-sm font-medium text-accent shadow-raised focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[60] focus-ring"
