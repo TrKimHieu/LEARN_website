@@ -115,9 +115,9 @@ export default tseslint.config(
         {
           allow: {
             // `shell` là chrome của app (AppShell, UserMenu, PlanUsage) nên được đọc hook dữ
-            // liệu của feature khác — `useAuth`/`useSubscription` —
-            // không phải tái dùng UI nội bộ của chúng.
-            shell: ['auth', 'settings'],
+            // liệu của feature khác — `useAuth`/`useSubscription`/`useDueCount` (huy hiệu số thẻ
+            // đến hạn) — không phải tái dùng UI nội bộ của chúng.
+            shell: ['auth', 'settings', 'flashcards'],
           },
         },
       ],

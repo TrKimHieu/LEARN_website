@@ -8,6 +8,8 @@ import { buttonClasses } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
 import { Reveal } from '@/lib/motion';
 import { isActive, navItemsFor, NAV_ITEMS, ADMIN_ITEM } from './nav';
+import { dueBadgeLabel } from '@/features/flashcards/due-badge';
+import { useDueCount } from '@/features/flashcards/flashcards-api';
 import { UserMenu } from './user-menu';
 
 /**
@@ -35,6 +37,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const topItems = NAV_ITEMS.filter((i) => i.href !== '/settings');
   const desktopItems = isAdmin ? [...topItems, ADMIN_ITEM] : topItems;
   const mobileItems = navItemsFor(user?.role);
+  const { data: dueCount } = useDueCount();
+  const dueBadge = dueBadgeLabel(dueCount);
+  const badgeFor = (href: string) => (href === '/decks' ? dueBadge : null);
   const wide = pathname.startsWith('/admin');
   const workspace = pathname.endsWith('/practice');
   // max-w-6xl (1152px) cho màn laptop trở lên. Admin rộng hơn cho bảng nhiều cột.
@@ -71,6 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       )}
                     >
                       {item.label}
+                      <DueBadge label={badgeFor(item.href)} />
                     </Link>
                   </li>
                 );
@@ -117,12 +123,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.375rem] text-xs font-semibold transition-colors duration-150 focus-ring-dark',
+                    'relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.375rem] text-xs font-semibold tracking-tight transition-colors duration-150 focus-ring-dark',
                     active ? 'bg-brand text-on-brand' : 'text-white/75',
                   )}
                 >
                   <Icon name={item.icon} size={20} strokeWidth={active ? 2.25 : 1.75} />
-                  <span className="max-w-full truncate">{item.label}</span>
+                  <span className="relative max-w-full truncate">
+                    {item.label}
+                  </span>
+                  <DueBadge label={badgeFor(item.href)} dock />
                 </Link>
               </li>
             );
@@ -130,5 +139,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </ul>
       </nav>
     </div>
+  );
+}
+
+/** Số thẻ đến hạn cạnh mục Thẻ; chữ kèm cho trình đọc màn hình, màu không phải tín hiệu duy nhất. */
+function DueBadge({ label, dock = false }: { label: string | null; dock?: boolean }) {
+  if (!label) return null;
+  return (
+    <span
+      className={cn(
+        'inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[0.75rem] font-semibold leading-5 text-on-brand tabular-nums',
+        dock ? 'absolute right-2 top-1' : 'ml-1.5',
+      )}
+    >
+      {label}
+      <span className="sr-only"> thẻ đến hạn</span>
+    </span>
   );
 }

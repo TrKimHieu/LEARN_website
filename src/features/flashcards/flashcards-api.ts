@@ -101,17 +101,31 @@ export function useCourseOptions() {
 }
 
 /**
- * Thẻ đến hạn của một bộ cho phiên ôn. Phiên chụp danh sách lúc mở, nên không tự hỏi lại khi quay lại
- * tab và không giữ cache sau khi rời màn: lần ôn sau luôn lấy danh sách mới.
+ * Thẻ đến hạn cho phiên ôn: một bộ, hoặc mọi bộ khi `deckId = null` (Ôn hôm nay). Phiên chụp danh sách
+ * lúc mở, nên không tự hỏi lại khi quay lại tab và không giữ cache sau khi rời màn: lần ôn sau luôn
+ * lấy danh sách mới.
  */
-export function useDueCards(deckId: string) {
+export function useDueCards(deckId: string | null) {
   return useQuery({
-    queryKey: [...DECKS, deckId, 'due'],
-    queryFn: () => apiFetch<DueFlashcardsResponse>(`/api/v1/decks/${deckId}/due?limit=50`),
-    enabled: Boolean(deckId),
+    queryKey: [...DECKS, deckId ?? 'all', 'due'],
+    queryFn: () =>
+      apiFetch<DueFlashcardsResponse>(
+        deckId ? `/api/v1/decks/${deckId}/due?limit=50` : '/api/v1/flashcards/due?limit=50',
+      ),
     staleTime: Infinity,
     gcTime: 0,
     refetchOnWindowFocus: false,
+  });
+}
+
+/** Số thẻ đến hạn của mọi bộ cho điều hướng và dashboard; làm tươi mỗi phút và khi quay lại tab. */
+export function useDueCount() {
+  return useQuery({
+    queryKey: [...DECKS, 'due-count'],
+    queryFn: () => apiFetch<DueFlashcardsResponse>('/api/v1/flashcards/due?limit=1'),
+    select: (d) => d.dueCount,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -128,7 +142,10 @@ export function useSubmitReview() {
         body: input,
         headers: { 'Idempotency-Key': key },
       }),
-    // Chỉ làm mới số đếm của danh sách bộ; không đụng danh sách thẻ đang ôn.
-    onSuccess: () => client.invalidateQueries({ queryKey: DECKS, refetchType: 'none' }),
+    // Số đếm (danh sách bộ, điều hướng) làm tươi ngay; danh sách thẻ đang ôn thì không đụng tới.
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: [...DECKS, 'due-count'] });
+      return client.invalidateQueries({ queryKey: DECKS, refetchType: 'none' });
+    },
   });
 }

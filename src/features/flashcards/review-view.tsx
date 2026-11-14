@@ -32,8 +32,11 @@ import {
   type SessionState,
 } from './review-session';
 
-export function ReviewView({ deckId }: { deckId: string }) {
-  usePageTitle('Ôn tập');
+/** Phiên ôn một bộ (`deckId`) hoặc Ôn hôm nay gom mọi bộ (`deckId = null`). */
+export function ReviewView({ deckId }: { deckId: string | null }) {
+  usePageTitle(deckId ? 'Ôn tập' : 'Ôn hôm nay');
+  const home = deckId ? `/decks/${deckId}` : '/decks';
+  const homeLabel = deckId ? 'Bộ thẻ' : 'Thẻ';
   const due = useDueCards(deckId);
   const submit = useSubmitReview();
   const router = useRouter();
@@ -50,7 +53,7 @@ export function ReviewView({ deckId }: { deckId: string }) {
     if (fresh.data) setSession(startSession(fresh.data.cards));
   }
 
-  const back = <BackLink href={`/decks/${deckId}`} label="Bộ thẻ" className="mb-6" />;
+  const back = <BackLink href={home} label={homeLabel} className="mb-6" />;
 
   if (due.isError) {
     return (
@@ -86,8 +89,8 @@ export function ReviewView({ deckId }: { deckId: string }) {
             data.nextDueAt ? `Thẻ kế tiếp đến hạn lúc ${absoluteTime(data.nextDueAt)}.` : undefined
           }
           action={{
-            label: 'Về bộ thẻ',
-            onClick: () => router.push(`/decks/${deckId}`),
+            label: deckId ? 'Về bộ thẻ' : 'Về Thẻ',
+            onClick: () => router.push(home),
           }}
         />
       </>
@@ -112,8 +115,8 @@ export function ReviewView({ deckId }: { deckId: string }) {
                 Ôn tiếp
               </Button>
             )}
-            <ButtonLink href={`/decks/${deckId}`} variant="secondary" className="max-md:h-11">
-              Về bộ thẻ
+            <ButtonLink href={home} variant="secondary" className="max-md:h-11">
+              {deckId ? 'Về bộ thẻ' : 'Về Thẻ'}
             </ButtonLink>
           </div>
         </Card>
