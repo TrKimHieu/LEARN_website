@@ -6,6 +6,7 @@ import type { FormEvent } from 'react';
 import { createDeckSchema, type DeckSummary } from '@learn/api-contracts';
 import {
   Button,
+  ButtonLink,
   Card,
   EmptyState,
   ErrorState,
@@ -22,12 +23,13 @@ import { errorDetail, errorText } from '@/lib/api-client';
 import { fieldErrorsFrom, focusFirstError } from '@/lib/form-errors';
 import { usePageTitle } from '@/lib/use-page-title';
 import { cardCountLabel, deckStats } from './deck-stats';
-import { useCourseOptions, useCreateDeck, useDecks } from './flashcards-api';
+import { useCourseOptions, useCreateDeck, useDecks, useDueCount } from './flashcards-api';
 
 export function DecksView() {
   usePageTitle('Thẻ');
   const { data, isLoading, isError, error, refetch, isRefetching } = useDecks();
   const [creating, setCreating] = useState(false);
+  const { data: dueCount } = useDueCount();
 
   return (
     <>
@@ -35,10 +37,18 @@ export function DecksView() {
         title="Thẻ"
         action={
           !creating && (
-            <Button onClick={() => setCreating(true)}>
-              <Icon name="plus" size={16} />
-              Tạo bộ thẻ
-            </Button>
+            <>
+              {dueCount ? (
+                <ButtonLink href="/review" variant="secondary" className="max-md:h-11">
+                  <Icon name="play" size={16} />
+                  Ôn hôm nay ({dueCount})
+                </ButtonLink>
+              ) : null}
+              <Button onClick={() => setCreating(true)}>
+                <Icon name="plus" size={16} />
+                Tạo bộ thẻ
+              </Button>
+            </>
           )
         }
       />

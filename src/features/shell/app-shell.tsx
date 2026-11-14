@@ -128,9 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <Icon name={item.icon} size={20} strokeWidth={active ? 2.25 : 1.75} />
-                  <span className="relative max-w-full truncate">
-                    {item.label}
-                  </span>
+                  <span className="max-w-full truncate">{item.label}</span>
                   <DueBadge label={badgeFor(item.href)} dock />
                 </Link>
               </li>

@@ -37,6 +37,7 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
   usePageTitle(deckId ? 'Ôn tập' : 'Ôn hôm nay');
   const home = deckId ? `/decks/${deckId}` : '/decks';
   const homeLabel = deckId ? 'Bộ thẻ' : 'Thẻ';
+  const exitLabel = deckId ? 'Về bộ thẻ' : 'Về Thẻ';
   const due = useDueCards(deckId);
   const submit = useSubmitReview();
   const router = useRouter();
@@ -89,7 +90,7 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
             data.nextDueAt ? `Thẻ kế tiếp đến hạn lúc ${absoluteTime(data.nextDueAt)}.` : undefined
           }
           action={{
-            label: deckId ? 'Về bộ thẻ' : 'Về Thẻ',
+            label: exitLabel,
             onClick: () => router.push(home),
           }}
         />
@@ -116,7 +117,7 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
               </Button>
             )}
             <ButtonLink href={home} variant="secondary" className="max-md:h-11">
-              {deckId ? 'Về bộ thẻ' : 'Về Thẻ'}
+              {exitLabel}
             </ButtonLink>
           </div>
         </Card>
