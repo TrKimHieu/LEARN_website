@@ -54,7 +54,8 @@ describe('askable', () => {
   it('a dismissal waits less than a vote, but still waits', () => {
     expect(DISMISS_COOLDOWN_MS).toBeLessThan(VOTE_COOLDOWN_MS);
     const dismissed = record({}, [pomodoro], 'dismissed', now);
-    expect(askable([pomodoro], dismissed, new Date(now.getTime() + 60_000))).toEqual([]);
+    const soon = new Date(now.getTime() + DISMISS_COOLDOWN_MS - 1);
+    expect(askable([pomodoro], dismissed, soon)).toEqual([]);
     const later = new Date(now.getTime() + DISMISS_COOLDOWN_MS);
     expect(askable([pomodoro], dismissed, later)).toEqual([pomodoro]);
   });

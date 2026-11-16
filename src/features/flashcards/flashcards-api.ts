@@ -25,6 +25,7 @@ import { apiFetch } from '@/lib/api-client';
 
 /** Một khóa gốc `['decks']` phủ danh sách và chi tiết: đổi thẻ thì số đếm của bộ cũng đổi. */
 const DECKS = ['decks'] as const;
+export const DUE_COUNT_KEY = [...DECKS, 'due-count'] as const;
 
 export function useDecks() {
   return useQuery({
@@ -129,7 +130,7 @@ export function useDueCards(deckId: string | null) {
 /** Số thẻ đến hạn của mọi bộ cho điều hướng và dashboard; làm tươi mỗi phút và khi quay lại tab. */
 export function useDueCount() {
   return useQuery({
-    queryKey: [...DECKS, 'due-count'],
+    queryKey: DUE_COUNT_KEY,
     queryFn: () => apiFetch<DueFlashcardsResponse>('/api/v1/flashcards/due?limit=1'),
     select: (d) => d.dueCount,
     refetchInterval: 60_000,
@@ -152,7 +153,9 @@ export function useSubmitReview() {
       }),
     // Số đếm (danh sách bộ, điều hướng) làm tươi ngay; danh sách thẻ đang ôn thì không đụng tới.
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: [...DECKS, 'due-count'] });
+      void client.invalidateQueries({ queryKey: DUE_COUNT_KEY });
+      // Chuỗi ngày và mascot ở màn Học đổi ngay sau lượt ôn đầu tiên trong ngày.
+      void client.invalidateQueries({ queryKey: ['progress', 'overview'] });
       return client.invalidateQueries({ queryKey: DECKS, refetchType: 'none' });
     },
   });

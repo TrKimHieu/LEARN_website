@@ -12,13 +12,25 @@ export function moodFor(i: {
   lastStudyDay: string | null;
   previousSeenStudyDay: string | null;
   allDone: boolean;
+  activeStreak: number;
 }): Mood {
   if (i.allDone) return 'celebrate';
-  if (i.lastStudyDay === i.today) {
-    return i.previousSeenStudyDay !== null && daysBetween(i.previousSeenStudyDay, i.today) >= 2 ? 'excited' : 'happy';
+  // Ngày học theo múi giờ máy chủ có thể sang ngày sớm hơn trình duyệt: vẫn là học hôm nay.
+  if (i.lastStudyDay !== null && i.lastStudyDay >= i.today) {
+    // Chuỗi = 1 nghĩa là hôm nay là ngày học đầu tiên sau quãng nghỉ.
+    const back =
+      i.activeStreak === 1 &&
+      i.previousSeenStudyDay !== null &&
+      daysBetween(i.previousSeenStudyDay, i.today) >= 2;
+    return back ? 'excited' : 'happy';
   }
   if (i.lastStudyDay === null) return 'listening';
   const idle = daysBetween(i.lastStudyDay, i.today);
   if (idle <= 1) return 'listening';
   return idle <= 3 ? 'sad' : 'sleeping';
+}
+
+/** Ngày học đáng lưu để so lần sau: chỉ ngày trước hôm nay, nên học xong hôm nay vẫn so được. */
+export function seenStudyDayToKeep(lastStudyDay: string | null, today: string): string | null {
+  return lastStudyDay !== null && lastStudyDay < today ? lastStudyDay : null;
 }

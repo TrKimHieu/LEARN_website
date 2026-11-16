@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Mascot } from '@/components/shared/mascot';
 import {
   Badge,
@@ -16,7 +17,7 @@ import {
   cn,
   type IconName,
 } from '@/components/ui';
-import { useDueCount } from '@/features/flashcards/flashcards-api';
+import { DUE_COUNT_KEY, useDueCount } from '@/features/flashcards/flashcards-api';
 import {
   useProgressCourses,
   useProgressHistory,
@@ -24,8 +25,17 @@ import {
 } from '@/features/learning/learning-api';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { TODAY_KEY, todayKey } from '@/lib/today-store';
-import { moodFor } from './mood';
-import { buildTasks, isDone, parsePlan, planGate, reconcile, type SavedPlan, type TodayTask } from './today-plan';
+import { moodFor, seenStudyDayToKeep } from './mood';
+import {
+  buildTasks,
+  isDone,
+  parsePlan,
+  planGate,
+  reconcile,
+  retriedToday,
+  type SavedPlan,
+  type TodayTask,
+} from './today-plan';
 import { useNextLessons } from './use-next-lessons';
 
 /** Lịch sử đủ dài để thấy bài chưa đạt mới nhất và lần đạt sau đó (nếu có). */
@@ -51,10 +61,18 @@ function writeStorage(key: string, value: string) {
 
 /** Ngày hôm nay theo máy; kiểm lại mỗi phút khi tab đang mở để danh sách đổi khi qua ngày. */
 function useToday() {
+  const client = useQueryClient();
   const [day, setDay] = useState(() => todayKey());
+  const dayRef = useRef(day);
   useEffect(() => {
     const check = () => {
-      if (!document.hidden) setDay(todayKey());
+      const now = todayKey();
+      if (document.hidden || now === dayRef.current) return;
+      dayRef.current = now;
+      // Làm tươi trước khi đổi ngày: lần render với ngày mới đã thấy isFetching nên planGate chờ.
+      void client.invalidateQueries({ queryKey: ['progress'] });
+      void client.invalidateQueries({ queryKey: DUE_COUNT_KEY });
+      setDay(now);
     };
     const timer = setInterval(check, 60_000);
     document.addEventListener('visibilitychange', check);
@@ -62,7 +80,7 @@ function useToday() {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', check);
     };
-  }, []);
+  }, [client]);
   return day;
 }
 
@@ -87,18 +105,21 @@ export function TodayView() {
   useEffect(() => {
     if (!ready) return;
     const saved = parsePlan(readStorage(TODAY_KEY));
-    const current = reconcile(saved, buildTasks({ dueCount: due.data ?? 0, nextLessons: next.lessons, history: history.data?.items ?? [] }), day);
+    const items = history.data?.items ?? [];
+    const fresh = buildTasks({ dueCount: due.data ?? 0, nextLessons: next.lessons, history: items });
+    const current = reconcile(saved, fresh, day, retriedToday(items, day));
     if (current !== saved) writeStorage(TODAY_KEY, JSON.stringify(current));
     setPlan(current);
-    // Chỉ chạy khi dữ liệu vừa đủ hoặc qua ngày: sau lần chốt, reconcile luôn trả bản đã lưu.
+    // Chạy khi dữ liệu vừa đủ (cả sau mỗi lần làm tươi) hoặc qua ngày; trong ngày reconcile luôn
+    // trả bản đã lưu, và màn hình vẫn giữ danh sách cũ khi đang làm tươi.
   }, [ready, day]);
 
   const lastStudyDay = overview.data?.lastStudyDay ?? null;
   useEffect(() => {
     if (!overview.data) return;
     setPreviousSeen(readStorage(MOOD_KEY));
-    // Chỉ ghi ngày học trước hôm nay, nên hôm nay vừa học xong vẫn so được với lần học trước.
-    if (lastStudyDay && lastStudyDay !== day) writeStorage(MOOD_KEY, lastStudyDay);
+    const keep = seenStudyDayToKeep(lastStudyDay, day);
+    if (keep) writeStorage(MOOD_KEY, keep);
   }, [overview.data, lastStudyDay, day]);
 
   if (gate === 'error') {
@@ -139,7 +160,13 @@ export function TodayView() {
   const doneCount = plan.tasks.filter((t) => isDone(plan, t, liveDue)).length;
   const allDone = total > 0 && doneCount === total;
   const streak = overview.data.activeStreak;
-  const mood = moodFor({ today: day, lastStudyDay, previousSeenStudyDay: previousSeen, allDone });
+  const mood = moodFor({
+    today: day,
+    lastStudyDay,
+    previousSeenStudyDay: previousSeen,
+    allDone,
+    activeStreak: streak,
+  });
 
   return (
     <div className="mx-auto max-w-2xl">
