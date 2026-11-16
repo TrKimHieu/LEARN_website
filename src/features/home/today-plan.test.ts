@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HistoryItem } from '@learn/api-contracts';
-import { buildTasks, isDone, markDone, parsePlan, reconcile, type SavedPlan, type TodayTask } from './today-plan';
+import { buildTasks, isDone, markDone, parsePlan, planGate, reconcile, type SavedPlan, type TodayTask } from './today-plan';
 
 const lesson = (n: number) => ({ courseId: 'C', lessonId: `L${n}`, title: `Bài ${n}`, courseTitle: 'Khóa', index: n, total: 5 });
 const item = (exerciseId: string, passed: boolean): HistoryItem =>
@@ -55,5 +55,19 @@ describe('plan state', () => {
   it('keeps only string ids in done', () => {
     const raw = JSON.stringify({ day: '2026-11-17', tasks: fresh, done: ['review', 3, null] });
     expect(parsePlan(raw)?.done).toEqual(['review']);
+  });
+});
+
+describe('planGate', () => {
+  const ok = { isLoading: false, isLoadingError: false };
+  it('waits while any input is loading', () => {
+    expect(planGate([ok, { isLoading: true, isLoadingError: false }])).toBe('wait');
+  });
+  it('blocks the plan when any input failed to load, even if others still load', () => {
+    expect(planGate([{ isLoading: true, isLoadingError: false }, { isLoading: false, isLoadingError: true }])).toBe('error');
+  });
+  it('is ready when every input loaded (disabled queries count as loaded)', () => {
+    expect(planGate([ok, ok])).toBe('ready');
+    expect(planGate([])).toBe('ready');
   });
 });

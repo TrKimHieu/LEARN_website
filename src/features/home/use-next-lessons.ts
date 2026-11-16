@@ -31,5 +31,6 @@ export function useNextLessons(courses: ProgressCourse[]) {
     });
   });
 
-  return { lessons, isLoading: first.isLoading || second.isLoading, openCount: open.length };
+  const studying = courses.filter((c) => c.percent > 0 && c.percent < 100).length;
+  return { lessons, queries: [first, second], studying };
 }

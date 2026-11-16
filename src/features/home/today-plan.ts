@@ -79,4 +79,13 @@ export function pickNextLesson(lessons: LessonSummary[]): { lesson: LessonSummar
   return index < 0 ? null : { lesson: lessons[index]!, index };
 }
 
+/**
+ * Khi nào được chốt danh sách hôm nay. Một nguồn lỗi lần đầu thì không chốt: danh sách thiếu việc
+ * sẽ bị lưu tới hết ngày. Lỗi khi làm tươi (còn dữ liệu cũ) không tính, vì dữ liệu cũ vẫn dùng được.
+ */
+export function planGate(queries: Array<{ isLoading: boolean; isLoadingError: boolean }>): 'wait' | 'error' | 'ready' {
+  if (queries.some((q) => q.isLoadingError)) return 'error';
+  return queries.some((q) => q.isLoading) ? 'wait' : 'ready';
+}
+
 export { TODAY_KEY };

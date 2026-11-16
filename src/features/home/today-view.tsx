@@ -25,7 +25,7 @@ import {
 import { errorDetail, errorText } from '@/lib/api-client';
 import { TODAY_KEY, todayKey } from '@/lib/today-store';
 import { moodFor } from './mood';
-import { buildTasks, isDone, parsePlan, reconcile, type SavedPlan, type TodayTask } from './today-plan';
+import { buildTasks, isDone, parsePlan, planGate, reconcile, type SavedPlan, type TodayTask } from './today-plan';
 import { useNextLessons } from './use-next-lessons';
 
 /** Lịch sử đủ dài để thấy bài chưa đạt mới nhất và lần đạt sau đó (nếu có). */
@@ -78,8 +78,10 @@ export function TodayView() {
   const [plan, setPlan] = useState<SavedPlan | null>(null);
   const [previousSeen, setPreviousSeen] = useState<string | null>(null);
 
-  const ready =
-    Boolean(overview.data) && !courses.isLoading && !due.isLoading && !history.isLoading && !next.isLoading;
+  const sources = [overview, courses, due, history, ...next.queries];
+  const gate = planGate(sources);
+  const ready = gate === 'ready';
+  const failed = sources.find((q) => q.isLoadingError);
 
   // Danh sách chốt lần đầu trong ngày; các lần sau chỉ đọc lại bản đã lưu.
   useEffect(() => {
@@ -99,13 +101,13 @@ export function TodayView() {
     if (lastStudyDay && lastStudyDay !== day) writeStorage(MOOD_KEY, lastStudyDay);
   }, [overview.data, lastStudyDay, day]);
 
-  if (overview.isError) {
+  if (gate === 'error') {
     return (
       <ErrorState
         title="Không tải được việc hôm nay"
-        description={errorText(overview.error, 'Vui lòng thử lại.')}
-        detail={errorDetail(overview.error)}
-        onRetry={() => void overview.refetch()}
+        description={errorText(failed?.error, 'Vui lòng thử lại.')}
+        detail={errorDetail(failed?.error)}
+        onRetry={() => sources.forEach((q) => q.isLoadingError && void q.refetch())}
       />
     );
   }
@@ -187,7 +189,7 @@ export function TodayView() {
         </ButtonLink>
         <span aria-hidden="true">·</span>
         <ButtonLink href="/courses" variant="link" size="sm" className="relative">
-          Khóa học đang học ({next.openCount})
+          Khóa học đang học{next.studying > 0 && ` (${next.studying})`}
         </ButtonLink>
       </p>
     </div>

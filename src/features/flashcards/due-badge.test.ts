@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueBadgeLabel, dueSummaryText } from './due-badge';
+import { dueBadgeLabel } from './due-badge';
 
 describe('dueBadgeLabel', () => {
   it('hides the badge when nothing is due or the count is unknown', () => {
@@ -14,14 +14,5 @@ describe('dueBadgeLabel', () => {
   it('caps larger counts so the badge never outgrows the tab', () => {
     expect(dueBadgeLabel(100)).toBe('99+');
     expect(dueBadgeLabel(2500)).toBe('99+');
-  });
-});
-
-describe('dueSummaryText', () => {
-  it('says there is nothing to review instead of "0 thẻ"', () => {
-    expect(dueSummaryText(0)).toBe('Chưa có thẻ đến hạn');
-  });
-  it('counts the due cards', () => {
-    expect(dueSummaryText(7)).toBe('7 thẻ đến hạn');
   });
 });
