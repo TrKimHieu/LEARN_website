@@ -46,4 +46,14 @@ describe('plan state', () => {
     expect(parsePlan(null)).toBeNull();
     expect(parsePlan(JSON.stringify(saved))).toEqual(saved);
   });
+  it('rejects saved tasks the screen cannot render', () => {
+    const plan = (tasks: unknown) => JSON.stringify({ day: '2026-11-17', tasks, done: [] });
+    expect(parsePlan(plan([null]))).toBeNull();
+    expect(parsePlan(plan([{ kind: 'lesson' }]))).toBeNull();
+    expect(parsePlan(plan([{ id: 'x', kind: 'quiz' }]))).toBeNull();
+  });
+  it('keeps only string ids in done', () => {
+    const raw = JSON.stringify({ day: '2026-11-17', tasks: fresh, done: ['review', 3, null] });
+    expect(parsePlan(raw)?.done).toEqual(['review']);
+  });
 });

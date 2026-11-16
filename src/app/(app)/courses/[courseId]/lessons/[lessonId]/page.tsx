@@ -32,6 +32,7 @@ import {
 } from '@/components/ui';
 import { errorDetail, errorText, isNotFoundError } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
+import { markTodayDone } from '@/lib/today-store';
 import { absoluteTime, relativeTime } from '@/lib/format';
 import { humanizeCode } from '@/lib/humanize';
 
@@ -92,6 +93,10 @@ export default function LessonReadPage({
       window.removeEventListener('resize', check);
     };
   }, [lesson.data, editing]);
+
+  useEffect(() => {
+    if (reachedEnd) markTodayDone(`lesson:${lessonId}`);
+  }, [reachedEnd, lessonId]);
 
   const titleTooShort = draftTitle.trim().length < TITLE_MIN;
 

@@ -38,7 +38,10 @@ export type MascotState =
   // Lỗi
   | 'alerting'
   | 'sad'
-  | 'confused';
+  | 'confused'
+  // Tâm trạng ở màn Học (spec 4.7)
+  | 'listening'
+  | 'excited';
 
 /**
  * Nạp động: file vendor nặng ~115 KB và mascot luôn là trang trí

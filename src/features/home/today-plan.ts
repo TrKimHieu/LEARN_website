@@ -1,4 +1,4 @@
-import type { HistoryItem } from '@learn/api-contracts';
+import type { HistoryItem, LessonSummary, ProgressCourse } from '@learn/api-contracts';
 import { TODAY_KEY } from '../../lib/today-store';
 
 export type TodayTask =
@@ -14,6 +14,7 @@ export interface TodayInputs {
 export interface SavedPlan { day: string; tasks: TodayTask[]; done: string[] }
 
 const MAX_TASKS = 4;
+const KINDS: unknown[] = ['review', 'lesson', 'exercise'];
 
 function lessonTask(l: TodayInputs['nextLessons'][number]): TodayTask {
   return { ...l, id: `lesson:${l.lessonId}`, kind: 'lesson' };
@@ -55,12 +56,27 @@ export function markDone(plan: SavedPlan, taskId: string): SavedPlan {
 export function parsePlan(raw: string | null): SavedPlan | null {
   if (!raw) return null;
   try {
-    const p = JSON.parse(raw) as Partial<SavedPlan> | null;
+    const p = JSON.parse(raw) as { day?: unknown; tasks?: unknown; done?: unknown } | null;
     if (typeof p?.day !== 'string' || !Array.isArray(p.tasks) || !Array.isArray(p.done)) return null;
-    return p as SavedPlan;
+    if (!p.tasks.every((t: { id?: unknown; kind?: unknown } | null) => typeof t?.id === 'string' && KINDS.includes(t.kind))) return null;
+    return { day: p.day, tasks: p.tasks as TodayTask[], done: p.done.filter((d): d is string => typeof d === 'string') };
   } catch {
     return null;
   }
+}
+
+/** Khóa đang dở trước, rồi khóa chưa bắt đầu, khóa xong cuối cùng. */
+export function rankCourse(c: ProgressCourse): number {
+  if (c.percent > 0 && c.percent < 100) return 0;
+  if (c.percent === 0) return 1;
+  return 2;
+}
+
+/** Bài kế tiếp: bài đang dở, nếu không có thì bài chưa bắt đầu đầu tiên. `index` tính từ 0. */
+export function pickNextLesson(lessons: LessonSummary[]): { lesson: LessonSummary; index: number } | null {
+  let index = lessons.findIndex((l) => l.progressStatus === 'IN_PROGRESS');
+  if (index < 0) index = lessons.findIndex((l) => l.progressStatus === 'NOT_STARTED');
+  return index < 0 ? null : { lesson: lessons[index]!, index };
 }
 
 export { TODAY_KEY };

@@ -120,6 +120,8 @@ export default tseslint.config(
             shell: ['auth', 'settings', 'flashcards'],
             // `feedback` là lớp hỏi ý kiến dùng chung, mọi tính năng được đặt thẻ hỏi của nó.
             flashcards: ['feedback'],
+            // Màn Học gom việc hôm nay từ dữ liệu học và thẻ đến hạn.
+            home: ['learning', 'flashcards'],
           },
         },
       ],

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui';
 import { ApiClientError, errorDetail, errorText } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
+import { markTodayDone } from '@/lib/today-store';
 import { answeredOnly } from '@/features/learning/answers';
 import { celebrateSuccess } from '@/lib/celebrate';
 import { popIn } from '@/lib/motion';
@@ -222,6 +223,7 @@ function ExerciseSession({
     try {
       const res = await submitExercise.mutateAsync({ answers: list, exerciseId: data.id });
       setResult(res);
+      markTodayDone(`exercise:${data.id}`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setSubmitError(errorText(err, 'Nộp bài thất bại, vui lòng thử lại.'));
