@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   LessonSource,
   LessonSummary,
@@ -146,18 +146,3 @@ export function useProgressHistory(limit: number) {
   });
 }
 
-/**
- * Lịch sử phân trang cursor (FR-PROGRESS-06). "Xem thêm" nối trang kế vào cuối, không tải lại
- * những dòng đã có như cách cũ (tăng `limit` rồi kéo lại từ đầu).
- */
-export function useProgressHistoryPages(pageSize: number) {
-  return useInfiniteQuery({
-    queryKey: ['progress', 'history', 'pages', pageSize],
-    initialPageParam: '',
-    queryFn: ({ pageParam }) =>
-      apiFetch<HistoryPage>(
-        `/api/v1/progress/history?limit=${pageSize}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ''}`,
-      ),
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
-  });
-}

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/features/auth/auth-context';
 import { Icon } from '@/components/ui/icon';
-import { buttonClasses } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
 import { Reveal } from '@/lib/motion';
 import { isActive, navItemsFor, NAV_ITEMS, ADMIN_ITEM } from './nav';
@@ -12,6 +11,7 @@ import { dueBadgeLabel } from '@/features/flashcards/due-badge';
 import { useDueCount } from '@/features/flashcards/flashcards-api';
 import { ReminderWatcher } from '@/features/flashcards/reminder-watcher';
 import { UserMenu } from './user-menu';
+import { CreateMenu } from './create-menu';
 
 /**
  * Khung ứng dụng — ADR 012.
@@ -27,7 +27,7 @@ import { UserMenu } from './user-menu';
  * hai mascot cùng lúc. Tên ứng dụng đã có ở tiêu đề tab.
  *
  * Dưới `md`: thanh tab đáy (vùng ngón cái), có `safe-area-inset-bottom`.
- * "Cài đặt" nằm trong menu tài khoản ở desktop, và là một tab ở mobile.
+ * "Tôi" (cài đặt) nằm trong menu tài khoản ở desktop, và là một tab ở mobile.
  *
  * Nền phẳng: màn làm việc dành màu cho dữ liệu. Sóng hạt chỉ còn ở màn đăng nhập và màn lỗi.
  */
@@ -87,17 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/courses/new"
-              className={buttonClasses({
-                variant: 'secondary',
-                size: 'sm',
-                className: cn('hidden', pathname !== '/courses' && 'md:inline-flex'),
-              })}
-            >
-              <Icon name="plus" size={15} />
-              Tạo khóa học
-            </Link>
+            <CreateMenu variant="bar" />
             <UserMenu />
           </div>
         </div>
@@ -117,9 +107,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="fixed inset-x-2 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-30 rounded-[1.75rem] bg-block-ink p-1 shadow-overlay md:hidden"
       >
         <ul className="grid auto-cols-fr grid-flow-col gap-1">
-          {mobileItems.map((item) => {
+          {mobileItems.flatMap((item, i) => {
             const active = isActive(pathname, item.href);
-            return (
+            const cell = (
               <li key={item.href} className="min-w-0">
                 <Link
                   href={item.href}
@@ -135,6 +125,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               </li>
             );
+            return i === 1
+              ? [
+                  cell,
+                  <li key="create" className="flex min-w-0 items-center justify-center">
+                    <CreateMenu variant="dock" />
+                  </li>,
+                ]
+              : [cell];
           })}
         </ul>
       </nav>

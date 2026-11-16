@@ -18,6 +18,7 @@ import {
 import { absoluteTime } from '@/lib/format';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
+import { markTodayDone } from '@/lib/today-store';
 import { useDueCards, useSubmitReview } from './flashcards-api';
 import {
   GRADES,
@@ -48,6 +49,11 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
   useEffect(() => {
     if (due.data && session === null) setSession(startSession(due.data.cards));
   }, [due.data, session]);
+
+  const finished = session !== null && isFinished(session) && session.reviewed > 0;
+  useEffect(() => {
+    if (finished) markTodayDone('review');
+  }, [finished]);
 
   // "Ôn tiếp" chờ danh sách mới về rồi mới dựng phiên, để thẻ vừa chấm không quay lại.
   async function restart() {

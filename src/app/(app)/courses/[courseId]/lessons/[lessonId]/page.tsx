@@ -1,6 +1,5 @@
 'use client';
 
-import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -33,6 +32,7 @@ import {
 } from '@/components/ui';
 import { errorDetail, errorText, isNotFoundError } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
+import { markTodayDone } from '@/lib/today-store';
 import { absoluteTime, relativeTime } from '@/lib/format';
 import { humanizeCode } from '@/lib/humanize';
 
@@ -93,6 +93,10 @@ export default function LessonReadPage({
       window.removeEventListener('resize', check);
     };
   }, [lesson.data, editing]);
+
+  useEffect(() => {
+    if (reachedEnd) markTodayDone(`lesson:${lessonId}`);
+  }, [reachedEnd, lessonId]);
 
   const titleTooShort = draftTitle.trim().length < TITLE_MIN;
 
@@ -450,19 +454,6 @@ export default function LessonReadPage({
 
       {/* ------------------------------------------------------- mục lục */}
       {showToc && rendered && <TableOfContents toc={rendered.toc} />}
-      <FeedbackPrompt
-        when={reachedEnd}
-        title="Bài này thế nào?"
-        items={[
-          { topic: 'LESSON', subjectId: lessonId, question: 'QUALITY', label: 'Nội dung bài học' },
-          {
-            topic: 'LESSON',
-            subjectId: lessonId,
-            question: 'UNDERSTANDING',
-            label: 'Bạn đã nắm được bài chưa?',
-          },
-        ]}
-      />
     </div>
   );
 }

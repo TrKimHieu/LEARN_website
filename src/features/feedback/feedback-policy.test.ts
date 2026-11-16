@@ -18,9 +18,20 @@ const lesson = (id: string, question: FeedbackItem['question']): FeedbackItem =>
 const pomodoro: FeedbackItem = { topic: 'POMODORO', question: 'USEFULNESS', label: 'x' };
 
 describe('askable', () => {
-  it('asks everything the first time', () => {
-    const items = [lesson('a', 'QUALITY'), lesson('a', 'UNDERSTANDING'), pomodoro];
-    expect(askable(items, {}, now)).toEqual(items);
+  it('asks at most one question at a time', () => {
+    const [a, b, c] = [lesson('a', 'QUALITY'), lesson('a', 'UNDERSTANDING'), pomodoro];
+    expect(askable([a, b, c], {}, now)).toEqual([a]);
+  });
+
+  it('asks nothing more on a day something was already asked', () => {
+    const history = record({}, [pomodoro], 'dismissed', new Date('2026-11-17T08:00:00'));
+    expect(askable([lesson('a', 'QUALITY')], history, new Date('2026-11-17T21:00:00'))).toEqual([]);
+  });
+
+  it('asks again the next day', () => {
+    const a = lesson('a', 'QUALITY');
+    const history = record({}, [pomodoro], 'voted', new Date('2026-11-17T08:00:00'));
+    expect(askable([a], history, new Date('2026-11-18T08:00:00'))).toEqual([a]);
   });
 
   it('never asks about the same lesson twice, voted or dismissed', () => {
@@ -43,7 +54,8 @@ describe('askable', () => {
   it('a dismissal waits less than a vote, but still waits', () => {
     expect(DISMISS_COOLDOWN_MS).toBeLessThan(VOTE_COOLDOWN_MS);
     const dismissed = record({}, [pomodoro], 'dismissed', now);
-    expect(askable([pomodoro], dismissed, new Date(now.getTime() + 60_000))).toEqual([]);
+    const soon = new Date(now.getTime() + DISMISS_COOLDOWN_MS - 1);
+    expect(askable([pomodoro], dismissed, soon)).toEqual([]);
     const later = new Date(now.getTime() + DISMISS_COOLDOWN_MS);
     expect(askable([pomodoro], dismissed, later)).toEqual([pomodoro]);
   });
@@ -53,7 +65,7 @@ describe('askable', () => {
       {},
       [lesson('a', 'QUALITY'), lesson('a', 'UNDERSTANDING')],
       'voted',
-      now,
+      new Date(now.getTime() - 2 * 86_400_000),
     );
     const practice: FeedbackItem = {
       topic: 'PRACTICE',

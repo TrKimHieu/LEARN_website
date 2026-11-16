@@ -15,6 +15,9 @@ export type FeedbackHistory = Record<string, { at: string; outcome: Outcome }>;
 export const VOTE_COOLDOWN_MS = 7 * 86_400_000;
 export const DISMISS_COOLDOWN_MS = 3 * 86_400_000;
 
+/** Tối đa một câu hỏi mỗi ngày (theo giờ địa phương). */
+export const MAX_PER_DAY = 1;
+
 const keyOf = (i: Pick<FeedbackItem, 'topic' | 'subjectId' | 'question'>) =>
   `${i.topic}:${i.subjectId ?? '*'}:${i.question}`;
 
@@ -27,13 +30,17 @@ export function askable(
   history: FeedbackHistory,
   now: Date,
 ): FeedbackItem[] {
-  return items.filter((item) => {
-    const seen = history[keyOf(item)];
-    if (!seen) return true;
-    if (item.subjectId) return false;
-    const wait = seen.outcome === 'voted' ? VOTE_COOLDOWN_MS : DISMISS_COOLDOWN_MS;
-    return now.getTime() - new Date(seen.at).getTime() >= wait;
-  });
+  const today = now.toDateString();
+  if (Object.values(history).some((h) => new Date(h.at).toDateString() === today)) return [];
+  return items
+    .filter((item) => {
+      const seen = history[keyOf(item)];
+      if (!seen) return true;
+      if (item.subjectId) return false;
+      const wait = seen.outcome === 'voted' ? VOTE_COOLDOWN_MS : DISMISS_COOLDOWN_MS;
+      return now.getTime() - new Date(seen.at).getTime() >= wait;
+    })
+    .slice(0, MAX_PER_DAY);
 }
 
 export function record(

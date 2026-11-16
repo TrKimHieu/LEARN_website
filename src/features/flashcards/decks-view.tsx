@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { createDeckSchema, type DeckSummary } from '@learn/api-contracts';
 import {
@@ -22,6 +22,7 @@ import {
 import { errorDetail, errorText } from '@/lib/api-client';
 import { fieldErrorsFrom, focusFirstError } from '@/lib/form-errors';
 import { usePageTitle } from '@/lib/use-page-title';
+import { useQueryParam } from '@/lib/url-state';
 import { cardCountLabel, deckStats } from './deck-stats';
 import {
   useCourseOptions,
@@ -35,6 +36,12 @@ export function DecksView() {
   usePageTitle('Thẻ');
   const { data, isLoading, isError, error, refetch, isRefetching } = useDecks();
   const [creating, setCreating] = useState(false);
+  const [newParam, setNewParam] = useQueryParam('new');
+  useEffect(() => {
+    if (newParam !== '1') return;
+    setCreating(true);
+    setNewParam('');
+  }, [newParam, setNewParam]);
   const { data: dueCount } = useDueCount();
   const draftCount = useDrafts().data?.drafts.length ?? 0;
 

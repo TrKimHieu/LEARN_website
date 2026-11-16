@@ -114,7 +114,7 @@ export function FeedbackPrompt({
     <section
       role="dialog"
       aria-labelledby={titleId}
-      className="fixed inset-x-4 bottom-24 z-40 rounded-card border border-line bg-panel p-5 shadow-overlay md:inset-x-auto md:bottom-6 md:right-6 md:w-96"
+      className="fixed inset-x-4 bottom-24 z-40 rounded-card border border-line bg-panel p-5 shadow-overlay md:inset-x-auto md:top-20 md:bottom-auto md:right-6 md:w-96"
     >
       {thanked ? (
         <p id={titleId} role="status" className="text-center font-medium">
