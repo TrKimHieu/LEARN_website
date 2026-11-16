@@ -24,12 +24,17 @@ export function ReminderWatcher() {
     const now = new Date();
     if (!shouldNotify({ permission, state, dueCount, now })) return;
     const text = notificationText(dueCount!);
-    const notification = new Notification(text.title, { body: text.body, tag: 'learn-due' });
-    notification.onclick = () => {
-      window.focus();
-      router.push('/review');
-      notification.close();
-    };
+    try {
+      const notification = new Notification(text.title, { body: text.body, tag: 'learn-due' });
+      notification.onclick = () => {
+        window.focus();
+        router.push('/review');
+        notification.close();
+      };
+    } catch {
+      // Android Chrome chỉ cho thông báo qua service worker: bỏ qua, app không được sập vì nhắc ôn.
+    }
+    // Ghi mốc cả khi trình duyệt từ chối, để không thử lại ở mỗi lần đổi số thẻ.
     save(afterNotified(state, now));
   }, [dueCount, permission, state, save, router]);
 

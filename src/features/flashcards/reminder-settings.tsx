@@ -16,21 +16,21 @@ export function ReminderSettings({ className }: { className?: string }) {
       )}
       {permission === 'denied' && (
         <p className="mt-1 text-sm text-fg-subtle">
-          Thông báo đang bị chặn. Cho phép lại trong cài đặt trang của trình duyệt để bật.
-        </p>
-      )}
-      {permission !== 'unsupported' && permission !== 'denied' && (
-        <p className="mt-1 text-sm text-fg-subtle">
-          Báo khi có thẻ đến hạn, lúc tab này đang mở.
+          Thông báo đang bị chặn trong trình duyệt.
         </p>
       )}
       {permission !== 'unsupported' && permission !== 'denied' && (
         <div className="mt-4">
           {active ? (
-            <Button variant="secondary" className="max-md:h-11" onClick={disable}>
-              <Icon name="check" size={16} />
-              Đang bật · Tắt
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1 text-sm font-medium">
+                <Icon name="check" size={16} />
+                Đang bật
+              </span>
+              <Button variant="secondary" className="max-md:h-11" onClick={disable}>
+                Tắt nhắc ôn
+              </Button>
+            </div>
           ) : (
             <Button className="max-md:h-11" onClick={() => void enable()}>
               Bật nhắc ôn

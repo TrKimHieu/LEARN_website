@@ -247,13 +247,16 @@ function DraftRow({
 
   return (
     <Card className="grid items-start gap-3 md:grid-cols-[auto_1fr_1fr_auto]">
-      <input
-        type="checkbox"
-        className="mt-1 size-5 accent-[var(--brand)]"
-        checked={checked}
-        onChange={onToggle}
-        aria-label={`Chọn thẻ nháp: ${draft.front}`}
-      />
+      {/* Vùng chạm 44px trên điện thoại; ô vuông vẫn nhỏ cho gọn. */}
+      <label className="-m-3 flex size-11 cursor-pointer items-center justify-center md:m-0 md:size-auto md:pt-1">
+        <input
+          type="checkbox"
+          className="size-5 accent-[var(--brand)]"
+          checked={checked}
+          onChange={onToggle}
+          aria-label={`Chọn thẻ nháp: ${draft.front}`}
+        />
+      </label>
       <p className="line-clamp-3 min-w-0 font-medium">
         <UserText>{draft.front}</UserText>
       </p>

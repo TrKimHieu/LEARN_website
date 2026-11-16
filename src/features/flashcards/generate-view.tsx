@@ -171,7 +171,7 @@ export function GenerateView() {
         </form>
       </Card>
 
-      {jobId && (
+      {jobId && job.data && (
         <Card className="mt-4 max-w-xl" aria-live="polite">
           {running && (
             <div className="space-y-3">
@@ -206,7 +206,7 @@ export function GenerateView() {
             <div className="space-y-3">
               <InlineError>{generationErrorText(job.data?.error)}</InlineError>
               <Button variant="secondary" className="max-md:h-11" onClick={() => setJobId(null)}>
-                Thử lại
+                Sinh lại
               </Button>
             </div>
           )}
