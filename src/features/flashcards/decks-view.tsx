@@ -40,34 +40,31 @@ export function DecksView() {
 
   return (
     <>
-      <PageHeader
-        title="Thẻ"
-        action={
-          !creating && (
-            <>
-              {dueCount ? (
-                <ButtonLink href="/review" variant="secondary" className="max-md:h-11">
-                  <Icon name="play" size={16} />
-                  Ôn hôm nay ({dueCount})
-                </ButtonLink>
-              ) : null}
-              {draftCount > 0 ? (
-                <ButtonLink href="/decks/drafts" variant="secondary" className="max-md:h-11">
-                  Thẻ nháp ({draftCount})
-                </ButtonLink>
-              ) : null}
-              <ButtonLink href="/decks/generate" variant="secondary" className="max-md:h-11">
-                <Icon name="sparkles" size={16} />
-                Sinh thẻ bằng AI
-              </ButtonLink>
-              <Button onClick={() => setCreating(true)}>
-                <Icon name="plus" size={16} />
-                Tạo bộ thẻ
-              </Button>
-            </>
-          )
-        }
-      />
+      {/* Nhiều hành động: hàng riêng tự xuống dòng, để điện thoại không phải cuộn ngang. */}
+      <PageHeader title="Thẻ" className="mb-4" />
+      {!creating && (
+        <div className="mb-8 flex flex-wrap gap-2">
+          {dueCount ? (
+            <ButtonLink href="/review" variant="secondary" className="max-md:h-11">
+              <Icon name="play" size={16} />
+              Ôn hôm nay ({dueCount})
+            </ButtonLink>
+          ) : null}
+          {draftCount > 0 ? (
+            <ButtonLink href="/decks/drafts" variant="secondary" className="max-md:h-11">
+              Thẻ nháp ({draftCount})
+            </ButtonLink>
+          ) : null}
+          <ButtonLink href="/decks/generate" variant="secondary" className="max-md:h-11">
+            <Icon name="sparkles" size={16} />
+            Sinh thẻ bằng AI
+          </ButtonLink>
+          <Button className="max-md:h-11" onClick={() => setCreating(true)}>
+            <Icon name="plus" size={16} />
+            Tạo bộ thẻ
+          </Button>
+        </div>
+      )}
 
       {creating && <CreateDeckForm onDone={() => setCreating(false)} />}
 
@@ -195,7 +192,9 @@ function CreateDeckForm({ onDone }: { onDone: () => void }) {
           </Select>
         </Field>
         {create.isError && (
-          <InlineError>{errorText(create.error, 'Không tạo được bộ thẻ, vui lòng thử lại.')}</InlineError>
+          <InlineError>
+            {errorText(create.error, 'Không tạo được bộ thẻ, vui lòng thử lại.')}
+          </InlineError>
         )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" loading={create.isPending}>
