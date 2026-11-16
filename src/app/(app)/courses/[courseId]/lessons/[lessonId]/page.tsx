@@ -1,6 +1,5 @@
 'use client';
 
-import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -450,19 +449,6 @@ export default function LessonReadPage({
 
       {/* ------------------------------------------------------- mục lục */}
       {showToc && rendered && <TableOfContents toc={rendered.toc} />}
-      <FeedbackPrompt
-        when={reachedEnd}
-        title="Bài này thế nào?"
-        items={[
-          { topic: 'LESSON', subjectId: lessonId, question: 'QUALITY', label: 'Nội dung bài học' },
-          {
-            topic: 'LESSON',
-            subjectId: lessonId,
-            question: 'UNDERSTANDING',
-            label: 'Bạn đã nắm được bài chưa?',
-          },
-        ]}
-      />
     </div>
   );
 }
