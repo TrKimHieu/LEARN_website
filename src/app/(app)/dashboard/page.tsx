@@ -4,6 +4,8 @@ import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CircleArrowLink, ColorBlock, StatTile } from '@/components/shared/color-block';
+import { DueTodayCard } from '@/features/flashcards/due-today-card';
+import { FocusLink } from '@/features/flashcards/focus-link';
 import { Mascot } from '@/components/shared/mascot';
 import type { ProgressCourse } from '@learn/api-contracts';
 import {
@@ -104,6 +106,9 @@ export default function DashboardPage() {
         )}
         {next && <ResumeCard course={next} />}
       </div>
+
+      <DueTodayCard />
+      <FocusLink />
 
       <section aria-labelledby="stats-title" className="mt-4">
         <h2 id="stats-title" className="sr-only">

@@ -61,6 +61,7 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   EXTRACT_DOCUMENT: 'Trích xuất tài liệu',
   GENERATE_LESSONS: 'Sinh bài học',
   REGENERATE_LESSON: 'Sinh lại một bài',
+  GENERATE_FLASHCARDS: 'Sinh thẻ',
 };
 
 export function jobTypeLabel(type: string) {

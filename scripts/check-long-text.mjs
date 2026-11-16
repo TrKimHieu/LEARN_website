@@ -50,6 +50,16 @@ const lessonHref = await page
 const routes = ['/dashboard', '/courses', courseHref, '/progress', '/settings'];
 if (lessonHref) routes.push(lessonHref, `${lessonHref}/practice`);
 
+// Thẻ: danh sách bộ, sinh thẻ, thẻ nháp, Pomodoro, Ôn hôm nay; bộ đầu tiên (nếu có) và phiên ôn của nó.
+routes.push('/decks', '/decks/generate', '/decks/drafts', '/focus', '/review');
+await page.goto(`${base}/decks`);
+const deckHref = await page
+  .locator('main a[href^="/decks/"]:not([href^="/decks/generate"]):not([href^="/decks/drafts"])')
+  .first()
+  .getAttribute('href', { timeout: 10000 })
+  .catch(() => null);
+if (deckHref) routes.push(deckHref, `${deckHref}/review`);
+
 let failed = 0;
 for (const width of WIDTHS) {
   await page.setViewportSize({ width, height: 800 });
@@ -59,8 +69,19 @@ for (const width of WIDTHS) {
     const stressed = await page.evaluate(stressPage);
     await page.waitForTimeout(100);
     const problems = await page.evaluate(findOverflows);
-    const name = route === courseHref ? '/course' : route === lessonHref ? '/lesson' : route;
-    const label = route.endsWith('/practice') ? '/practice' : name;
+    const name =
+      route === courseHref
+        ? '/course'
+        : route === lessonHref
+          ? '/lesson'
+          : route === deckHref
+            ? '/deck'
+            : route;
+    const label = route.endsWith('/practice')
+      ? '/practice'
+      : route === `${deckHref}/review`
+        ? '/deck-review'
+        : name;
     console.log(`${problems.length ? 'FAIL' : 'ok  '} ${width}px ${label} (${stressed} chữ)`);
     for (const p of problems) console.log(`     ${p}`);
     failed += problems.length;

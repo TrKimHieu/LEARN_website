@@ -5,6 +5,7 @@ export type NavItem = { href: string; label: string; icon: IconName };
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/dashboard', label: 'Tổng quan', icon: 'home' },
   { href: '/courses', label: 'Khóa học', icon: 'layers' },
+  { href: '/decks', label: 'Thẻ', icon: 'card' },
   { href: '/progress', label: 'Tiến trình', icon: 'trend' },
   { href: '/settings', label: 'Cài đặt', icon: 'settings' },
 ];
