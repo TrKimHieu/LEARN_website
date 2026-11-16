@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { createDeckSchema, type DeckSummary } from '@learn/api-contracts';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { createDeckSchema, type DeckSummary } from "@learn/api-contracts";
 import {
   Button,
   ButtonLink,
@@ -18,23 +18,30 @@ import {
   Select,
   Skeleton,
   UserText,
-} from '@/components/ui';
-import { errorDetail, errorText } from '@/lib/api-client';
-import { fieldErrorsFrom, focusFirstError } from '@/lib/form-errors';
-import { usePageTitle } from '@/lib/use-page-title';
-import { cardCountLabel, deckStats } from './deck-stats';
+} from "@/components/ui";
+import { errorDetail, errorText } from "@/lib/api-client";
+import { fieldErrorsFrom, focusFirstError } from "@/lib/form-errors";
+import { usePageTitle } from "@/lib/use-page-title";
+import { useQueryParam } from "@/lib/url-state";
+import { cardCountLabel, deckStats } from "./deck-stats";
 import {
   useCourseOptions,
   useCreateDeck,
   useDecks,
   useDrafts,
   useDueCount,
-} from './flashcards-api';
+} from "./flashcards-api";
 
 export function DecksView() {
-  usePageTitle('Thẻ');
+  usePageTitle("Thẻ");
   const { data, isLoading, isError, error, refetch, isRefetching } = useDecks();
   const [creating, setCreating] = useState(false);
+  const [newParam, setNewParam] = useQueryParam("new");
+  useEffect(() => {
+    if (newParam !== "1") return;
+    setCreating(true);
+    setNewParam("");
+  }, [newParam, setNewParam]);
   const { data: dueCount } = useDueCount();
   const draftCount = useDrafts().data?.drafts.length ?? 0;
 
@@ -45,17 +52,29 @@ export function DecksView() {
       {!creating && (
         <div className="mb-8 flex flex-wrap gap-2">
           {dueCount ? (
-            <ButtonLink href="/review" variant="secondary" className="max-md:h-11">
+            <ButtonLink
+              href="/review"
+              variant="secondary"
+              className="max-md:h-11"
+            >
               <Icon name="play" size={16} />
               Ôn hôm nay ({dueCount})
             </ButtonLink>
           ) : null}
           {draftCount > 0 ? (
-            <ButtonLink href="/decks/drafts" variant="secondary" className="max-md:h-11">
+            <ButtonLink
+              href="/decks/drafts"
+              variant="secondary"
+              className="max-md:h-11"
+            >
               Thẻ nháp ({draftCount})
             </ButtonLink>
           ) : null}
-          <ButtonLink href="/decks/generate" variant="secondary" className="max-md:h-11">
+          <ButtonLink
+            href="/decks/generate"
+            variant="secondary"
+            className="max-md:h-11"
+          >
             <Icon name="sparkles" size={16} />
             Sinh thẻ bằng AI
           </ButtonLink>
@@ -85,7 +104,7 @@ export function DecksView() {
       {isError && (
         <ErrorState
           title="Không tải được danh sách bộ thẻ"
-          description={errorText(error, 'Vui lòng thử lại.')}
+          description={errorText(error, "Vui lòng thử lại.")}
           detail={errorDetail(error)}
           onRetry={() => {
             if (!isRefetching) void refetch();
@@ -96,7 +115,7 @@ export function DecksView() {
       {data && data.decks.length === 0 && !creating && (
         <EmptyState
           title="Chưa có bộ thẻ nào"
-          action={{ label: 'Tạo bộ thẻ', onClick: () => setCreating(true) }}
+          action={{ label: "Tạo bộ thẻ", onClick: () => setCreating(true) }}
         />
       )}
 
@@ -125,7 +144,9 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
             <UserText>{deck.title}</UserText>
           </Link>
         </h2>
-        <p className="mt-1 text-sm text-fg-subtle">{cardCountLabel(deck.cardCount)}</p>
+        <p className="mt-1 text-sm text-fg-subtle">
+          {cardCountLabel(deck.cardCount)}
+        </p>
       </div>
       <dl className="mt-auto grid grid-cols-3 gap-2">
         {deckStats(deck).map((s) => (
@@ -139,21 +160,24 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
   );
 }
 
-const FIELDS = ['title'] as const;
+const FIELDS = ["title"] as const;
 
 function CreateDeckForm({ onDone }: { onDone: () => void }) {
   const create = useCreateDeck();
   const courses = useCourseOptions();
-  const [title, setTitle] = useState('');
-  const [courseId, setCourseId] = useState('');
-  const [fieldError, setFieldError] = useState<Partial<Record<(typeof FIELDS)[number], string>>>(
-    {},
-  );
+  const [title, setTitle] = useState("");
+  const [courseId, setCourseId] = useState("");
+  const [fieldError, setFieldError] = useState<
+    Partial<Record<(typeof FIELDS)[number], string>>
+  >({});
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setFieldError({});
-    const parsed = createDeckSchema.safeParse({ title, courseId: courseId || null });
+    const parsed = createDeckSchema.safeParse({
+      title,
+      courseId: courseId || null,
+    });
     if (!parsed.success) {
       const errors = fieldErrorsFrom(parsed.error, FIELDS);
       setFieldError(errors);
@@ -176,13 +200,17 @@ function CreateDeckForm({ onDone }: { onDone: () => void }) {
             id="title"
             maxLength={100}
             invalid={Boolean(fieldError.title)}
-            aria-describedby={fieldError.title ? 'title-error' : undefined}
+            aria-describedby={fieldError.title ? "title-error" : undefined}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </Field>
         <Field label="Khóa học" htmlFor="courseId">
-          <Select id="courseId" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+          <Select
+            id="courseId"
+            value={courseId}
+            onChange={(e) => setCourseId(e.target.value)}
+          >
             <option value="">Không gắn khóa học</option>
             {courses.data?.courses.map((c) => (
               <option key={c.id} value={c.id}>
@@ -193,12 +221,15 @@ function CreateDeckForm({ onDone }: { onDone: () => void }) {
         </Field>
         {create.isError && (
           <InlineError>
-            {errorText(create.error, 'Không tạo được bộ thẻ, vui lòng thử lại.')}
+            {errorText(
+              create.error,
+              "Không tạo được bộ thẻ, vui lòng thử lại.",
+            )}
           </InlineError>
         )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" loading={create.isPending}>
-            {create.isPending ? 'Đang tạo…' : 'Tạo bộ thẻ'}
+            {create.isPending ? "Đang tạo…" : "Tạo bộ thẻ"}
           </Button>
           <Button variant="secondary" onClick={onDone}>
             Huỷ
