@@ -1,5 +1,6 @@
 'use client';
 
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { generateFlashcardsSchema } from '@learn/api-contracts';
@@ -196,6 +197,16 @@ export function GenerateView() {
           )}
           {state === 'done' && (
             <div className="space-y-3">
+              <FeedbackPrompt
+                title="Thẻ AI thế nào?"
+                items={[
+                  {
+                    topic: 'FLASHCARD_AI',
+                    question: 'QUALITY',
+                    label: 'Thẻ AI sinh ra có dùng được không?',
+                  },
+                ]}
+              />
               <p className="font-medium">Đã sinh xong thẻ nháp.</p>
               <ButtonLink href={`/decks/drafts?job=${jobId}`} className="max-md:h-11">
                 Xem thẻ nháp

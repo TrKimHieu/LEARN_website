@@ -1,5 +1,6 @@
 'use client';
 
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -75,6 +76,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const generateLessons = useGenerateLessons(courseId);
   const courseJobs = useCourseJobs(courseId);
   const finishAiJob = useFinishAiJob(courseId);
+  const [askGeneration, setAskGeneration] = useState(false);
   const deleteCourse = useDeleteCourse(courseId);
   const router = useRouter();
   usePageTitle(course.data?.title ?? 'Khóa học');
@@ -159,6 +161,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
 
   function handleJobDone() {
     setStartedJobId(null);
+    setAskGeneration(true);
     void finishAiJob();
   }
 
@@ -197,6 +200,18 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       <>
         <h1 className="sr-only">Khóa học</h1>
         <BackLink href="/courses" label="Khóa học" />
+        <FeedbackPrompt
+          when={askGeneration}
+          title="Bài học AI vừa sinh thế nào?"
+          items={[
+            {
+              topic: 'LESSON_GENERATION',
+              subjectId: courseId,
+              question: 'USEFULNESS',
+              label: 'Bài học vừa sinh có hữu ích không?',
+            },
+          ]}
+        />
         <EmptyState
           className="mt-6"
           title="Không tìm thấy khóa học"

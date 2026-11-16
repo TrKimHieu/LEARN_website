@@ -1,5 +1,6 @@
 'use client';
 
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { useEffect, useState } from 'react';
 import { Card, Field, Icon, Input, cn } from '@/components/ui';
 import { Mascot } from '@/components/shared/mascot';
@@ -218,6 +219,17 @@ export function PomodoroView() {
           </button>
         </div>
 
+        <FeedbackPrompt
+          when={finished === 'focus'}
+          title="Pomodoro thế nào?"
+          items={[
+            {
+              topic: 'POMODORO',
+              question: 'USEFULNESS',
+              label: 'Pomodoro có giúp bạn tập trung không?',
+            },
+          ]}
+        />
         {finished && (
           <p role="status" className="text-sm font-medium">
             {finished === 'focus' ? 'Hết giờ học, nghỉ một chút.' : 'Hết giờ nghỉ, học tiếp nhé.'}

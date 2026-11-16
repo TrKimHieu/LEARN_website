@@ -1,5 +1,6 @@
 'use client';
 
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
@@ -237,16 +238,41 @@ function ExerciseSession({
 
   if (result) {
     return (
-      <ResultScreen
-        courseId={courseId}
-        lessonId={lessonId}
-        data={data}
-        result={result}
-        answers={answers}
-        onRetry={retry}
-        onOpenExercise={onOpenExercise}
-        backToLesson={backToLesson}
-      />
+      <>
+        <ResultScreen
+          courseId={courseId}
+          lessonId={lessonId}
+          data={data}
+          result={result}
+          answers={answers}
+          onRetry={retry}
+          onOpenExercise={onOpenExercise}
+          backToLesson={backToLesson}
+        />
+        <FeedbackPrompt
+          title="Bài này thế nào?"
+          items={[
+            {
+              topic: 'LESSON',
+              subjectId: lessonId,
+              question: 'QUALITY',
+              label: 'Nội dung bài học',
+            },
+            {
+              topic: 'LESSON',
+              subjectId: lessonId,
+              question: 'UNDERSTANDING',
+              label: 'Bạn đã nắm được bài chưa?',
+            },
+            {
+              topic: 'PRACTICE',
+              subjectId: lessonId,
+              question: 'QUALITY',
+              label: 'Bài kiểm tra có sát nội dung?',
+            },
+          ]}
+        />
+      </>
     );
   }
 
