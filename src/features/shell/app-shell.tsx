@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/features/auth/auth-context";
-import { Icon } from "@/components/ui/icon";
-import { cn } from "@/components/ui/cn";
-import { Reveal } from "@/lib/motion";
-import { isActive, navItemsFor, NAV_ITEMS, ADMIN_ITEM } from "./nav";
-import { dueBadgeLabel } from "@/features/flashcards/due-badge";
-import { useDueCount } from "@/features/flashcards/flashcards-api";
-import { ReminderWatcher } from "@/features/flashcards/reminder-watcher";
-import { UserMenu } from "./user-menu";
-import { CreateMenu } from "./create-menu";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/features/auth/auth-context';
+import { Icon } from '@/components/ui/icon';
+import { cn } from '@/components/ui/cn';
+import { Reveal } from '@/lib/motion';
+import { isActive, navItemsFor, NAV_ITEMS, ADMIN_ITEM } from './nav';
+import { dueBadgeLabel } from '@/features/flashcards/due-badge';
+import { useDueCount } from '@/features/flashcards/flashcards-api';
+import { ReminderWatcher } from '@/features/flashcards/reminder-watcher';
+import { UserMenu } from './user-menu';
+import { CreateMenu } from './create-menu';
 
 /**
  * Khung ứng dụng — ADR 012.
@@ -27,26 +27,26 @@ import { CreateMenu } from "./create-menu";
  * hai mascot cùng lúc. Tên ứng dụng đã có ở tiêu đề tab.
  *
  * Dưới `md`: thanh tab đáy (vùng ngón cái), có `safe-area-inset-bottom`.
- * "Cài đặt" nằm trong menu tài khoản ở desktop, và là một tab ở mobile.
+ * "Tôi" (cài đặt) nằm trong menu tài khoản ở desktop, và là một tab ở mobile.
  *
  * Nền phẳng: màn làm việc dành màu cho dữ liệu. Sóng hạt chỉ còn ở màn đăng nhập và màn lỗi.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
-  const isAdmin = user?.role === "ADMIN";
-  const topItems = NAV_ITEMS.filter((i) => i.href !== "/settings");
+  const isAdmin = user?.role === 'ADMIN';
+  const topItems = NAV_ITEMS.filter((i) => i.href !== '/settings');
   const desktopItems = isAdmin ? [...topItems, ADMIN_ITEM] : topItems;
   const mobileItems = navItemsFor(user?.role);
   const { data: dueCount } = useDueCount();
   const dueBadge = dueBadgeLabel(dueCount);
-  const badgeFor = (href: string) => (href === "/decks" ? dueBadge : null);
-  const wide = pathname.startsWith("/admin");
-  const workspace = pathname.endsWith("/practice");
+  const badgeFor = (href: string) => (href === '/decks' ? dueBadge : null);
+  const wide = pathname.startsWith('/admin');
+  const workspace = pathname.endsWith('/practice');
   // max-w-6xl (1152px) cho màn laptop trở lên. Admin rộng hơn cho bảng nhiều cột.
   const container = cn(
-    "mx-auto w-full px-5 sm:px-8",
-    workspace ? "max-w-[88rem]" : wide ? "max-w-7xl" : "max-w-6xl",
+    'mx-auto w-full px-5 sm:px-8',
+    workspace ? 'max-w-[88rem]' : wide ? 'max-w-7xl' : 'max-w-6xl',
   );
 
   return (
@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
 
       <header className="z-30 bg-app md:sticky md:top-0 md:border-b md:border-line md:bg-panel">
-        <div className={cn(container, "flex h-14 items-center gap-6")}>
+        <div className={cn(container, 'flex h-14 items-center gap-6')}>
           <nav aria-label="Điều hướng chính" className="hidden h-full md:block">
             <ul className="-ml-3 flex h-full items-stretch gap-1">
               {desktopItems.map((item) => {
@@ -69,12 +69,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <li key={item.href} className="flex">
                     <Link
                       href={item.href}
-                      aria-current={active ? "page" : undefined}
+                      aria-current={active ? 'page' : undefined}
                       className={cn(
-                        "flex items-center border-b-2 px-3 text-sm font-medium transition-colors duration-150 focus-ring",
+                        'flex items-center border-b-2 px-3 text-sm font-medium transition-colors duration-150 focus-ring',
                         active
-                          ? "border-brand font-semibold text-fg"
-                          : "border-transparent text-fg-subtle hover:text-fg",
+                          ? 'border-brand font-semibold text-fg'
+                          : 'border-transparent text-fg-subtle hover:text-fg',
                       )}
                     >
                       {item.label}
@@ -96,10 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main
         id="main"
         tabIndex={-1}
-        className={cn(
-          container,
-          "scroll-mt-20 pb-32 pt-2 outline-none md:pb-16 md:pt-8",
-        )}
+        className={cn(container, 'scroll-mt-20 pb-32 pt-2 outline-none md:pb-16 md:pt-8')}
       >
         <Reveal key={pathname}>{children}</Reveal>
       </main>
@@ -112,21 +109,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ul className="grid auto-cols-fr grid-flow-col gap-1">
           {mobileItems.flatMap((item, i) => {
             const active = isActive(pathname, item.href);
-            const li = (
+            const cell = (
               <li key={item.href} className="min-w-0">
                 <Link
                   href={item.href}
-                  aria-current={active ? "page" : undefined}
+                  aria-current={active ? 'page' : undefined}
                   className={cn(
-                    "relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.375rem] text-xs font-semibold tracking-tight transition-colors duration-150 focus-ring-dark",
-                    active ? "bg-brand text-on-brand" : "text-white/75",
+                    'relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[1.375rem] text-xs font-semibold tracking-tight transition-colors duration-150 focus-ring-dark',
+                    active ? 'bg-brand text-on-brand' : 'text-white/75',
                   )}
                 >
-                  <Icon
-                    name={item.icon}
-                    size={20}
-                    strokeWidth={active ? 2.25 : 1.75}
-                  />
+                  <Icon name={item.icon} size={20} strokeWidth={active ? 2.25 : 1.75} />
                   <span className="max-w-full truncate">{item.label}</span>
                   <DueBadge label={badgeFor(item.href)} dock />
                 </Link>
@@ -134,15 +127,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
             return i === 1
               ? [
-                  li,
-                  <li
-                    key="create"
-                    className="flex min-w-0 items-center justify-center"
-                  >
+                  cell,
+                  <li key="create" className="flex min-w-0 items-center justify-center">
                     <CreateMenu variant="dock" />
                   </li>,
                 ]
-              : [li];
+              : [cell];
           })}
         </ul>
       </nav>
@@ -151,19 +141,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 /** Số thẻ đến hạn cạnh mục Thẻ; chữ kèm cho trình đọc màn hình, màu không phải tín hiệu duy nhất. */
-function DueBadge({
-  label,
-  dock = false,
-}: {
-  label: string | null;
-  dock?: boolean;
-}) {
+function DueBadge({ label, dock = false }: { label: string | null; dock?: boolean }) {
   if (!label) return null;
   return (
     <span
       className={cn(
-        "inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[0.75rem] font-semibold leading-5 text-on-brand tabular-nums",
-        dock ? "absolute right-2 top-1" : "ml-1.5",
+        'inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[0.75rem] font-semibold leading-5 text-on-brand tabular-nums',
+        dock ? 'absolute right-2 top-1' : 'ml-1.5',
       )}
     >
       {label}
