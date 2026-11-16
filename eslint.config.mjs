@@ -118,6 +118,8 @@ export default tseslint.config(
             // liệu của feature khác — `useAuth`/`useSubscription`/`useDueCount` (huy hiệu số thẻ
             // đến hạn) — không phải tái dùng UI nội bộ của chúng.
             shell: ['auth', 'settings', 'flashcards'],
+            // `feedback` là lớp hỏi ý kiến dùng chung, mọi tính năng được đặt thẻ hỏi của nó.
+            flashcards: ['feedback'],
           },
         },
       ],

@@ -1,5 +1,6 @@
 'use client';
 
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
@@ -103,6 +104,17 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
     return (
       <>
         {back}
+        <FeedbackPrompt
+          when={session.reviewed > 0}
+          title="Ôn thẻ thế nào?"
+          items={[
+            {
+              topic: 'FLASHCARD_REVIEW',
+              question: 'USEFULNESS',
+              label: 'Ôn thẻ kiểu này có giúp bạn nhớ không?',
+            },
+          ]}
+        />
         <Card className="max-w-xl">
           <h1 className="font-display text-2xl font-semibold">Xong {session.reviewed} thẻ</h1>
           {remaining > 0 && <p className="mt-2 text-fg-muted">Còn {remaining} thẻ đến hạn.</p>}

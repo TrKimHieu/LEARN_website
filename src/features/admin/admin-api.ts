@@ -8,6 +8,7 @@ import type {
   AdminAiJobDetail,
   AuditLogEntry,
 } from '@learn/api-contracts';
+import type { AdminFeedbackSummary } from '@learn/api-contracts';
 import { apiFetch } from '@/lib/api-client';
 
 export function useAdminMetrics() {
@@ -77,5 +78,12 @@ export function useRetryAiJob(jobId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'ai-jobs'] });
     },
+  });
+}
+
+export function useAdminFeedback() {
+  return useQuery({
+    queryKey: ['admin', 'feedback'],
+    queryFn: () => apiFetch<AdminFeedbackSummary>('/api/v1/admin/feedback'),
   });
 }

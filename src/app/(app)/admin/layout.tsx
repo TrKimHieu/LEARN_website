@@ -12,6 +12,7 @@ const ADMIN_NAV: { href: string; label: string; icon: IconName }[] = [
   { href: '/admin/courses', label: 'Khóa học', icon: 'layers' },
   { href: '/admin/ai-jobs', label: 'AI Job', icon: 'cpu' },
   { href: '/admin/subscriptions', label: 'Gói đăng ký', icon: 'card' },
+  { href: '/admin/feedback', label: 'Góp ý', icon: 'star' },
 ];
 
 /**
