@@ -87,3 +87,27 @@ export function formatClock(ms: number): string {
   const ss = String(total % 60).padStart(2, '0');
   return `${mm}:${ss}`;
 }
+
+/** Số phiên học đã xong trong một ngày (lịch máy người học). */
+export interface DayCount {
+  date: string;
+  done: number;
+}
+
+export function todayKey(now: Date): string {
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+
+/** Sang ngày mới thì đếm lại từ 0; chỉ phiên học (không tính phiên nghỉ) được cộng. */
+export function countFocus(day: DayCount | null, finished: Phase | null, today: string): DayCount {
+  const base = day?.date === today ? day : { date: today, done: 0 };
+  return finished === 'focus' ? { ...base, done: base.done + 1 } : base;
+}
+
+/** Phần đã trôi của giai đoạn hiện tại, 0 đến 1, để vẽ vòng tiến độ. */
+export function elapsedFraction(state: TimerState, settings: PomodoroSettings, now: number): number {
+  const total = lengthOf(state.phase, settings);
+  return total <= 0 ? 0 : Math.min(1, Math.max(0, 1 - remaining(state, now) / total));
+}

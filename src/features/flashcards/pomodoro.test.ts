@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS,
   advance,
+  countFocus,
+  elapsedFraction,
   formatClock,
   initialState,
   normalizeSettings,
@@ -9,6 +11,7 @@ import {
   pause,
   remaining,
   start,
+  todayKey,
 } from './pomodoro';
 
 const MIN = 60_000;
@@ -95,5 +98,45 @@ describe('formatClock', () => {
     expect(formatClock(25 * MIN)).toBe('25:00');
     expect(formatClock(61_001)).toBe('01:02');
     expect(formatClock(0)).toBe('00:00');
+  });
+});
+
+describe('countFocus', () => {
+  it('counts a finished focus session for today', () => {
+    expect(countFocus(null, 'focus', '2026-11-16')).toEqual({ date: '2026-11-16', done: 1 });
+    expect(countFocus({ date: '2026-11-16', done: 3 }, 'focus', '2026-11-16').done).toBe(4);
+  });
+  it('does not count a finished break', () => {
+    expect(countFocus({ date: '2026-11-16', done: 2 }, 'break', '2026-11-16').done).toBe(2);
+  });
+  it('starts over on a new day', () => {
+    expect(countFocus({ date: '2026-11-15', done: 6 }, null, '2026-11-16')).toEqual({
+      date: '2026-11-16',
+      done: 0,
+    });
+    expect(countFocus({ date: '2026-11-15', done: 6 }, 'focus', '2026-11-16').done).toBe(1);
+  });
+});
+
+describe('todayKey', () => {
+  it('uses the local calendar date', () => {
+    expect(todayKey(new Date(2026, 10, 16, 23, 59))).toBe('2026-11-16');
+    expect(todayKey(new Date(2026, 0, 5, 0, 1))).toBe('2026-01-05');
+  });
+});
+
+describe('elapsedFraction', () => {
+  const settings = { focusMin: 25, breakMin: 5 };
+  it('is 0 before starting and grows with time', () => {
+    const s = initialState(settings);
+    expect(elapsedFraction(s, settings, t0)).toBe(0);
+    const running = start(s, t0);
+    expect(elapsedFraction(running, settings, t0 + 5 * MIN)).toBeCloseTo(0.2, 5);
+  });
+  it('uses the break length during a break and never passes 1', () => {
+    const brk = initialState(settings, 'break');
+    const running = start(brk, t0);
+    expect(elapsedFraction(running, settings, t0 + MIN)).toBeCloseTo(0.2, 5);
+    expect(elapsedFraction(running, settings, t0 + 60 * MIN)).toBe(1);
   });
 });
