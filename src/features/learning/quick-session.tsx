@@ -72,6 +72,11 @@ export function QuickSession({
   const [mood, setMood] = useState<MascotState>('listening');
   const [error, setError] = useState<string | null>(null);
   const startedAt = useRef(0);
+  /** Chốt khi chấm xong câu cuối; màn lỗi nộp bài không tính vào thời gian. */
+  const durationMs = useRef(0);
+  const form = useRef<HTMLFormElement>(null);
+  /** Câu cần đưa focus tới sau khi bấm "Tiếp" hoặc "Hiểu rồi". */
+  const focusQuestion = useRef(false);
   useEffect(() => {
     startedAt.current = Date.now();
   }, []);
@@ -81,8 +86,24 @@ export function QuickSession({
   const { done, total } = progress(state);
   const streak = verdict ? (verdict.result.isCorrect ? state.streak + 1 : 0) : state.streak;
 
+  // Khoá đáp án làm mất focus đang ở ô nhập: đưa focus sang nút "Tiếp"/"Hiểu rồi" để Enter đi tiếp.
+  useEffect(() => {
+    if (!verdict) return;
+    form.current?.querySelector<HTMLElement>('[type=submit]')?.focus({ preventScroll: true });
+  }, [verdict]);
+
+  // Câu mới: focus ô trả lời đầu tiên, trình đọc màn hình đọc kèm đề (aria-labelledby).
+  useEffect(() => {
+    if (!focusQuestion.current || !questionId) return;
+    focusQuestion.current = false;
+    document
+      .getElementById(`question-${questionId}`)
+      ?.querySelector<HTMLElement>('input')
+      ?.focus({ preventScroll: true });
+  }, [questionId, state.checked]);
+
   async function runCheck() {
-    if (!answer || !canCheck(answer)) return;
+    if (check.isPending || !answer || !canCheck(answer)) return;
     setError(null);
     try {
       const result = await check.mutateAsync({ exerciseId: data.id, answer });
@@ -96,14 +117,16 @@ export function QuickSession({
 
   async function finish(s: QuickState) {
     setError(null);
-    const durationMs = Math.max(1, Date.now() - startedAt.current);
     try {
       const res = await submit.mutateAsync({
         exerciseId: data.id,
         answers: submissionAnswers(s),
-        durationMs: Math.min(durationMs, MAX_DURATION_MS),
+        durationMs: Math.min(durationMs.current, MAX_DURATION_MS),
       });
-      onFinished(res, s.firstAnswers, { bestStreak: s.bestStreak, durationMs });
+      onFinished(res, s.firstAnswers, {
+        bestStreak: s.bestStreak,
+        durationMs: durationMs.current,
+      });
     } catch (err) {
       setError(failText(err, 'Nộp bài thất bại, vui lòng thử lại.'));
     }
@@ -116,7 +139,12 @@ export function QuickSession({
     setAnswer(undefined);
     setVerdict(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (isFinished(s)) void finish(s);
+    if (isFinished(s)) {
+      durationMs.current = Math.max(1, Date.now() - startedAt.current);
+      void finish(s);
+    } else {
+      focusQuestion.current = true;
+    }
   }
 
   if (data.questions.length === 0) {
@@ -148,6 +176,7 @@ export function QuickSession({
 
   return (
     <form
+      ref={form}
       className="mx-auto max-w-2xl"
       onSubmit={(e) => {
         e.preventDefault();
@@ -175,8 +204,9 @@ export function QuickSession({
         )}
       </div>
 
-      {/* Đã kiểm tra thì khoá đáp án: lần trả lời được ghi là lần vừa chấm. */}
-      <fieldset disabled={Boolean(verdict) || check.isPending} className="mt-6">
+      {/* Đã kiểm tra thì khoá đáp án: lần trả lời được ghi là lần vừa chấm. Lúc đang chấm không khoá,
+          để focus không rơi khỏi ô nhập; `runCheck` tự chặn bấm lặp. */}
+      <fieldset disabled={Boolean(verdict)} className="mt-6">
         <QuestionCard
           index={data.questions.indexOf(question) + 1}
           question={question}
@@ -219,34 +249,34 @@ export function QuickSession({
               </p>
             )}
             {verdict && !verdict.result.isCorrect && (
-              <>
-                <p className="flex gap-1.5 font-semibold text-bad">
-                  <Icon name="x" size={16} strokeWidth={2.75} className="mt-0.5 shrink-0" />
-                  <span className="min-w-0">
-                    {correctText ? (
-                      <>
-                        Đáp án: <UserText full>{correctText}</UserText>
-                      </>
-                    ) : (
-                      'Chưa đúng'
-                    )}
-                  </span>
-                </p>
-                {verdict.result.explanation && (
-                  // Lời giải dài không được che hết màn hẹp: thanh này dính đáy.
-                  <p className="mt-1 max-h-24 overflow-y-auto leading-relaxed text-fg-muted">
-                    <UserText full>{verdict.result.explanation}</UserText>
-                  </p>
-                )}
-              </>
+              <p className="flex gap-1.5 font-semibold text-bad">
+                <Icon name="x" size={16} strokeWidth={2.75} className="mt-0.5 shrink-0" />
+                <span className="min-w-0">
+                  {correctText ? (
+                    <>
+                      Đáp án: <UserText full>{correctText}</UserText>
+                    </>
+                  ) : (
+                    'Chưa đúng'
+                  )}
+                </span>
+              </p>
+            )}
+            {verdict?.result.explanation && (
+              // Lời giải dài không được che hết màn hẹp: thanh này dính đáy.
+              <p className="mt-1 max-h-24 overflow-y-auto leading-relaxed text-fg-muted">
+                <UserText full>{verdict.result.explanation}</UserText>
+              </p>
             )}
           </div>
+          {/* Không dùng `loading`: nó tắt nút và làm rơi focus; bấm lặp đã bị `runCheck` chặn. */}
           <Button
             type="submit"
             className="shrink-0"
             disabled={!verdict && !canCheck(answer)}
-            loading={check.isPending}
+            aria-disabled={check.isPending || undefined}
           >
+            {check.isPending && <Icon name="spinner" size={16} className="animate-spin" />}
             {verdict
               ? verdict.result.isCorrect
                 ? 'Tiếp'

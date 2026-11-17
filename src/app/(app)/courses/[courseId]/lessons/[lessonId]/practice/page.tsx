@@ -217,17 +217,20 @@ function QuickPractice({
   }
 
   return (
-    <QuickSession
-      courseId={courseId}
-      lessonId={lessonId}
-      data={data}
-      onExamMode={onExamMode}
-      onFinished={(result, answers, summary) => {
-        markTodayDone(`exercise:${data.id}`);
-        setDone({ result, answers, summary });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }}
-    />
+    <>
+      <ExercisePicker data={data} onOpen={onOpenExercise} className="mx-auto mt-6 max-w-2xl" />
+      <QuickSession
+        courseId={courseId}
+        lessonId={lessonId}
+        data={data}
+        onExamMode={onExamMode}
+        onFinished={(result, answers, summary) => {
+          markTodayDone(`exercise:${data.id}`);
+          setDone({ result, answers, summary });
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+    </>
   );
 }
 
