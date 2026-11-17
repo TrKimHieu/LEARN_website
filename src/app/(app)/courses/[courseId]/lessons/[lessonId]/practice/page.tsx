@@ -3,7 +3,7 @@
 import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import type { FeedbackItem } from '@/features/feedback/feedback-policy';
 import { UserText } from '@/components/ui/user-text';
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/api-contracts';
 import { useExercise, useLessons, useSubmitExercise } from '@/features/learning/learning-api';
@@ -531,9 +531,18 @@ function ResultScreen({
     if (result.passed) celebrateSuccess();
   }, [result.passed, result.attemptNo]);
 
+  // Luyện từng câu: nút vừa bấm ở câu cuối đã biến mất, đưa focus về đầu màn kết quả.
+  const heading = useRef<HTMLHeadingElement>(null);
+  const quick = Boolean(summary);
+  useEffect(() => {
+    if (quick) heading.current?.focus({ preventScroll: true });
+  }, [quick]);
+
   return (
     <section className="mx-auto max-w-2xl">
-      <h1 className="sr-only">Kết quả bài tập</h1>
+      <h1 ref={heading} tabIndex={-1} className="sr-only">
+        Kết quả bài tập
+      </h1>
       {/* HANDBOOK §13.2: `celebrate` khi người dùng hoàn thành bài học. */}
       <motion.div initial="hidden" animate="show" variants={popIn}>
         <Card

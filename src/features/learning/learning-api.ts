@@ -120,13 +120,15 @@ export function useCheckAnswer(lessonId: string) {
   });
 }
 
-export function useSubmitExercise(courseId: string, lessonId: string) {
+/** `idempotencyKey`: gửi lại sau lỗi mạng không tạo thêm một lượt nộp (luyện từng câu). */
+export function useSubmitExercise(courseId: string, lessonId: string, idempotencyKey?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: SubmitExerciseInput) =>
       apiFetch<SubmissionResult>(`/api/v1/lessons/${lessonId}/exercise/submit`, {
         method: 'POST',
         body: input,
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lessons', lessonId, 'exercise'] });

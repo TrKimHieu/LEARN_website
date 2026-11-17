@@ -62,7 +62,9 @@ export function QuickSession({
   onExamMode: () => void;
 }) {
   const check = useCheckAnswer(lessonId);
-  const submit = useSubmitExercise(courseId, lessonId);
+  /** Một key cho cả phiên: bấm "Thử lại" sau lỗi nộp không lưu thêm lượt thứ hai. */
+  const [submitKey] = useState(() => crypto.randomUUID());
+  const submit = useSubmitExercise(courseId, lessonId, submitKey);
   const [state, setState] = useState<QuickState>(() =>
     startQuick(data.questions.map((q) => q.id)),
   );
@@ -138,6 +140,7 @@ export function QuickSession({
     setState(s);
     setAnswer(undefined);
     setVerdict(null);
+    setMood('listening');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (isFinished(s)) {
       durationMs.current = Math.max(1, Date.now() - startedAt.current);
@@ -200,7 +203,10 @@ export function QuickSession({
           className="flex-1"
         />
         {streak >= 2 && (
-          <span className="shrink-0 text-sm font-semibold tabular-nums text-fg">🔥 {streak}</span>
+          <span className="shrink-0 text-sm font-semibold tabular-nums text-fg">
+            <span aria-hidden="true">🔥 {streak}</span>
+            <span className="sr-only">Chuỗi đúng {streak} câu</span>
+          </span>
         )}
       </div>
 
