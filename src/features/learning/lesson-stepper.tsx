@@ -3,7 +3,7 @@
 import type { ExerciseRead } from '@learn/api-contracts';
 import { useEffect, useMemo, useRef } from 'react';
 import { renderMarkdown } from '@/components/shared/markdown';
-import { Button, ButtonLink, Card, Icon, ProgressBar } from '@/components/ui';
+import { Button, ButtonLink, Icon, ProgressBar } from '@/components/ui';
 import { useQueryParam } from '@/lib/url-state';
 import {
   buildSequence,
@@ -13,6 +13,7 @@ import {
   splitSteps,
   type SequenceItem,
 } from './lesson-steps';
+import { QuickQuestion } from './quick-question';
 import { StepToc } from './step-toc';
 
 type Question = ExerciseRead['questions'][number];
@@ -23,6 +24,7 @@ export function LessonStepper({
   lessonTitle,
   contentMd,
   quizQuestions,
+  exerciseId,
   onReachedEnd,
   sources,
   navExtras,
@@ -32,7 +34,6 @@ export function LessonStepper({
   lessonTitle: string;
   contentMd: string;
   quizQuestions: Question[];
-  /** Task 3 dùng để chấm câu hỏi nhanh. */
   exerciseId: string | null;
   onReachedEnd: () => void;
   sources: React.ReactNode;
@@ -50,6 +51,10 @@ export function LessonStepper({
     () => (stepMarkdown === undefined ? '' : renderMarkdown(stepMarkdown).html),
     [stepMarkdown],
   );
+
+  const quizQuestion =
+    item?.kind === 'quiz' ? quizQuestions.find((q) => q.id === item.questionId) : undefined;
+  const quiz = quizQuestion && exerciseId ? { question: quizQuestion, exerciseId } : null;
 
   const container = useRef<HTMLDivElement>(null);
   const shownIndex = useRef(index);
@@ -82,12 +87,15 @@ export function LessonStepper({
         );
       case 'quiz':
         return (
-          <Card className="max-w-[72ch] space-y-4">
-            <p className="font-display text-lg font-semibold text-fg">Câu hỏi nhanh</p>
-            <Button variant="secondary" onClick={() => goTo(index + 1)}>
-              Bỏ qua
-            </Button>
-          </Card>
+          quiz && (
+            <QuickQuestion
+              key={quiz.question.id}
+              lessonId={lessonId}
+              exerciseId={quiz.exerciseId}
+              question={quiz.question}
+              onDone={() => goTo(index + 1)}
+            />
+          )
         );
     }
   }
@@ -129,7 +137,8 @@ export function LessonStepper({
                   <Icon name="target" size={17} />
                   Luyện tập ngay
                 </ButtonLink>
-              ) : (
+              ) : quiz ? null : (
+                // Câu hỏi nhanh tự dẫn bằng nút "Tiếp" của nó.
                 <Button onClick={() => goTo(index + 1)}>
                   Tiếp
                   <Icon name="arrow-right" size={16} />
