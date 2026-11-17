@@ -11,8 +11,18 @@ import {
   useExercise,
   useStartLesson,
 } from '@/features/learning/learning-api';
-import { LessonSources, LowConfidenceNotice } from '@/features/learning/lesson-sources';
+import {
+  LessonSources,
+  LowConfidenceNotice,
+  SOURCES_ANCHOR,
+} from '@/features/learning/lesson-sources';
 import { LessonStepper } from '@/features/learning/lesson-stepper';
+import {
+  buildSequence,
+  clampStep,
+  eligibleQuizIds,
+  splitSteps,
+} from '@/features/learning/lesson-steps';
 import {
   BackLink,
   Badge,
@@ -68,7 +78,7 @@ export default function LessonReadPage({
   const deleteLesson = useDeleteLesson(courseId);
   // 404 nghĩa là bài chưa có bài tập: không có câu hỏi nhanh.
   const exercise = useExercise(lessonId);
-  const [, setStep] = useQueryParam('step');
+  const [stepParam, setStep] = useQueryParam('step');
   const startMutate = startLesson.mutate;
 
   const [editing, setEditing] = useState(false);
@@ -92,6 +102,17 @@ export default function LessonReadPage({
       startMutate();
     }
   }, [lesson.data?.id, lesson.data?.progress.status, startMutate]);
+
+  // Cùng cách tính với LessonStepper: cần bước cuối cho link Nguồn và bước hiện tại cho thanh dưới.
+  const itemCount = useMemo(
+    () =>
+      buildSequence(
+        splitSteps(lesson.data?.contentMd ?? '').length,
+        eligibleQuizIds(exercise.data?.questions ?? []),
+      ).length,
+    [lesson.data?.contentMd, exercise.data],
+  );
+  const stepIndex = clampStep(stepParam, itemCount);
 
   /** Vị trí trong khóa + hai bài kề — màn này không được là ngõ cụt (NN/g H1, H3). */
   const position = useMemo(() => {
@@ -284,7 +305,12 @@ export default function LessonReadPage({
           </div>
         </header>
 
-        {data.confidence === 'LOW' && !editing && <LowConfidenceNotice className="mt-6" />}
+        {data.confidence === 'LOW' && !editing && (
+          <LowConfidenceNotice
+            className="mt-6"
+            sourcesHref={`?step=${itemCount - 1}#${SOURCES_ANCHOR}`}
+          />
+        )}
 
         {Boolean(deleteError) && (
           <InlineError className="mt-4">
@@ -355,6 +381,9 @@ export default function LessonReadPage({
               </Button>
             </div>
           </Card>
+        ) : exercise.isPending ? (
+          // Câu hỏi nhanh chen vào giữa các bước: chờ bài tập xong mới biết bước nào là cuối.
+          <Skeleton className="mt-8 h-64 rounded-card" />
         ) : (
           <LessonStepper
             courseId={courseId}
@@ -382,7 +411,11 @@ export default function LessonReadPage({
                     href={`/courses/${courseId}/lessons/${position.prev.id}`}
                     variant="ghost"
                     size="sm"
-                    className="min-w-0 max-w-[40%]"
+                    // Trên điện thoại tránh hai mũi tên trái giống nhau khi đã có "Quay lại".
+                    className={cn(
+                      'min-w-0 max-w-[40%]',
+                      stepIndex > 0 && 'hidden md:inline-flex',
+                    )}
                     aria-label={`Bài trước: ${position.prev.title}`}
                   >
                     <Icon name="arrow-left" size={16} />

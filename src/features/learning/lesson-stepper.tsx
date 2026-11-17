@@ -40,6 +40,7 @@ export function LessonStepper({
 }) {
   const steps = useMemo(() => splitSteps(contentMd), [contentMd]);
   const sequence = buildSequence(steps.length, eligibleQuizIds(quizQuestions));
+  // `?step` dùng replace: Back rời bài học chứ không lùi từng bước (cố ý).
   const [rawStep, setRawStep] = useQueryParam('step');
   const index = clampStep(rawStep, sequence.length);
   const item = sequence[index];
@@ -56,7 +57,10 @@ export function LessonStepper({
     if (shownIndex.current === index) return;
     shownIndex.current = index;
     const el = container.current;
-    (el?.closest('article') ?? el)?.scrollIntoView({ block: 'start' });
+    // Link tới khối Nguồn mang theo hash: cuộn tới đó thay vì đầu bài.
+    const hash = window.location.hash.slice(1);
+    const anchor = hash ? document.getElementById(hash) : null;
+    (anchor ?? el?.closest('article') ?? el)?.scrollIntoView({ block: 'start' });
     el?.focus({ preventScroll: true });
   }, [index]);
 
