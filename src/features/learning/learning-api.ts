@@ -5,6 +5,8 @@ import type {
   LessonRead,
   ExerciseRead,
   SubmitExerciseInput,
+  CheckAnswerInput,
+  CheckResult,
   SubmissionResult,
   ProgressOverview,
   ProgressCourse,
@@ -105,6 +107,16 @@ export function useExercise(lessonId: string, exerciseId = '') {
       ),
     enabled: Boolean(lessonId),
     retry: false, // 404 hợp lệ khi lesson chưa có exercise — không cần thử lại
+  });
+}
+
+export function useCheckAnswer(lessonId: string) {
+  return useMutation({
+    mutationFn: (input: CheckAnswerInput) =>
+      apiFetch<CheckResult>(`/api/v1/lessons/${lessonId}/exercise/check`, {
+        method: 'POST',
+        body: input,
+      }),
   });
 }
 
