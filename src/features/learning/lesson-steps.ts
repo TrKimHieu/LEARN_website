@@ -8,6 +8,9 @@ export type SequenceItem = { kind: 'step'; step: number } | { kind: 'quiz'; ques
 const QUIZ_EVERY = 2;
 const QUIZ_TYPES = new Set(['MULTIPLE_CHOICE', 'TRUE_FALSE']);
 
+// shortcut: strips only simple wrappers (**, __, *, _, `); links and nested markup stay raw
+const cleanTitle = (raw: string) => raw.replace(/\*\*|__|[*`]|(?<!\w)_|_(?!\w)/g, '').trim();
+
 /** Splits on level-2 headings outside code fences; intro text joins the first step. */
 export function splitSteps(contentMd: string): LessonStep[] {
   const steps: LessonStep[] = [];
@@ -22,10 +25,11 @@ export function splitSteps(contentMd: string): LessonStep[] {
       if (fence === null) fence = marker;
       else if (fence === marker) fence = null;
     }
-    const heading = fence === null && marker === undefined ? /^##\s+(.+?)\s*$/.exec(line) : null;
+    const heading =
+      fence === null && marker === undefined ? /^##\s+(.+?)(?:\s+#+)?\s*$/.exec(line) : null;
     if (heading) {
       if (current) steps.push({ title: current.title, markdown: current.lines.join('\n') });
-      current = { title: heading[1] ?? '', lines: [...intro, line] };
+      current = { title: cleanTitle(heading[1] ?? ''), lines: [...intro, line] };
       intro = [];
     } else if (current) {
       current.lines.push(line);

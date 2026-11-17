@@ -44,9 +44,9 @@ export function QuickQuestion({
 
   async function runCheck() {
     if (check.isPending || !answer || !canCheck(answer)) return;
-    setError(null);
     try {
       setResult(await check.mutateAsync({ exerciseId, answer }));
+      setError(null);
     } catch (err) {
       // Lỗi mạng của `fetch` là tiếng Anh ("Failed to fetch"); chỉ hiện lời của API.
       setError(
@@ -71,10 +71,10 @@ export function QuickQuestion({
     >
       <h2 className="mb-4 font-display text-lg font-semibold text-fg">Câu hỏi nhanh</h2>
 
+      {/* Lỗi cũ giữ nguyên tới khi chấm xong: gỡ sớm sẽ làm rơi focus của nút "Thử lại". */}
       {/* Lúc đang chấm không khoá, để focus không rơi khỏi ô chọn; `runCheck` tự chặn bấm lặp. */}
       <fieldset disabled={Boolean(result)}>
         <QuestionCard
-          index={1}
           question={question}
           value={answer}
           onChange={(a) => {

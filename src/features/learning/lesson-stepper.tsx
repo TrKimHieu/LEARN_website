@@ -57,15 +57,17 @@ export function LessonStepper({
   const quiz = quizQuestion && exerciseId ? { question: quizQuestion, exerciseId } : null;
 
   const container = useRef<HTMLDivElement>(null);
+  const progress = useRef<HTMLDivElement>(null);
   const shownIndex = useRef(index);
   useEffect(() => {
     if (shownIndex.current === index) return;
     shownIndex.current = index;
     const el = container.current;
-    // Link tới khối Nguồn mang theo hash: cuộn tới đó thay vì đầu bài.
+    // Link tới khối Nguồn mang theo hash: cuộn tới đó. Còn lại cuộn tới thanh tiến độ (không về
+    // đầu bài, tránh hiện lại phần đầu trên điện thoại).
     const hash = window.location.hash.slice(1);
     const anchor = hash ? document.getElementById(hash) : null;
-    (anchor ?? el?.closest('article') ?? el)?.scrollIntoView({ block: 'start' });
+    (anchor ?? progress.current)?.scrollIntoView({ block: 'start' });
     el?.focus({ preventScroll: true });
   }, [index]);
 
@@ -103,8 +105,8 @@ export function LessonStepper({
   return (
     <div className="mt-8 gap-10 xl:grid xl:grid-cols-[minmax(0,1fr)_15rem]">
       <div className="min-w-0">
-        <div className="max-w-[72ch]">
-          <p className="mb-2 text-xs font-medium text-fg-subtle">
+        <div ref={progress} className="max-w-[72ch] scroll-mt-24">
+          <p aria-hidden className="mb-2 text-xs font-medium text-fg-subtle">
             Bước {index + 1} trên {sequence.length}
           </p>
           <ProgressBar

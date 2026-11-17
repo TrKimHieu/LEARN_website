@@ -32,6 +32,18 @@ describe('splitSteps', () => {
     expect(steps.map((s) => s.title)).toEqual(['A', 'B']);
   });
 
+  it('cleans closing hashes and inline markers from titles', () => {
+    expect(splitSteps('## A ##\nx')[0]?.title).toBe('A');
+    expect(splitSteps('## **Khái niệm**\nx')[0]?.title).toBe('Khái niệm');
+    expect(splitSteps('## `code` và _nghiêng_\nx')[0]?.title).toBe('code và nghiêng');
+    expect(splitSteps('## snake_case\nx')[0]?.title).toBe('snake_case');
+  });
+
+  it('handles CRLF titles and ~~~ fences', () => {
+    const steps = splitSteps('## A\r\na\r\n~~~\r\n## not\r\n~~~\r\n## B\r\nb');
+    expect(steps.map((s) => s.title)).toEqual(['A', 'B']);
+  });
+
   it('empty content is one empty step', () => {
     expect(splitSteps('')).toHaveLength(1);
   });

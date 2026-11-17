@@ -42,6 +42,7 @@ export function LowConfidenceNotice({
             <Link
               href={sourcesHref}
               scroll={false}
+              replace
               // Đã ở bước có Nguồn thì URL không đổi bước, nên tự cuộn tới khối Nguồn.
               onClick={() =>
                 document.getElementById(SOURCES_ANCHOR)?.scrollIntoView({ block: 'start' })
