@@ -8,8 +8,8 @@ type Answer = SubmitExerciseInput['answers'][number];
 type Question = ExerciseRead['questions'][number];
 
 /**
- * Đáp án đúng chỉ tồn tại trong `SubmissionResult` — tức là chỉ sau khi nộp bài `[SPEC]`.
- * Trước khi nộp, client không hề có dữ liệu này.
+ * Đáp án đúng chỉ đến sau khi người học đã trả lời: trong `SubmissionResult` khi nộp bài, hoặc
+ * trong `CheckResult` khi kiểm tra từng câu `[SPEC]`. Đề bài không bao giờ kèm đáp án.
  *
  * Kiểu trả về từ API là `unknown`, hình dạng thực tế do `exercises.service.ts` quyết
  * định: `{ optionId?, value?, acceptable? }`. Bóc tách phòng thủ để một hình dạng lạ chỉ
@@ -38,6 +38,12 @@ export function correctOptionId(correctAnswer: unknown): string | null {
   const c = correctAnswer as { optionId?: unknown };
   return typeof c.optionId === 'string' ? c.optionId : null;
 }
+
+/** Thanh hành động dính đáy — nằm trên thanh tab mobile, sát đáy từ `lg`. */
+export const STICKY_BAR =
+  'sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 mt-8 lg:bottom-4';
+export const STICKY_PANEL =
+  'flex items-center gap-4 rounded-card border border-line bg-panel shadow-overlay';
 
 const OPTION_ROW =
   'tactile group/opt mb-1 flex min-h-12 cursor-pointer items-center gap-3 rounded-control border-[1.5px] border-line-strong ' +

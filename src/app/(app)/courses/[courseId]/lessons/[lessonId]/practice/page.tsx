@@ -1,6 +1,7 @@
 'use client';
 
 import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
+import type { FeedbackItem } from '@/features/feedback/feedback-policy';
 import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
@@ -31,15 +32,23 @@ import { markTodayDone } from '@/lib/today-store';
 import { answeredOnly } from '@/features/learning/answers';
 import {
   QuestionCard,
+  STICKY_BAR,
+  STICKY_PANEL,
   correctOptionId,
   describeCorrectAnswer,
 } from '@/features/learning/question-card';
+import { QuickSession, type QuickSummary } from '@/features/learning/quick-session';
 import { celebrateSuccess } from '@/lib/celebrate';
 import { popIn } from '@/lib/motion';
 
 type Answer = SubmitExerciseInput['answers'][number];
 type AnswerState = Record<string, Answer>;
 type Question = ExerciseRead['questions'][number];
+
+function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000);
+  return `${Math.floor(total / 60)} phút ${total % 60} giây`;
+}
 
 /** Câu trả lời người dùng đã chọn, hiển thị lại ở màn kết quả. */
 function describeGivenAnswer(question: Question, answer: Answer | undefined): string | null {
@@ -52,12 +61,6 @@ function describeGivenAnswer(question: Question, answer: Answer | undefined): st
   return answer.text;
 }
 
-/** Thanh hành động dính đáy — nằm trên thanh tab mobile, sát đáy từ `lg`. */
-const STICKY_BAR =
-  'sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 mt-8 lg:bottom-4';
-const STICKY_PANEL =
-  'flex items-center gap-4 rounded-card border border-line bg-panel shadow-overlay';
-
 export default function PracticePage({
   params,
 }: {
@@ -66,6 +69,8 @@ export default function PracticePage({
   const { courseId, lessonId } = use(params);
   // Bài tập đang mở sống trong URL: F5 hay gửi link vẫn đúng bài tập (UX-UI-PRINCIPLES §12).
   const [exerciseParam, setExerciseParam] = useQueryParam('exercise');
+  // Mặc định luyện từng câu; `?mode=test` là kiểu kiểm tra (làm hết rồi nộp), spec 4.4.
+  const [mode, setMode] = useQueryParam('mode');
   const exercise = useExercise(lessonId, exerciseParam);
   const course = useCourse(courseId);
   usePageTitle(exercise.data?.title ?? 'Bài tập');
@@ -111,21 +116,118 @@ export default function PracticePage({
   const data = exercise.data;
   if (!data) return null;
 
+  const onOpenExercise = (id: string) => {
+    setExerciseParam(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <LessonSplit courseId={courseId} courseTitle={course.data?.title} lessonId={lessonId}>
       {/* `key`: đổi bài tập là một phiên làm bài mới, câu trả lời của bài trước không được sót lại. */}
-      <ExerciseSession
-        key={data.id}
-        courseId={courseId}
-        lessonId={lessonId}
-        data={data}
-        backToLesson={backToLesson}
-        onOpenExercise={(id) => {
-          setExerciseParam(id);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-      />
+      {mode === 'test' ? (
+        <ExerciseSession
+          key={data.id}
+          courseId={courseId}
+          lessonId={lessonId}
+          data={data}
+          backToLesson={backToLesson}
+          onOpenExercise={onOpenExercise}
+          onQuickMode={() => setMode('')}
+        />
+      ) : (
+        <QuickPractice
+          key={data.id}
+          courseId={courseId}
+          lessonId={lessonId}
+          data={data}
+          backToLesson={backToLesson}
+          onOpenExercise={onOpenExercise}
+          onExamMode={() => setMode('test')}
+        />
+      )}
     </LessonSplit>
+  );
+}
+
+/** Góp ý sau khi nộp, dùng chung cho cả hai chế độ. */
+function practiceFeedbackItems(lessonId: string): FeedbackItem[] {
+  return [
+    {
+      topic: 'LESSON',
+      subjectId: lessonId,
+      question: 'QUALITY',
+      label: 'Nội dung bài học',
+    },
+    {
+      topic: 'LESSON',
+      subjectId: lessonId,
+      question: 'UNDERSTANDING',
+      label: 'Bạn đã nắm được bài chưa?',
+    },
+    {
+      topic: 'PRACTICE',
+      subjectId: lessonId,
+      question: 'QUALITY',
+      label: 'Bài kiểm tra có sát nội dung?',
+    },
+  ];
+}
+
+function QuickPractice({
+  courseId,
+  lessonId,
+  data,
+  backToLesson,
+  onOpenExercise,
+  onExamMode,
+}: {
+  courseId: string;
+  lessonId: string;
+  data: ExerciseRead;
+  backToLesson: string;
+  onOpenExercise: (exerciseId: string) => void;
+  onExamMode: () => void;
+}) {
+  const [done, setDone] = useState<{
+    result: SubmissionResult;
+    answers: AnswerState;
+    summary: QuickSummary;
+  } | null>(null);
+
+  if (done) {
+    return (
+      <>
+        <ResultScreen
+          courseId={courseId}
+          lessonId={lessonId}
+          data={data}
+          result={done.result}
+          answers={done.answers}
+          summary={done.summary}
+          onRetry={() => {
+            setDone(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenExercise={onOpenExercise}
+          backToLesson={backToLesson}
+        />
+        <FeedbackPrompt title="Bài này thế nào?" items={practiceFeedbackItems(lessonId)} />
+      </>
+    );
+  }
+
+  return (
+    <QuickSession
+      courseId={courseId}
+      lessonId={lessonId}
+      data={data}
+      onExamMode={onExamMode}
+      onFinished={(result, answers, summary) => {
+        markTodayDone(`exercise:${data.id}`);
+        setDone({ result, answers, summary });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }}
+    />
   );
 }
 
@@ -135,12 +237,14 @@ function ExerciseSession({
   data,
   backToLesson,
   onOpenExercise,
+  onQuickMode,
 }: {
   courseId: string;
   lessonId: string;
   data: ExerciseRead;
   backToLesson: string;
   onOpenExercise: (exerciseId: string) => void;
+  onQuickMode: () => void;
 }) {
   const submitExercise = useSubmitExercise(courseId, lessonId);
   const [answers, setAnswers] = useState<AnswerState>({});
@@ -224,29 +328,7 @@ function ExerciseSession({
           onOpenExercise={onOpenExercise}
           backToLesson={backToLesson}
         />
-        <FeedbackPrompt
-          title="Bài này thế nào?"
-          items={[
-            {
-              topic: 'LESSON',
-              subjectId: lessonId,
-              question: 'QUALITY',
-              label: 'Nội dung bài học',
-            },
-            {
-              topic: 'LESSON',
-              subjectId: lessonId,
-              question: 'UNDERSTANDING',
-              label: 'Bạn đã nắm được bài chưa?',
-            },
-            {
-              topic: 'PRACTICE',
-              subjectId: lessonId,
-              question: 'QUALITY',
-              label: 'Bài kiểm tra có sát nội dung?',
-            },
-          ]}
-        />
+        <FeedbackPrompt title="Bài này thế nào?" items={practiceFeedbackItems(lessonId)} />
       </>
     );
   }
@@ -272,6 +354,11 @@ function ExerciseSession({
         {data.instruction && (
           <p className="mt-2 leading-relaxed text-fg-subtle">{data.instruction}</p>
         )}
+        <div className="mt-2">
+          <Button variant="link" size="sm" onClick={onQuickMode}>
+            Làm từng câu
+          </Button>
+        </div>
         {data.bestSubmission && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-fg-subtle">
             <Icon name="trophy" size={13} className="text-warn" />
@@ -405,6 +492,7 @@ function ResultScreen({
   data,
   result,
   answers,
+  summary,
   onRetry,
   onOpenExercise,
   backToLesson,
@@ -414,6 +502,8 @@ function ResultScreen({
   data: ExerciseRead;
   result: SubmissionResult;
   answers: AnswerState;
+  /** Chỉ có ở chế độ từng câu. */
+  summary?: QuickSummary;
   onRetry: () => void;
   onOpenExercise: (exerciseId: string) => void;
   backToLesson: string;
@@ -462,6 +552,12 @@ function ResultScreen({
                 {result.score}
                 <span className="text-2xl text-fg-subtle"> / {result.maxScore} điểm</span>
               </p>
+              {summary && (
+                <p className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm font-semibold text-fg sm:justify-start">
+                  <span>Chuỗi đúng dài nhất {summary.bestStreak}</span>
+                  <span>{formatDuration(summary.durationMs)}</span>
+                </p>
+              )}
               <p className="mt-1 max-w-sm text-sm font-medium text-fg-subtle">
                 {result.passed
                   ? `Bạn đã hoàn thành bài tập, đúng ${correctCount}/${data.questions.length} câu.`
