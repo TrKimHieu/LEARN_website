@@ -5,6 +5,8 @@ import type {
   LessonRead,
   ExerciseRead,
   SubmitExerciseInput,
+  CheckAnswerInput,
+  CheckResult,
   SubmissionResult,
   ProgressOverview,
   ProgressCourse,
@@ -108,13 +110,25 @@ export function useExercise(lessonId: string, exerciseId = '') {
   });
 }
 
-export function useSubmitExercise(courseId: string, lessonId: string) {
+export function useCheckAnswer(lessonId: string) {
+  return useMutation({
+    mutationFn: (input: CheckAnswerInput) =>
+      apiFetch<CheckResult>(`/api/v1/lessons/${lessonId}/exercise/check`, {
+        method: 'POST',
+        body: input,
+      }),
+  });
+}
+
+/** `idempotencyKey`: gửi lại sau lỗi mạng không tạo thêm một lượt nộp (luyện từng câu). */
+export function useSubmitExercise(courseId: string, lessonId: string, idempotencyKey?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: SubmitExerciseInput) =>
       apiFetch<SubmissionResult>(`/api/v1/lessons/${lessonId}/exercise/submit`, {
         method: 'POST',
         body: input,
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lessons', lessonId, 'exercise'] });

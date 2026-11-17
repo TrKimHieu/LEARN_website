@@ -1,8 +1,9 @@
 'use client';
 
 import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
+import type { FeedbackItem } from '@/features/feedback/feedback-policy';
 import { UserText } from '@/components/ui/user-text';
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/api-contracts';
 import { useExercise, useLessons, useSubmitExercise } from '@/features/learning/learning-api';
@@ -29,6 +30,14 @@ import { ApiClientError, errorDetail, errorText } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
 import { markTodayDone } from '@/lib/today-store';
 import { answeredOnly } from '@/features/learning/answers';
+import {
+  QuestionCard,
+  STICKY_BAR,
+  STICKY_PANEL,
+  correctOptionId,
+  describeCorrectAnswer,
+} from '@/features/learning/question-card';
+import { QuickSession, type QuickSummary } from '@/features/learning/quick-session';
 import { celebrateSuccess } from '@/lib/celebrate';
 import { popIn } from '@/lib/motion';
 
@@ -36,36 +45,9 @@ type Answer = SubmitExerciseInput['answers'][number];
 type AnswerState = Record<string, Answer>;
 type Question = ExerciseRead['questions'][number];
 
-/**
- * Đáp án đúng chỉ tồn tại trong `SubmissionResult` — tức là chỉ sau khi nộp bài `[SPEC]`.
- * Trước khi nộp, client không hề có dữ liệu này.
- *
- * Kiểu trả về từ API là `unknown`, hình dạng thực tế do `exercises.service.ts` quyết
- * định: `{ optionId?, value?, acceptable? }`. Bóc tách phòng thủ để một hình dạng lạ chỉ
- * làm mất phần gợi ý, không làm hỏng cả màn kết quả.
- */
-function describeCorrectAnswer(question: Question, correctAnswer: unknown): string | null {
-  if (correctAnswer === null || typeof correctAnswer !== 'object') return null;
-  const c = correctAnswer as { optionId?: unknown; value?: unknown; acceptable?: unknown };
-
-  if (question.type === 'MULTIPLE_CHOICE' && typeof c.optionId === 'string') {
-    const opt = question.options.find((o) => o.id === c.optionId);
-    return opt ? `${opt.label}. ${opt.content}` : null;
-  }
-  if (question.type === 'TRUE_FALSE' && typeof c.value === 'boolean') {
-    return c.value ? 'Đúng' : 'Sai';
-  }
-  if (Array.isArray(c.acceptable)) {
-    const list = c.acceptable.filter((x): x is string => typeof x === 'string');
-    return list.length > 0 ? list.join(' · ') : null;
-  }
-  return null;
-}
-
-function correctOptionId(correctAnswer: unknown): string | null {
-  if (correctAnswer === null || typeof correctAnswer !== 'object') return null;
-  const c = correctAnswer as { optionId?: unknown };
-  return typeof c.optionId === 'string' ? c.optionId : null;
+function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000);
+  return `${Math.floor(total / 60)} phút ${total % 60} giây`;
 }
 
 /** Câu trả lời người dùng đã chọn, hiển thị lại ở màn kết quả. */
@@ -79,12 +61,6 @@ function describeGivenAnswer(question: Question, answer: Answer | undefined): st
   return answer.text;
 }
 
-/** Thanh hành động dính đáy — nằm trên thanh tab mobile, sát đáy từ `lg`. */
-const STICKY_BAR =
-  'sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 mt-8 lg:bottom-4';
-const STICKY_PANEL =
-  'flex items-center gap-4 rounded-card border border-line bg-panel shadow-overlay';
-
 export default function PracticePage({
   params,
 }: {
@@ -93,6 +69,8 @@ export default function PracticePage({
   const { courseId, lessonId } = use(params);
   // Bài tập đang mở sống trong URL: F5 hay gửi link vẫn đúng bài tập (UX-UI-PRINCIPLES §12).
   const [exerciseParam, setExerciseParam] = useQueryParam('exercise');
+  // Mặc định luyện từng câu; `?mode=test` là kiểu kiểm tra (làm hết rồi nộp), spec 4.4.
+  const [mode, setMode] = useQueryParam('mode');
   const exercise = useExercise(lessonId, exerciseParam);
   const course = useCourse(courseId);
   usePageTitle(exercise.data?.title ?? 'Bài tập');
@@ -138,21 +116,121 @@ export default function PracticePage({
   const data = exercise.data;
   if (!data) return null;
 
+  const onOpenExercise = (id: string) => {
+    setExerciseParam(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <LessonSplit courseId={courseId} courseTitle={course.data?.title} lessonId={lessonId}>
       {/* `key`: đổi bài tập là một phiên làm bài mới, câu trả lời của bài trước không được sót lại. */}
-      <ExerciseSession
-        key={data.id}
+      {mode === 'test' ? (
+        <ExerciseSession
+          key={data.id}
+          courseId={courseId}
+          lessonId={lessonId}
+          data={data}
+          backToLesson={backToLesson}
+          onOpenExercise={onOpenExercise}
+          onQuickMode={() => setMode('')}
+        />
+      ) : (
+        <QuickPractice
+          key={data.id}
+          courseId={courseId}
+          lessonId={lessonId}
+          data={data}
+          backToLesson={backToLesson}
+          onOpenExercise={onOpenExercise}
+          onExamMode={() => setMode('test')}
+        />
+      )}
+    </LessonSplit>
+  );
+}
+
+/** Góp ý sau khi nộp, dùng chung cho cả hai chế độ. */
+function practiceFeedbackItems(lessonId: string): FeedbackItem[] {
+  return [
+    {
+      topic: 'LESSON',
+      subjectId: lessonId,
+      question: 'QUALITY',
+      label: 'Nội dung bài học',
+    },
+    {
+      topic: 'LESSON',
+      subjectId: lessonId,
+      question: 'UNDERSTANDING',
+      label: 'Bạn đã nắm được bài chưa?',
+    },
+    {
+      topic: 'PRACTICE',
+      subjectId: lessonId,
+      question: 'QUALITY',
+      label: 'Bài kiểm tra có sát nội dung?',
+    },
+  ];
+}
+
+function QuickPractice({
+  courseId,
+  lessonId,
+  data,
+  backToLesson,
+  onOpenExercise,
+  onExamMode,
+}: {
+  courseId: string;
+  lessonId: string;
+  data: ExerciseRead;
+  backToLesson: string;
+  onOpenExercise: (exerciseId: string) => void;
+  onExamMode: () => void;
+}) {
+  const [done, setDone] = useState<{
+    result: SubmissionResult;
+    answers: AnswerState;
+    summary: QuickSummary;
+  } | null>(null);
+
+  if (done) {
+    return (
+      <>
+        <ResultScreen
+          courseId={courseId}
+          lessonId={lessonId}
+          data={data}
+          result={done.result}
+          answers={done.answers}
+          summary={done.summary}
+          onRetry={() => {
+            setDone(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenExercise={onOpenExercise}
+          backToLesson={backToLesson}
+        />
+        <FeedbackPrompt title="Bài này thế nào?" items={practiceFeedbackItems(lessonId)} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ExercisePicker data={data} onOpen={onOpenExercise} className="mx-auto mt-6 max-w-2xl" />
+      <QuickSession
         courseId={courseId}
         lessonId={lessonId}
         data={data}
-        backToLesson={backToLesson}
-        onOpenExercise={(id) => {
-          setExerciseParam(id);
+        onExamMode={onExamMode}
+        onFinished={(result, answers, summary) => {
+          markTodayDone(`exercise:${data.id}`);
+          setDone({ result, answers, summary });
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
-    </LessonSplit>
+    </>
   );
 }
 
@@ -162,12 +240,14 @@ function ExerciseSession({
   data,
   backToLesson,
   onOpenExercise,
+  onQuickMode,
 }: {
   courseId: string;
   lessonId: string;
   data: ExerciseRead;
   backToLesson: string;
   onOpenExercise: (exerciseId: string) => void;
+  onQuickMode: () => void;
 }) {
   const submitExercise = useSubmitExercise(courseId, lessonId);
   const [answers, setAnswers] = useState<AnswerState>({});
@@ -251,29 +331,7 @@ function ExerciseSession({
           onOpenExercise={onOpenExercise}
           backToLesson={backToLesson}
         />
-        <FeedbackPrompt
-          title="Bài này thế nào?"
-          items={[
-            {
-              topic: 'LESSON',
-              subjectId: lessonId,
-              question: 'QUALITY',
-              label: 'Nội dung bài học',
-            },
-            {
-              topic: 'LESSON',
-              subjectId: lessonId,
-              question: 'UNDERSTANDING',
-              label: 'Bạn đã nắm được bài chưa?',
-            },
-            {
-              topic: 'PRACTICE',
-              subjectId: lessonId,
-              question: 'QUALITY',
-              label: 'Bài kiểm tra có sát nội dung?',
-            },
-          ]}
-        />
+        <FeedbackPrompt title="Bài này thế nào?" items={practiceFeedbackItems(lessonId)} />
       </>
     );
   }
@@ -299,6 +357,11 @@ function ExerciseSession({
         {data.instruction && (
           <p className="mt-2 leading-relaxed text-fg-subtle">{data.instruction}</p>
         )}
+        <div className="mt-2">
+          <Button variant="link" size="sm" onClick={onQuickMode}>
+            Làm từng câu
+          </Button>
+        </div>
         {data.bestSubmission && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-fg-subtle">
             <Icon name="trophy" size={13} className="text-warn" />
@@ -424,121 +487,6 @@ function ExercisePicker({
   );
 }
 
-/* ------------------------------------------------------------ làm bài */
-
-const OPTION_ROW =
-  'tactile group/opt mb-1 flex min-h-12 cursor-pointer items-center gap-3 rounded-control border-[1.5px] border-line-strong ' +
-  '[--edge:var(--line-strong)] bg-panel px-4 py-3 text-[0.9375rem] ' +
-  'hover:border-accent hover:bg-panel-2 ' +
-  'has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:[--edge:var(--brand)] ' +
-  'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-fg';
-
-function LetterChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="grid size-8 shrink-0 place-items-center rounded-md border border-line-strong bg-panel text-xs font-semibold text-fg-muted transition-colors duration-200 group-has-[:checked]/opt:border-fg group-has-[:checked]/opt:bg-fg group-has-[:checked]/opt:text-panel">
-      {children}
-    </span>
-  );
-}
-
-function QuestionCard({
-  index,
-  question,
-  value,
-  onChange,
-  missing = false,
-}: {
-  index: number;
-  question: Question;
-  value: Answer | undefined;
-  onChange: (a: Answer) => void;
-  /** Bị bỏ trống khi người dùng bấm Nộp bài — đánh dấu ngay tại chỗ. */
-  missing?: boolean;
-}) {
-  const promptId = `prompt-${question.id}`;
-  return (
-    <Card
-      id={`question-${question.id}`}
-      // Chừa chỗ cho header dính đỉnh và thanh nộp bài dính đáy — WCAG 2.4.11.
-      className={cn('scroll-mb-40 scroll-mt-24', missing && 'border-2 border-fg bg-bad-soft')}
-    >
-      <div className="flex gap-3">
-        <span aria-hidden className="w-5 shrink-0 pt-0.5 font-semibold tabular-nums text-fg-subtle">
-          {index}.
-        </span>
-        <p id={promptId} className="pt-0.5 font-semibold leading-relaxed text-fg">
-          <span className="sr-only">Câu {index}. </span>
-          <UserText full>{question.prompt}</UserText>
-        </p>
-      </div>
-      {missing && (
-        <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-bad">
-          <Icon name="alert" size={14} />
-          Câu này chưa được trả lời.
-        </p>
-      )}
-
-      {question.type === 'MULTIPLE_CHOICE' && (
-        <div role="radiogroup" aria-labelledby={promptId} className="mt-4 space-y-2">
-          {question.options.map((opt) => (
-            <label key={opt.id} className={OPTION_ROW}>
-              <input
-                type="radio"
-                name={question.id}
-                className="sr-only"
-                checked={value?.type === 'MULTIPLE_CHOICE' && value.optionId === opt.id}
-                onChange={() =>
-                  onChange({ type: 'MULTIPLE_CHOICE', questionId: question.id, optionId: opt.id })
-                }
-              />
-              <LetterChip>{opt.label}</LetterChip>
-              <span className="text-fg">
-                <UserText full>{opt.content}</UserText>
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      {question.type === 'TRUE_FALSE' && (
-        <div role="radiogroup" aria-labelledby={promptId} className="mt-4 grid grid-cols-2 gap-2">
-          {[true, false].map((v) => (
-            <label key={String(v)} className={cn(OPTION_ROW, 'justify-center font-semibold')}>
-              <input
-                type="radio"
-                name={question.id}
-                className="sr-only"
-                checked={value?.type === 'TRUE_FALSE' && value.value === v}
-                onChange={() => onChange({ type: 'TRUE_FALSE', questionId: question.id, value: v })}
-              />
-              <Icon name={v ? 'check' : 'x'} size={16} className="text-fg-subtle" />
-              <span className="text-fg">{v ? 'Đúng' : 'Sai'}</span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      {(question.type === 'SHORT_ANSWER' || question.type === 'FILL_BLANK') && (
-        <input
-          type="text"
-          value={value && 'text' in value ? value.text : ''}
-          onChange={(e) => {
-            const text = e.target.value;
-            if (question.type === 'SHORT_ANSWER') {
-              onChange({ type: 'SHORT_ANSWER', questionId: question.id, text });
-            } else {
-              onChange({ type: 'FILL_BLANK', questionId: question.id, text });
-            }
-          }}
-          placeholder="Nhập câu trả lời…"
-          aria-labelledby={promptId}
-          className="mt-4 h-11 w-full rounded-control border border-line bg-panel px-3.5 text-[0.9375rem] text-fg outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-fg-subtle/80 hover:border-line-strong focus:border-fg focus:shadow-[0_0_0_4px_rgb(94_200_245/0.18)]"
-        />
-      )}
-    </Card>
-  );
-}
-
 /* ----------------------------------------------------------- kết quả */
 
 function ResultScreen({
@@ -547,6 +495,7 @@ function ResultScreen({
   data,
   result,
   answers,
+  summary,
   onRetry,
   onOpenExercise,
   backToLesson,
@@ -556,6 +505,8 @@ function ResultScreen({
   data: ExerciseRead;
   result: SubmissionResult;
   answers: AnswerState;
+  /** Chỉ có ở chế độ từng câu. */
+  summary?: QuickSummary;
   onRetry: () => void;
   onOpenExercise: (exerciseId: string) => void;
   backToLesson: string;
@@ -580,9 +531,18 @@ function ResultScreen({
     if (result.passed) celebrateSuccess();
   }, [result.passed, result.attemptNo]);
 
+  // Luyện từng câu: nút vừa bấm ở câu cuối đã biến mất, đưa focus về đầu màn kết quả.
+  const heading = useRef<HTMLHeadingElement>(null);
+  const quick = Boolean(summary);
+  useEffect(() => {
+    if (quick) heading.current?.focus({ preventScroll: true });
+  }, [quick]);
+
   return (
     <section className="mx-auto max-w-2xl">
-      <h1 className="sr-only">Kết quả bài tập</h1>
+      <h1 ref={heading} tabIndex={-1} className="sr-only">
+        Kết quả bài tập
+      </h1>
       {/* HANDBOOK §13.2: `celebrate` khi người dùng hoàn thành bài học. */}
       <motion.div initial="hidden" animate="show" variants={popIn}>
         <Card
@@ -604,6 +564,12 @@ function ResultScreen({
                 {result.score}
                 <span className="text-2xl text-fg-subtle"> / {result.maxScore} điểm</span>
               </p>
+              {summary && (
+                <p className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm font-semibold text-fg sm:justify-start">
+                  <span>Chuỗi đúng dài nhất {summary.bestStreak}</span>
+                  <span>{formatDuration(summary.durationMs)}</span>
+                </p>
+              )}
               <p className="mt-1 max-w-sm text-sm font-medium text-fg-subtle">
                 {result.passed
                   ? `Bạn đã hoàn thành bài tập, đúng ${correctCount}/${data.questions.length} câu.`
