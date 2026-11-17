@@ -259,7 +259,13 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const docCount = documents.data?.documents.length ?? 0;
 
   const showDocs =
-    docsOpen ?? docsStartOpen({ docCount, uploading, uploadError: Boolean(uploadError) });
+    docsOpen ??
+    docsStartOpen({
+      docCount,
+      loading: documents.isLoading,
+      uploading,
+      uploadError: Boolean(uploadError),
+    });
 
   /** Sinh bài học bằng AI: lý do nút xám, xác nhận và lỗi luôn đứng cạnh nút. */
   const generateBlock = (
@@ -439,7 +445,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
           <SectionTitle id="path-title">Lộ trình bài học</SectionTitle>
 
           {/* Chưa có bài: sinh bài là việc duy nhất tiếp theo, nên đặt lên đầu. */}
-          {lessonList.length === 0 && generateBlock}
+          {lessons.data && lessonList.length === 0 && generateBlock}
 
           {Boolean(reorderError) && (
             <InlineError className="mb-4">
