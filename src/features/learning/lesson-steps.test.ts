@@ -47,6 +47,11 @@ describe('buildSequence', () => {
     ]);
   });
 
+  it('guard: no quiz when the pair ends on the last step', () => {
+    expect(buildSequence(2, ['q1'])).toEqual([s(0), s(1)]);
+    expect(buildSequence(4, ['q1', 'q2'])).toEqual([s(0), s(1), q('q1'), s(2), s(3)]);
+  });
+
   it('no quiz without eligible questions', () => {
     expect(buildSequence(4, [])).toEqual([s(0), s(1), s(2), s(3)]);
   });
@@ -77,5 +82,6 @@ describe('clampStep', () => {
     expect(clampStep('-1', 5)).toBe(0);
     expect(clampStep('3', 5)).toBe(3);
     expect(clampStep('99', 5)).toBe(4);
+    expect(clampStep('3', 0)).toBe(0);
   });
 });

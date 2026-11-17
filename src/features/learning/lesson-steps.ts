@@ -16,6 +16,7 @@ export function splitSteps(contentMd: string): LessonStep[] {
   let fence: string | null = null;
 
   for (const line of contentMd.split('\n')) {
+    // shortcut: fence closers with info strings, fence length and 4+ space indent are ignored, upgrade if lessons need them
     const marker = /^\s*(```|~~~)/.exec(line)?.[1];
     if (marker) {
       if (fence === null) fence = marker;
@@ -57,7 +58,7 @@ export function eligibleQuizIds(questions: Array<{ id: string; type: string }>):
 export function clampStep(raw: string, length: number): number {
   const n = Number.parseInt(raw, 10);
   if (Number.isNaN(n) || n < 0) return 0;
-  return Math.min(n, length - 1);
+  return Math.max(0, Math.min(n, length - 1));
 }
 
 export function isLastItem(index: number, length: number): boolean {
