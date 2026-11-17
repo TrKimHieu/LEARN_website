@@ -19,8 +19,8 @@ export function LowConfidenceNotice({
   sourcesHref = `#${SOURCES_ANCHOR}`,
 }: {
   className?: string;
-  /** Khối Nguồn có thể nằm ở bước khác: trang truyền link tới bước đó. */
-  sourcesHref?: string;
+  /** Khối Nguồn có thể nằm ở bước khác: trang truyền link tới bước đó; `null` khi chưa biết bước. */
+  sourcesHref?: string | null;
 }) {
   return (
     <div
@@ -36,13 +36,21 @@ export function LowConfidenceNotice({
         <p className="mt-0.5 text-fg-muted">
           Khi kiểm tra tự động, nhiều thuật ngữ trong bài không tìm thấy trong tài liệu gốc. Hãy đối
           chiếu với{' '}
-          <Link
-            href={sourcesHref}
-            scroll={false}
-            className="font-medium text-fg underline underline-offset-2"
-          >
-            đoạn tài liệu nguồn
-          </Link>{' '}
+          {sourcesHref === null ? (
+            'đoạn tài liệu nguồn'
+          ) : (
+            <Link
+              href={sourcesHref}
+              scroll={false}
+              // Đã ở bước có Nguồn thì URL không đổi bước, nên tự cuộn tới khối Nguồn.
+              onClick={() =>
+                document.getElementById(SOURCES_ANCHOR)?.scrollIntoView({ block: 'start' })
+              }
+              className="font-medium text-fg underline underline-offset-2"
+            >
+              đoạn tài liệu nguồn
+            </Link>
+          )}{' '}
           trước khi dựa vào nội dung, hoặc sửa lại bài.
         </p>
       </div>

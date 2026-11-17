@@ -308,7 +308,9 @@ export default function LessonReadPage({
         {data.confidence === 'LOW' && !editing && (
           <LowConfidenceNotice
             className="mt-6"
-            sourcesHref={`?step=${itemCount - 1}#${SOURCES_ANCHOR}`}
+            sourcesHref={
+              exercise.isPending ? null : `?step=${Math.max(0, itemCount - 1)}#${SOURCES_ANCHOR}`
+            }
           />
         )}
 
@@ -386,6 +388,7 @@ export default function LessonReadPage({
           <Skeleton className="mt-8 h-64 rounded-card" />
         ) : (
           <LessonStepper
+            key={lessonId}
             courseId={courseId}
             lessonId={lessonId}
             lessonTitle={data.title}
