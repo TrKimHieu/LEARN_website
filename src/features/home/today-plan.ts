@@ -132,3 +132,15 @@ export function planGate(
   // Chờ cả lần làm tươi: qua ngày thì danh sách mới không được dựng từ số liệu hôm qua.
   return queries.some((q) => q.isLoading || q.isFetching) ? 'wait' : 'ready';
 }
+
+/** Trang mở ra khi bấm vào một việc; màn Học và popup nhắc học dùng chung. */
+export function taskHref(task: TodayTask): string {
+  switch (task.kind) {
+    case 'review':
+      return '/review';
+    case 'lesson':
+      return `/courses/${task.courseId}/lessons/${task.lessonId}`;
+    case 'exercise':
+      return `/courses/${task.courseId}/lessons/${task.lessonId}/practice?exercise=${encodeURIComponent(task.exerciseId)}`;
+  }
+}

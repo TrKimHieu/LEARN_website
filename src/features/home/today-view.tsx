@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { Mascot } from '@/components/shared/mascot';
 import {
   Badge,
@@ -17,110 +15,17 @@ import {
   cn,
   type IconName,
 } from '@/components/ui';
-import { DUE_COUNT_KEY, useDueCount } from '@/features/flashcards/flashcards-api';
-import {
-  useProgressCourses,
-  useProgressHistory,
-  useProgressOverview,
-} from '@/features/learning/learning-api';
 import { errorDetail, errorText } from '@/lib/api-client';
-import { TODAY_KEY, todayKey } from '@/lib/today-store';
-import { moodFor, seenStudyDayToKeep } from './mood';
-import {
-  buildTasks,
-  isDone,
-  parsePlan,
-  planGate,
-  reconcile,
-  retriedToday,
-  type SavedPlan,
-  type TodayTask,
-} from './today-plan';
-import { useNextLessons } from './use-next-lessons';
-
-/** Lịch sử đủ dài để thấy bài chưa đạt mới nhất và lần đạt sau đó (nếu có). */
-const HISTORY_LIMIT = 20;
-/** Ngày học gần nhất trước hôm nay mà màn này đã thấy, để nhận ra lần quay lại sau khi nghỉ. */
-const MOOD_KEY = 'learn.mood';
-
-function readStorage(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // storage unavailable: the plan just isn't kept across visits
-  }
-}
-
-/** Ngày hôm nay theo máy; kiểm lại mỗi phút khi tab đang mở để danh sách đổi khi qua ngày. */
-function useToday() {
-  const client = useQueryClient();
-  const [day, setDay] = useState(() => todayKey());
-  const dayRef = useRef(day);
-  useEffect(() => {
-    const check = () => {
-      const now = todayKey();
-      if (document.hidden || now === dayRef.current) return;
-      dayRef.current = now;
-      // Làm tươi trước khi đổi ngày: lần render với ngày mới đã thấy isFetching nên planGate chờ.
-      void client.invalidateQueries({ queryKey: ['progress'] });
-      void client.invalidateQueries({ queryKey: DUE_COUNT_KEY });
-      setDay(now);
-    };
-    const timer = setInterval(check, 60_000);
-    document.addEventListener('visibilitychange', check);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', check);
-    };
-  }, [client]);
-  return day;
-}
+import { moodFor } from './mood';
+import { isDone, taskHref, type TodayTask } from './today-plan';
+import { useTodayPlan } from './use-today-plan';
 
 /** Màn Học (spec 4.2): mascot, chuỗi ngày, vòng mục tiêu ngày và 2–4 việc hôm nay. */
 export function TodayView() {
   const router = useRouter();
-  const day = useToday();
-  const overview = useProgressOverview();
-  const courses = useProgressCourses();
-  const due = useDueCount();
-  const history = useProgressHistory(HISTORY_LIMIT);
-  const next = useNextLessons(courses.data?.courses ?? []);
-  const [plan, setPlan] = useState<SavedPlan | null>(null);
-  const [previousSeen, setPreviousSeen] = useState<string | null>(null);
-
-  const sources = [overview, courses, due, history, ...next.queries];
-  const gate = planGate(sources);
-  const ready = gate === 'ready';
-  const failed = sources.find((q) => q.isLoadingError);
-
-  // Danh sách chốt lần đầu trong ngày; các lần sau chỉ đọc lại bản đã lưu.
-  useEffect(() => {
-    if (!ready) return;
-    const saved = parsePlan(readStorage(TODAY_KEY));
-    const items = history.data?.items ?? [];
-    const fresh = buildTasks({ dueCount: due.data ?? 0, nextLessons: next.lessons, history: items });
-    const current = reconcile(saved, fresh, day, retriedToday(items, day));
-    if (current !== saved) writeStorage(TODAY_KEY, JSON.stringify(current));
-    setPlan(current);
-    // Chạy khi dữ liệu vừa đủ (cả sau mỗi lần làm tươi) hoặc qua ngày; trong ngày reconcile luôn
-    // trả bản đã lưu, và màn hình vẫn giữ danh sách cũ khi đang làm tươi.
-  }, [ready, day]);
-
+  const { gate, failed, retry, plan, day, overview, liveDue, previousSeen, studying } =
+    useTodayPlan();
   const lastStudyDay = overview.data?.lastStudyDay ?? null;
-  useEffect(() => {
-    if (!overview.data) return;
-    setPreviousSeen(readStorage(MOOD_KEY));
-    const keep = seenStudyDayToKeep(lastStudyDay, day);
-    if (keep) writeStorage(MOOD_KEY, keep);
-  }, [overview.data, lastStudyDay, day]);
 
   if (gate === 'error') {
     return (
@@ -128,7 +33,7 @@ export function TodayView() {
         title="Không tải được việc hôm nay"
         description={errorText(failed?.error, 'Vui lòng thử lại.')}
         detail={errorDetail(failed?.error)}
-        onRetry={() => sources.forEach((q) => q.isLoadingError && void q.refetch())}
+        onRetry={retry}
       />
     );
   }
@@ -154,8 +59,6 @@ export function TodayView() {
     );
   }
 
-  // Lỗi đếm thẻ thì không tự đánh dấu xong việc ôn.
-  const liveDue = due.data ?? 1;
   const total = plan.tasks.length;
   const doneCount = plan.tasks.filter((t) => isDone(plan, t, liveDue)).length;
   const allDone = total > 0 && doneCount === total;
@@ -216,7 +119,7 @@ export function TodayView() {
         </ButtonLink>
         <span aria-hidden="true">·</span>
         <ButtonLink href="/courses" variant="link" size="sm" className="relative">
-          Khóa học đang học{next.studying > 0 && ` (${next.studying})`}
+          Khóa học đang học{studying > 0 && ` (${studying})`}
         </ButtonLink>
       </p>
     </div>
@@ -232,7 +135,7 @@ function taskView(task: TodayTask): {
 } {
   switch (task.kind) {
     case 'review':
-      return { icon: 'layers', title: `Ôn ${task.dueCount} thẻ đến hạn`, sub: null, action: 'Ôn', href: '/review' };
+      return { icon: 'layers', title: `Ôn ${task.dueCount} thẻ đến hạn`, sub: null, action: 'Ôn', href: taskHref(task) };
     case 'lesson':
       return {
         icon: 'book',
@@ -243,7 +146,7 @@ function taskView(task: TodayTask): {
           </>
         ),
         action: 'Học',
-        href: `/courses/${task.courseId}/lessons/${task.lessonId}`,
+        href: taskHref(task),
       };
     case 'exercise':
       return {
@@ -255,7 +158,7 @@ function taskView(task: TodayTask): {
         ),
         sub: `Lần trước ${task.score} điểm`,
         action: 'Làm lại',
-        href: `/courses/${task.courseId}/lessons/${task.lessonId}/practice?exercise=${encodeURIComponent(task.exerciseId)}`,
+        href: taskHref(task),
       };
   }
 }
