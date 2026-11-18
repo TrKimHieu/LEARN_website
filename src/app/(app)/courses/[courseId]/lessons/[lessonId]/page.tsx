@@ -1,18 +1,28 @@
 'use client';
 
 import { UserText } from '@/components/ui/user-text';
-import { use, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useLesson,
   useLessons,
   usePatchLesson,
   useDeleteLesson,
+  useExercise,
   useStartLesson,
 } from '@/features/learning/learning-api';
-import { LessonSources, LowConfidenceNotice } from '@/features/learning/lesson-sources';
-import { renderMarkdown, type TocEntry } from '@/components/shared/markdown';
-import { isEndReached } from '@/features/learning/reading-progress';
+import {
+  LessonSources,
+  LowConfidenceNotice,
+  SOURCES_ANCHOR,
+} from '@/features/learning/lesson-sources';
+import { LessonStepper } from '@/features/learning/lesson-stepper';
+import {
+  buildSequence,
+  clampStep,
+  eligibleQuizIds,
+  splitSteps,
+} from '@/features/learning/lesson-steps';
 import {
   BackLink,
   Badge,
@@ -32,6 +42,7 @@ import {
 } from '@/components/ui';
 import { errorDetail, errorText, isNotFoundError } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
+import { useQueryParam } from '@/lib/url-state';
 import { markTodayDone } from '@/lib/today-store';
 import { absoluteTime, relativeTime } from '@/lib/format';
 import { humanizeCode } from '@/lib/humanize';
@@ -65,6 +76,9 @@ export default function LessonReadPage({
   const startLesson = useStartLesson(courseId, lessonId);
   const patchLesson = usePatchLesson(courseId, lessonId);
   const deleteLesson = useDeleteLesson(courseId);
+  // 404 nghĩa là bài chưa có bài tập: không có câu hỏi nhanh.
+  const exercise = useExercise(lessonId);
+  const [stepParam, setStep] = useQueryParam('step');
   const startMutate = startLesson.mutate;
 
   const [editing, setEditing] = useState(false);
@@ -74,25 +88,8 @@ export default function LessonReadPage({
   const [saveError, setSaveError] = useState<unknown>(null);
   const [deleteError, setDeleteError] = useState<unknown>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  /** Đọc tới cuối bài mới mở bài tập; người đã làm bài rồi thì không phải đọc lại. */
-  const endMarker = useRef<HTMLDivElement>(null);
   const [reachedEnd, setReachedEnd] = useState(false);
-
-  useEffect(() => {
-    const check = () => {
-      const marker = endMarker.current;
-      if (marker && isEndReached(marker.getBoundingClientRect().top, window.innerHeight)) {
-        setReachedEnd(true);
-      }
-    };
-    check();
-    window.addEventListener('scroll', check, { passive: true });
-    window.addEventListener('resize', check);
-    return () => {
-      window.removeEventListener('scroll', check);
-      window.removeEventListener('resize', check);
-    };
-  }, [lesson.data, editing]);
+  const markReachedEnd = useCallback(() => setReachedEnd(true), []);
 
   useEffect(() => {
     if (reachedEnd) markTodayDone(`lesson:${lessonId}`);
@@ -106,10 +103,16 @@ export default function LessonReadPage({
     }
   }, [lesson.data?.id, lesson.data?.progress.status, startMutate]);
 
-  const rendered = useMemo(
-    () => (lesson.data ? renderMarkdown(lesson.data.contentMd) : null),
-    [lesson.data],
+  // Cùng cách tính với LessonStepper: cần bước cuối cho link Nguồn và bước hiện tại cho thanh dưới.
+  const itemCount = useMemo(
+    () =>
+      buildSequence(
+        splitSteps(lesson.data?.contentMd ?? '').length,
+        eligibleQuizIds(exercise.data?.questions ?? []),
+      ).length,
+    [lesson.data?.contentMd, exercise.data],
   );
+  const stepIndex = clampStep(stepParam, itemCount);
 
   /** Vị trí trong khóa + hai bài kề — màn này không được là ngõ cụt (NN/g H1, H3). */
   const position = useMemo(() => {
@@ -142,6 +145,7 @@ export default function LessonReadPage({
         contentMd: draftContent,
       });
       setEditing(false);
+      setStep('');
     } catch (err) {
       setSaveError(err);
     }
@@ -201,16 +205,10 @@ export default function LessonReadPage({
 
   const data = lesson.data;
   const status = data.progress.status;
-  const showToc = Boolean(rendered && rendered.toc.length > 1 && !editing);
 
   return (
-    <div
-      className={cn(
-        'mx-auto grid gap-10',
-        showToc ? 'max-w-6xl xl:grid-cols-[minmax(0,1fr)_15rem]' : 'max-w-3xl',
-      )}
-    >
-      <article className="min-w-0">
+    <div className={cn('mx-auto', editing ? 'max-w-3xl' : 'max-w-6xl')}>
+      <article className="min-w-0 scroll-mt-24">
         <BackLink href={`/courses/${courseId}`} label="Về khóa học" />
 
         {/* ------------------------------------------------ đầu bài */}
@@ -307,7 +305,14 @@ export default function LessonReadPage({
           </div>
         </header>
 
-        {data.confidence === 'LOW' && !editing && <LowConfidenceNotice className="mt-6" />}
+        {data.confidence === 'LOW' && !editing && (
+          <LowConfidenceNotice
+            className="mt-6"
+            sourcesHref={
+              exercise.isPending ? null : `?step=${Math.max(0, itemCount - 1)}#${SOURCES_ANCHOR}`
+            }
+          />
+        )}
 
         {Boolean(deleteError) && (
           <InlineError className="mt-4">
@@ -378,53 +383,56 @@ export default function LessonReadPage({
               </Button>
             </div>
           </Card>
+        ) : exercise.isPending ? (
+          // Câu hỏi nhanh chen vào giữa các bước: chờ bài tập xong mới biết bước nào là cuối.
+          <Skeleton className="mt-8 h-64 rounded-card" />
         ) : (
-          <div
-            className="lesson-content mt-8 max-w-[72ch]"
-            dangerouslySetInnerHTML={{ __html: rendered?.html ?? '' }}
-          />
-        )}
-
-        {!editing && data.sourceChunkIds.length > 0 && (
-          // Bài LOW mở sẵn: cảnh báo phía trên dẫn xuống đây, người học không phải bấm thêm.
-          <LessonSources
+          <LessonStepper
             key={lessonId}
             courseId={courseId}
             lessonId={lessonId}
-            defaultOpen={data.confidence === 'LOW'}
-          />
-        )}
-
-        <div ref={endMarker} aria-hidden="true" />
-
-        {/* --------------------------------- thanh hành động dính đáy */}
-        {!editing && (
-          <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 mt-12 lg:bottom-4">
-            <div className="flex items-center gap-2 rounded-card border border-line bg-panel p-2 shadow-overlay">
-              {position?.prev ? (
-                <ButtonLink
-                  href={`/courses/${courseId}/lessons/${position.prev.id}`}
-                  variant="ghost"
-                  size="sm"
-                  className="min-w-0 max-w-[40%]"
-                  aria-label={`Bài trước: ${position.prev.title}`}
-                >
-                  <Icon name="arrow-left" size={16} />
-                  <span className="hidden truncate sm:inline">
-                    <UserText>{position.prev.title}</UserText>
-                  </span>
-                </ButtonLink>
-              ) : (
-                <span />
-              )}
-
-              <div className="ml-auto flex min-w-0 items-center gap-2">
+            lessonTitle={data.title}
+            contentMd={data.contentMd}
+            quizQuestions={exercise.data?.questions ?? []}
+            exerciseId={exercise.data?.id ?? null}
+            onReachedEnd={markReachedEnd}
+            sources={
+              data.sourceChunkIds.length > 0 && (
+                // Bài LOW mở sẵn: cảnh báo phía trên dẫn xuống đây, người học không phải bấm thêm.
+                <LessonSources
+                  key={lessonId}
+                  courseId={courseId}
+                  lessonId={lessonId}
+                  defaultOpen={data.confidence === 'LOW'}
+                />
+              )
+            }
+            navExtras={
+              <>
+                {position?.prev && (
+                  <ButtonLink
+                    href={`/courses/${courseId}/lessons/${position.prev.id}`}
+                    variant="ghost"
+                    size="sm"
+                    // Trên điện thoại tránh hai mũi tên trái giống nhau khi đã có "Quay lại".
+                    className={cn(
+                      'min-w-0 max-w-[40%]',
+                      stepIndex > 0 && 'hidden md:inline-flex',
+                    )}
+                    aria-label={`Bài trước: ${position.prev.title}`}
+                  >
+                    <Icon name="arrow-left" size={16} />
+                    <span className="hidden truncate sm:inline">
+                      <UserText>{position.prev.title}</UserText>
+                    </span>
+                  </ButtonLink>
+                )}
                 {position?.next && (
                   <ButtonLink
                     href={`/courses/${courseId}/lessons/${position.next.id}`}
                     variant="secondary"
                     size="sm"
-                    className="hidden min-w-0 max-w-[16rem] md:inline-flex"
+                    className="ml-auto hidden min-w-0 max-w-[16rem] md:inline-flex"
                     aria-label={`Bài sau: ${position.next.title}`}
                   >
                     <span className="truncate">
@@ -433,79 +441,12 @@ export default function LessonReadPage({
                     <Icon name="arrow-right" size={16} />
                   </ButtonLink>
                 )}
-                {reachedEnd || data.progress.bestScore !== null ? (
-                  <ButtonLink href={`/courses/${courseId}/lessons/${lessonId}/practice`}>
-                    <Icon name="target" size={17} />
-                    Làm bài tập
-                  </ButtonLink>
-                ) : (
-                  <p
-                    className="whitespace-nowrap px-3 text-sm font-medium text-fg-subtle"
-                    role="status"
-                  >
-                    Đọc hết bài để làm bài tập
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+              </>
+            }
+          />
         )}
       </article>
-
-      {/* ------------------------------------------------------- mục lục */}
-      {showToc && rendered && <TableOfContents toc={rendered.toc} />}
     </div>
   );
 }
 
-/**
- * Mục lục dính, đánh dấu mục đang đọc. Đánh dấu chỉ là gợi ý thêm — nếu
- * `IntersectionObserver` không bắn (tab nền, xem UI-GUIDE §4) thì mục lục vẫn là một
- * danh sách link dùng được bình thường.
- */
-function TableOfContents({ toc }: { toc: TocEntry[] }) {
-  const [active, setActive] = useState<string | null>(null);
-
-  useEffect(() => {
-    const targets = toc
-      .map((t) => document.getElementById(t.id))
-      .filter((el): el is HTMLElement => el !== null);
-    if (targets.length === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: '-80px 0px -70% 0px' },
-    );
-    targets.forEach((t) => observer.observe(t));
-    return () => observer.disconnect();
-  }, [toc]);
-
-  return (
-    <nav className="hidden xl:block" aria-label="Mục lục">
-      <div className="sticky top-24">
-        <p className="mb-3 text-xs font-medium text-fg-subtle">Trong bài này</p>
-        <ul className="space-y-0.5 border-l border-line text-sm">
-          {toc.map((entry) => (
-            <li key={entry.id}>
-              <a
-                href={`#${entry.id}`}
-                aria-current={active === entry.id ? 'location' : undefined}
-                className={cn(
-                  '-ml-px line-clamp-2 border-l-2 py-1.5 pr-2 leading-snug transition-colors duration-200 focus-ring-tight',
-                  active === entry.id
-                    ? 'border-fg font-semibold text-fg'
-                    : 'border-transparent text-fg-subtle hover:border-line-strong hover:text-fg',
-                )}
-                style={{ paddingLeft: `${0.75 + (entry.depth - 1) * 0.75}rem` }}
-              >
-                <UserText>{entry.text}</UserText>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </nav>
-  );
-}

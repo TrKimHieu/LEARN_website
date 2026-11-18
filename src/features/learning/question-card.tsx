@@ -67,7 +67,8 @@ export function QuestionCard({
   onChange,
   missing = false,
 }: {
-  index: number;
+  /** Bỏ trống thì không đánh số (câu hỏi nhanh chỉ có một câu). */
+  index?: number;
   question: Question;
   value: Answer | undefined;
   onChange: (a: Answer) => void;
@@ -82,11 +83,16 @@ export function QuestionCard({
       className={cn('scroll-mb-40 scroll-mt-24', missing && 'border-2 border-fg bg-bad-soft')}
     >
       <div className="flex gap-3">
-        <span aria-hidden className="w-5 shrink-0 pt-0.5 font-semibold tabular-nums text-fg-subtle">
-          {index}.
-        </span>
+        {index !== undefined && (
+          <span
+            aria-hidden
+            className="w-5 shrink-0 pt-0.5 font-semibold tabular-nums text-fg-subtle"
+          >
+            {index}.
+          </span>
+        )}
         <p id={promptId} className="pt-0.5 font-semibold leading-relaxed text-fg">
-          <span className="sr-only">Câu {index}. </span>
+          {index !== undefined && <span className="sr-only">Câu {index}. </span>}
           <UserText full>{question.prompt}</UserText>
         </p>
       </div>

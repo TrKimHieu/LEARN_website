@@ -1,6 +1,7 @@
 'use client';
 
 import { UserText } from '@/components/ui/user-text';
+import Link from 'next/link';
 import { useId, useState } from 'react';
 import type { LessonSource } from '@learn/api-contracts';
 import { Button, Icon, InlineError, LoadingState, cn } from '@/components/ui';
@@ -13,7 +14,14 @@ export const SOURCES_ANCHOR = 'nguon-tai-lieu';
  * Cảnh báo bài học bám nguồn kém (NFR-AI-02, FR-LESSON-07): dưới 50% thuật ngữ mẫu khớp tài
  * liệu gốc. Không được im lặng, và phải chỉ cách tự kiểm: dẫn thẳng tới khối Nguồn bên dưới.
  */
-export function LowConfidenceNotice({ className }: { className?: string }) {
+export function LowConfidenceNotice({
+  className,
+  sourcesHref = `#${SOURCES_ANCHOR}`,
+}: {
+  className?: string;
+  /** Khối Nguồn có thể nằm ở bước khác: trang truyền link tới bước đó; `null` khi chưa biết bước. */
+  sourcesHref?: string | null;
+}) {
   return (
     <div
       role="note"
@@ -28,12 +36,22 @@ export function LowConfidenceNotice({ className }: { className?: string }) {
         <p className="mt-0.5 text-fg-muted">
           Khi kiểm tra tự động, nhiều thuật ngữ trong bài không tìm thấy trong tài liệu gốc. Hãy đối
           chiếu với{' '}
-          <a
-            href={`#${SOURCES_ANCHOR}`}
-            className="font-medium text-fg underline underline-offset-2"
-          >
-            đoạn tài liệu nguồn
-          </a>{' '}
+          {sourcesHref === null ? (
+            'đoạn tài liệu nguồn'
+          ) : (
+            <Link
+              href={sourcesHref}
+              scroll={false}
+              replace
+              // Đã ở bước có Nguồn thì URL không đổi bước, nên tự cuộn tới khối Nguồn.
+              onClick={() =>
+                document.getElementById(SOURCES_ANCHOR)?.scrollIntoView({ block: 'start' })
+              }
+              className="font-medium text-fg underline underline-offset-2"
+            >
+              đoạn tài liệu nguồn
+            </Link>
+          )}{' '}
           trước khi dựa vào nội dung, hoặc sửa lại bài.
         </p>
       </div>
