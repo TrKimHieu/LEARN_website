@@ -19,6 +19,7 @@ import { failureReasonText } from '@/features/ai/ai-job-outcome';
 import { partialFailuresOf } from '@/features/ai/ai-job-partial';
 import { AiJobProgress } from '@/features/ai/ai-job-progress';
 import { LessonList } from '@/features/learning/lesson-list';
+import { docsStartOpen } from '@/features/courses/docs-disclosure';
 import { QuotaNotice } from '@/components/shared/quota-notice';
 import { ColorBlock } from '@/components/shared/color-block';
 import { Mascot } from '@/components/shared/mascot';
@@ -93,6 +94,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const [deleteError, setDeleteError] = useState<unknown>(null);
   /** Lưu phần bỏ chọn thay vì phần được chọn, để tài liệu mới tải lên tự được tính. */
   const [excludedDocIds, setExcludedDocIds] = useState<ReadonlySet<string>>(new Set());
+  /** `null` = người dùng chưa bấm: mở/đóng theo `docsStartOpen` (cả khi tài liệu còn đang tải). */
+  const [docsOpen, setDocsOpen] = useState<boolean | null>(null);
+  const uploading = Boolean(upload.progress);
+  useEffect(() => {
+    if (uploading || uploadError) setDocsOpen(true);
+  }, [uploading, uploadError]);
 
   const activeJobId = startedJobId ?? courseJobs.data?.active?.id ?? null;
   const lastPartial = courseJobs.data?.lastPartial ?? null;
@@ -251,6 +258,104 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       : 'Tiếp tục học';
   const docCount = documents.data?.documents.length ?? 0;
 
+  const showDocs =
+    docsOpen ??
+    docsStartOpen({
+      docCount,
+      loading: documents.isLoading,
+      uploading,
+      uploadError: Boolean(uploadError),
+    });
+
+  /** Sinh bài học bằng AI: lý do nút xám, xác nhận và lỗi luôn đứng cạnh nút. */
+  const generateBlock = (
+    <div>
+      {/* Lý do nút xám phải nhìn thấy được — phần tử disabled không hiện tooltip. */}
+      {!hasExtractedDoc && !documents.isLoading && (
+        <p
+          id="generate-blocked"
+          className="mb-4 flex items-start gap-2 rounded-control bg-muted px-3.5 py-2.5 text-sm text-fg-muted"
+        >
+          <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
+          Cần ít nhất một tài liệu sẵn sàng thì mới sinh được bài học.
+        </p>
+      )}
+      {hasExtractedDoc && !hasSelectedDoc && (
+        <p className="mb-4 flex items-start gap-2 rounded-control bg-muted px-3.5 py-2.5 text-sm text-fg-muted">
+          <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
+          Hãy chọn ít nhất một tài liệu để sinh bài học.
+        </p>
+      )}
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {/* Độ khó bài tập AI sẽ soạn (đi vào prompt `lesson@3`). */}
+        <label htmlFor="generate-difficulty" className="sr-only">
+          Độ khó bài tập
+        </label>
+        <select
+          id="generate-difficulty"
+          value={difficulty}
+          onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+          disabled={activeJobId !== null || generateLessons.isPending}
+          className="h-11 cursor-pointer rounded-control border border-line-input bg-panel px-2.5 text-sm text-fg hover:border-fg disabled:cursor-not-allowed disabled:opacity-60 focus-ring-tight md:h-9"
+        >
+          {DIFFICULTIES.map((d) => (
+            <option key={d.value} value={d.value}>
+              {d.label}
+            </option>
+          ))}
+        </select>
+        {/* Việc của người soạn nội dung — `secondary`, không tranh với nút học. */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={requestGenerate}
+          loading={generateLessons.isPending}
+          disabled={activeJobId !== null || courseJobs.isLoading || !hasSelectedDoc}
+          aria-describedby={hasExtractedDoc ? undefined : 'generate-blocked'}
+        >
+          {!generateLessons.isPending && <Icon name="sparkles" size={16} />}
+          {generateLessons.isPending ? 'Đang bắt đầu…' : 'Sinh bài học bằng AI'}
+        </Button>
+      </div>
+
+      {confirmingGenerate && (
+        <div
+          role="alert"
+          className="mb-4 rounded-control border border-line bg-panel-2 px-3.5 py-3 text-sm text-fg"
+        >
+          <p className="font-medium">Khóa học đã có {lessonList.length} bài. Vẫn sinh thêm?</p>
+          <p className="mt-1 text-fg-subtle">
+            Lượt này dùng 1 lượt AI. Bài có tiêu đề trùng bài đã có sẽ bị bỏ qua, nên nếu không
+            có tài liệu mới thì có thể không tạo thêm được bài nào.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => void handleGenerate()}>
+              Sinh thêm
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setConfirmingGenerate(false)}>
+              Huỷ
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {isQuotaExceededError(generateError) && (
+        <QuotaNotice
+          className="mb-4"
+          metric={generateError.meta.metric}
+          limit={generateError.meta.limit}
+          used={generateError.meta.used}
+        />
+      )}
+      {Boolean(generateError) && !isQuotaExceededError(generateError) && (
+        <InlineError className="mb-4">
+          {errorText(generateError, 'Không sinh được bài học, vui lòng thử lại.')}
+        </InlineError>
+      )}
+    </div>
+  );
+
   return (
     <>
       <BackLink href="/courses" label="Khóa học" />
@@ -333,99 +438,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
         />
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
+      {/* Một cột: học trước; việc quản lý (sinh bài, tài liệu, xoá) đi sau danh sách bài. */}
+      <div className="mt-8 grid max-w-3xl grid-cols-1 gap-12">
         {/* ----------------------------------------------------- lộ trình */}
         <section aria-labelledby="path-title" className="min-w-0">
-          <SectionTitle
-            id="path-title"
-            action={
-              <div className="flex items-center gap-2">
-                {/* Độ khó bài tập AI sẽ soạn (đi vào prompt `lesson@3`). */}
-                <label htmlFor="generate-difficulty" className="sr-only">
-                  Độ khó bài tập
-                </label>
-                <select
-                  id="generate-difficulty"
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-                  disabled={activeJobId !== null || generateLessons.isPending}
-                  className="h-9 cursor-pointer rounded-control border border-line-input bg-panel px-2.5 text-sm text-fg hover:border-fg disabled:cursor-not-allowed disabled:opacity-60 focus-ring-tight"
-                >
-                  {DIFFICULTIES.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-                {/* Việc của người soạn nội dung — `secondary`, không tranh với nút chính. */}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={requestGenerate}
-                  loading={generateLessons.isPending}
-                  disabled={activeJobId !== null || courseJobs.isLoading || !hasSelectedDoc}
-                  aria-describedby={hasExtractedDoc ? undefined : 'generate-blocked'}
-                >
-                  {!generateLessons.isPending && <Icon name="sparkles" size={16} />}
-                  {generateLessons.isPending ? 'Đang bắt đầu…' : 'Sinh bài học bằng AI'}
-                </Button>
-              </div>
-            }
-          >
-            Lộ trình bài học
-          </SectionTitle>
+          <SectionTitle id="path-title">Lộ trình bài học</SectionTitle>
 
-          {/* Lý do nút xám phải nhìn thấy được — phần tử disabled không hiện tooltip. */}
-          {!hasExtractedDoc && !documents.isLoading && (
-            <p
-              id="generate-blocked"
-              className="mb-4 flex items-start gap-2 rounded-control bg-muted px-3.5 py-2.5 text-sm text-fg-muted"
-            >
-              <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
-              Cần ít nhất một tài liệu sẵn sàng thì mới sinh được bài học.
-            </p>
-          )}
-          {hasExtractedDoc && !hasSelectedDoc && (
-            <p className="mb-4 flex items-start gap-2 rounded-control bg-muted px-3.5 py-2.5 text-sm text-fg-muted">
-              <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent" />
-              Hãy chọn ít nhất một tài liệu để sinh bài học.
-            </p>
-          )}
+          {/* Chưa có bài: sinh bài là việc duy nhất tiếp theo, nên đặt lên đầu. */}
+          {lessons.data && lessonList.length === 0 && generateBlock}
 
-          {confirmingGenerate && (
-            <div
-              role="alert"
-              className="mb-4 rounded-control border border-line bg-panel-2 px-3.5 py-3 text-sm text-fg"
-            >
-              <p className="font-medium">Khóa học đã có {lessonList.length} bài. Vẫn sinh thêm?</p>
-              <p className="mt-1 text-fg-subtle">
-                Lượt này dùng 1 lượt AI. Bài có tiêu đề trùng bài đã có sẽ bị bỏ qua, nên nếu không
-                có tài liệu mới thì có thể không tạo thêm được bài nào.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => void handleGenerate()}>
-                  Sinh thêm
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setConfirmingGenerate(false)}>
-                  Huỷ
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {isQuotaExceededError(generateError) && (
-            <QuotaNotice
-              className="mb-4"
-              metric={generateError.meta.metric}
-              limit={generateError.meta.limit}
-              used={generateError.meta.used}
-            />
-          )}
-          {Boolean(generateError) && !isQuotaExceededError(generateError) && (
-            <InlineError className="mb-4">
-              {errorText(generateError, 'Không sinh được bài học, vui lòng thử lại.')}
-            </InlineError>
-          )}
           {Boolean(reorderError) && (
             <InlineError className="mb-4">
               {errorText(reorderError, 'Không sắp xếp lại được, vui lòng thử lại.')}
@@ -452,7 +473,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
               description={
                 hasExtractedDoc
                   ? 'Tài liệu đã sẵn sàng. Bấm "Sinh bài học bằng AI" để tạo lộ trình.'
-                  : 'Tải tài liệu lên ở khung bên cạnh, rồi bấm "Sinh bài học bằng AI" để tạo lộ trình.'
+                  : 'Tải tài liệu lên ở mục Tài liệu bên dưới, rồi bấm "Sinh bài học bằng AI" để tạo lộ trình.'
               }
             />
           )}
@@ -464,66 +485,83 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
               reordering={reorderLessons.isPending}
             />
           )}
+
+          {lessonList.length > 0 && <div className="mt-6">{generateBlock}</div>}
         </section>
 
         {/* ----------------------------------------------------- tài liệu */}
-        {/* Chưa có tài liệu thì đây là việc phải làm trước, nên đưa lên đầu trên màn hình hẹp. */}
-        <section
-          aria-labelledby="docs-title"
-          className={cn('min-w-0', docCount === 0 && 'order-first lg:order-none')}
-        >
-          <SectionTitle id="docs-title">Tài liệu nguồn</SectionTitle>
-
-          {upload.progress ? (
-            <UploadStatus progress={upload.progress} onCancel={upload.cancel} />
-          ) : (
-            <Dropzone onFile={(f) => void handleFile(f)} />
-          )}
-
-          {isQuotaExceededError(uploadError) && (
-            <QuotaNotice
-              className="mt-3"
-              metric={uploadError.meta.metric}
-              limit={uploadError.meta.limit}
-              used={uploadError.meta.used}
-            />
-          )}
-          {Boolean(uploadError) && !isQuotaExceededError(uploadError) && (
-            <InlineError className="mt-3">
-              {errorText(uploadError, 'Tải tài liệu thất bại, vui lòng thử lại.')}
-            </InlineError>
-          )}
-
-          <div className="mt-4">
-            {documents.isLoading && (
-              <LoadingState rows={2} variant="list" label="Đang tải tài liệu" />
-            )}
-            {documents.isError && (
-              <ErrorState
-                title="Không tải được tài liệu"
-                description={errorText(documents.error, 'Vui lòng thử lại.')}
-                onRetry={() => void documents.refetch()}
+        <section aria-labelledby="docs-title" className="min-w-0">
+          <h2 id="docs-title" className="font-display text-lg font-semibold">
+            <button
+              type="button"
+              aria-expanded={showDocs}
+              aria-controls="docs-panel"
+              onClick={() => setDocsOpen(!showDocs)}
+              className="-mx-2 inline-flex min-h-11 items-center gap-2 rounded-control px-2 hover:bg-muted focus-ring md:min-h-9"
+            >
+              {`Tài liệu (${docCount})`}
+              <Icon
+                name="chevron-down"
+                size={16}
+                className={cn('transition-transform', showDocs && 'rotate-180')}
               />
-            )}
-            {documents.data && documents.data.documents.length === 0 && (
-              <p className="rounded-control border border-dashed border-line px-4 py-3 text-center text-sm text-fg-subtle">
-                Chưa có tài liệu nào trong khóa này.
-              </p>
-            )}
-            {documents.data && documents.data.documents.length > 0 && (
-              <ul className="divide-y divide-line">
-                {documents.data.documents.map((doc) => (
-                  <DocumentRow
-                    key={doc.id}
-                    doc={doc}
-                    selectable={extractedDocs.length > 1}
-                    selected={!excludedDocIds.has(doc.id)}
-                    onToggle={() => toggleDoc(doc.id)}
+            </button>
+          </h2>
+
+          {showDocs && (
+            <div id="docs-panel" className="mt-3">
+              {upload.progress ? (
+                <UploadStatus progress={upload.progress} onCancel={upload.cancel} />
+              ) : (
+                <Dropzone onFile={(f) => void handleFile(f)} />
+              )}
+
+              {isQuotaExceededError(uploadError) && (
+                <QuotaNotice
+                  className="mt-3"
+                  metric={uploadError.meta.metric}
+                  limit={uploadError.meta.limit}
+                  used={uploadError.meta.used}
+                />
+              )}
+              {Boolean(uploadError) && !isQuotaExceededError(uploadError) && (
+                <InlineError className="mt-3">
+                  {errorText(uploadError, 'Tải tài liệu thất bại, vui lòng thử lại.')}
+                </InlineError>
+              )}
+
+              <div className="mt-4">
+                {documents.isLoading && (
+                  <LoadingState rows={2} variant="list" label="Đang tải tài liệu" />
+                )}
+                {documents.isError && (
+                  <ErrorState
+                    title="Không tải được tài liệu"
+                    description={errorText(documents.error, 'Vui lòng thử lại.')}
+                    onRetry={() => void documents.refetch()}
                   />
-                ))}
-              </ul>
-            )}
-          </div>
+                )}
+                {documents.data && documents.data.documents.length === 0 && (
+                  <p className="rounded-control border border-dashed border-line px-4 py-3 text-center text-sm text-fg-subtle">
+                    Chưa có tài liệu nào trong khóa này.
+                  </p>
+                )}
+                {documents.data && documents.data.documents.length > 0 && (
+                  <ul className="divide-y divide-line">
+                    {documents.data.documents.map((doc) => (
+                      <DocumentRow
+                        key={doc.id}
+                        doc={doc}
+                        selectable={extractedDocs.length > 1}
+                        selected={!excludedDocIds.has(doc.id)}
+                        onToggle={() => toggleDoc(doc.id)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </section>
       </div>
 
