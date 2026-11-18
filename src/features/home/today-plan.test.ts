@@ -9,6 +9,7 @@ import {
   planGate,
   reconcile,
   retriedToday,
+  taskHref,
   type SavedPlan,
   type TodayTask,
 } from './today-plan';
@@ -149,5 +150,38 @@ describe('pickNextLesson', () => {
   it('returns null when all are done', () => {
     expect(pickNextLesson([l('a', 'COMPLETED')])).toBeNull();
     expect(pickNextLesson([])).toBeNull();
+  });
+});
+
+describe('taskHref', () => {
+  it('review goes to /review', () => {
+    expect(taskHref({ id: 'review', kind: 'review', dueCount: 3 })).toBe('/review');
+  });
+  it('lesson goes to the lesson page', () => {
+    expect(
+      taskHref({
+        id: 'lesson:L',
+        kind: 'lesson',
+        courseId: 'C',
+        lessonId: 'L',
+        title: 't',
+        courseTitle: 'c',
+        index: 1,
+        total: 2,
+      }),
+    ).toBe('/courses/C/lessons/L');
+  });
+  it('exercise goes to practice with the exercise encoded', () => {
+    expect(
+      taskHref({
+        id: 'exercise:E/1',
+        kind: 'exercise',
+        courseId: 'C',
+        lessonId: 'L',
+        exerciseId: 'E/1',
+        lessonTitle: 'l',
+        score: 40,
+      }),
+    ).toBe('/courses/C/lessons/L/practice?exercise=E%2F1');
   });
 });

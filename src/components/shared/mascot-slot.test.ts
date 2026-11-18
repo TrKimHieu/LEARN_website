@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { claimMascot, currentMascot } from './mascot-slot';
 
 const releases: Array<() => void> = [];
-const claim = (id: string, role: 'state' | 'companion') => {
+const claim = (id: string, role: 'overlay' | 'state' | 'companion') => {
   const release = claimMascot(id, role);
   releases.push(release);
   return release;
@@ -21,6 +21,12 @@ describe('mascot-slot', () => {
     claim('header', 'companion');
     claim('empty', 'state');
     expect(currentMascot()).toBe('empty');
+  });
+
+  it('mascot trong hộp thoại phủ thắng mascot trạng thái của trang bên dưới', () => {
+    claim('empty', 'state');
+    claim('popup', 'overlay');
+    expect(currentMascot()).toBe('popup');
   });
 
   it('cùng loại thì cái gắn trước thắng', () => {

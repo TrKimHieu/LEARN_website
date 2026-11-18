@@ -2,9 +2,10 @@
  * Mỗi màn hình chỉ có một mascot. Mọi `Mascot` đang gắn đăng ký ở đây, chỉ một cái được hiện.
  *
  * Mascot báo trạng thái (trống, lỗi, AI đang chạy, kết quả) thắng mascot đồng hành (đầu trang, lời
- * động viên), vì nó đang nói điều người dùng cần biết. Cùng loại thì cái gắn trước thắng.
+ * động viên), vì nó đang nói điều người dùng cần biết. Mascot trong hộp thoại phủ (`overlay`) thắng
+ * tất cả vì nó nằm trên trang. Cùng loại thì cái gắn trước thắng.
  */
-export type MascotRole = 'state' | 'companion';
+export type MascotRole = 'overlay' | 'state' | 'companion';
 
 type Entry = { id: string; role: MascotRole };
 
@@ -33,6 +34,9 @@ export function subscribeMascot(listener: () => void) {
 }
 
 export function currentMascot(): string | null {
-  const winner = entries.find((entry) => entry.role === 'state') ?? entries[0];
+  const winner =
+    entries.find((entry) => entry.role === 'overlay') ??
+    entries.find((entry) => entry.role === 'state') ??
+    entries[0];
   return winner?.id ?? null;
 }
