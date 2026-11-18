@@ -117,7 +117,8 @@ export default tseslint.config(
             // `shell` là chrome của app (AppShell, UserMenu, PlanUsage) nên được đọc hook dữ
             // liệu của feature khác — `useAuth`/`useSubscription`/`useDueCount` (huy hiệu số thẻ
             // đến hạn) — không phải tái dùng UI nội bộ của chúng.
-            shell: ['auth', 'settings', 'flashcards'],
+            // `home`: popup nhắc học khi mở web gắn vào khung app.
+            shell: ['auth', 'settings', 'flashcards', 'home'],
             // `feedback` là lớp hỏi ý kiến dùng chung, mọi tính năng được đặt thẻ hỏi của nó.
             flashcards: ['feedback'],
             // Màn Học gom việc hôm nay từ dữ liệu học và thẻ đến hạn.
