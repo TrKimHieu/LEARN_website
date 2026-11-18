@@ -1,4 +1,4 @@
-import type { TodayTask } from './today-plan';
+import type { SavedPlan, TodayTask } from './today-plan';
 
 /** Lần cuối popup nhắc học hiện ra (ISO). */
 export const NUDGE_KEY = 'learn.nudge';
@@ -48,4 +48,12 @@ export function nudgeSummary(pending: TodayTask[]): string {
   }
   const label = { review: 'thẻ đến hạn', lesson: 'bài học', exercise: 'bài cần luyện lại' };
   return [...parts].map(([kind, n]) => `${n} ${label[kind]}`).join(' · ');
+}
+
+/**
+ * Bản lưu của hôm nay mang dấu xong mới nhất (màn bài học, luyện tập, ôn thẻ ghi thẳng vào đó), nên
+ * ưu tiên nó hơn bản hook đọc lúc đầu phiên; nhờ vậy popup nói giống màn Học.
+ */
+export function freshestPlan<T extends SavedPlan | null>(saved: SavedPlan | null, plan: T, day: string) {
+  return saved && saved.day === day ? saved : plan;
 }

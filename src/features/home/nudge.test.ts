@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isLearningPath, nudgeSummary, parseLastShown, shouldNudge } from './nudge';
-import type { TodayTask } from './today-plan';
+import { freshestPlan, isLearningPath, nudgeSummary, parseLastShown, shouldNudge } from './nudge';
+import type { SavedPlan, TodayTask } from './today-plan';
 
 const at = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m);
 const base = { pathname: '/dashboard', ready: true, pendingCount: 2 };
@@ -84,5 +84,25 @@ describe('nudgeSummary', () => {
   });
   it('summary adds same kinds', () => {
     expect(nudgeSummary([lesson('L1'), lesson('L2')])).toBe('2 bài học');
+  });
+});
+
+describe('freshestPlan', () => {
+  const plan = (day: string, done: string[]): SavedPlan => ({
+    day,
+    tasks: [lesson('L1')],
+    done,
+  });
+  it('prefers the saved plan of today, which has the latest done marks', () => {
+    const saved = plan('2026-11-18', ['lesson:L1']);
+    expect(freshestPlan(saved, plan('2026-11-18', []), '2026-11-18')).toBe(saved);
+  });
+  it('ignores a saved plan from another day', () => {
+    const mine = plan('2026-11-18', []);
+    expect(freshestPlan(plan('2026-11-17', ['lesson:L1']), mine, '2026-11-18')).toBe(mine);
+  });
+  it('falls back to the hook plan when nothing is saved', () => {
+    const mine = plan('2026-11-18', []);
+    expect(freshestPlan(null, mine, '2026-11-18')).toBe(mine);
   });
 });
