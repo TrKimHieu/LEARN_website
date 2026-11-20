@@ -82,6 +82,12 @@ export function TodayView() {
               🔥 {streak} ngày liền
             </Badge>
           )}
+          {/* Máy chủ cũ (trước contracts 1.9.0) không trả XP: ẩn dòng XP. */}
+          {overview.data.xpToday !== undefined && (
+            <p className="mt-1 text-xs tabular-nums text-fg-subtle">
+              XP hôm nay {overview.data.xpToday}/{overview.data.dailyXpCap ?? 100}
+            </p>
+          )}
         </div>
         {total > 0 && (
           <ProgressRing
@@ -120,6 +126,10 @@ export function TodayView() {
         <span aria-hidden="true">·</span>
         <ButtonLink href="/courses" variant="link" size="sm" className="relative">
           Khóa học đang học{studying > 0 && ` (${studying})`}
+        </ButtonLink>
+        <span aria-hidden="true">·</span>
+        <ButtonLink href="/friends" variant="link" size="sm" className="relative">
+          Bạn học
         </ButtonLink>
       </p>
     </div>

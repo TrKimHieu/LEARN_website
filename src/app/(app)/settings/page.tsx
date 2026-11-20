@@ -12,6 +12,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { Avatar } from '@/features/shell/user-menu';
 import { ThemeSegmented } from '@/components/shared/theme-toggle';
 import { ReminderSettings } from '@/features/flashcards/reminder-settings';
+import { LeaderboardSettings } from '@/features/friends/leaderboard-settings';
 import {
   Badge,
   Button,
@@ -146,7 +147,8 @@ export default function SettingsPage() {
           <ThemeSegmented className="mt-4" />
         </Card>
 
-        <ReminderSettings className="lg:col-span-2" />
+        <ReminderSettings />
+        <LeaderboardSettings />
       </div>
 
       {/* ------------------------------------------------- gói hiện tại */}
