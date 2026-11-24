@@ -1,3 +1,5 @@
+> **Repo này đã ngừng phát triển (2026-11-24).** Mã nguồn và lịch sử đã chuyển vào monorepo [TrKimHieu/LEARN_backend](https://github.com/TrKimHieu/LEARN_backend), thư mục `apps/web`.
+
 # LEARN web
 
 Standalone private web repository. Public contracts 1.6.0 are pinned in vendor/ with SHA-256 (`npm run sync:contracts` verifies the pinned artifact; pass `-- --source <released.tgz>` to restore or add one after checking its checksum). No backend or other client checkout is required.
